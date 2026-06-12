@@ -6,6 +6,9 @@ from .endpoints.installment_purchases import router as installment_purchases_rou
 from .endpoints.savings_goals import router as savings_goals_router
 from .endpoints.monthly_income import router as monthly_income_router
 from .endpoints.projection import router as projection_router
+from .endpoints.expenses import router as expenses_router
+from .endpoints.credit_payments import router as credit_payments_router
+from .endpoints.incomes import router as incomes_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -15,3 +18,6 @@ router.include_router(installment_purchases_router)
 router.include_router(savings_goals_router)
 router.include_router(monthly_income_router)
 router.include_router(projection_router)
+router.include_router(expenses_router)
+router.include_router(credit_payments_router)
+router.include_router(incomes_router, prefix="/incomes", tags=["incomes"])

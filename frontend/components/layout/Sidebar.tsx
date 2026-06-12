@@ -1,12 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, CreditCard, RefreshCw, Package, Target,
-  Settings, Sparkles, LogOut,
+  Settings, Sparkles, LogOut, Menu, X, Moon, Sun,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/ThemeProvider'
 
 const NAV = [
   { href: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
@@ -21,20 +23,22 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const { theme, toggleTheme } = useTheme()
 
   function logout() {
     localStorage.removeItem('token')
     router.push('/login')
   }
 
-  return (
-    <aside className="fixed inset-y-0 left-0 flex w-56 flex-col bg-[#0D0D0D] border-r border-white/[0.06] z-20">
+  const sidebarContent = (
+    <>
       {/* Brand */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/[0.06]">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#4F8EF7]">
-          <span className="text-xs font-bold text-white">F</span>
+      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-black/10 dark:from-white/10 to-black/5 dark:to-white/5 backdrop-blur-xl border border-black/10 dark:border-white/10">
+          <span className="text-sm font-bold text-black dark:text-white">F</span>
         </div>
-        <span className="text-base font-semibold text-white tracking-wide">FRIDAY</span>
+        <span className="text-base font-semibold text-black dark:text-white tracking-wide">FRIDAY</span>
       </div>
 
       {/* Nav */}
@@ -45,30 +49,69 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={() => setMobileOpen(false)}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
                 active
-                  ? 'bg-[#4F8EF7]/15 text-[#4F8EF7]'
-                  : 'text-white/50 hover:bg-white/[0.05] hover:text-white'
+                  ? 'bg-black/10 dark:bg-white/10 text-black dark:text-white backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-lg'
+                  : 'text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border border-transparent'
               )}
             >
-              <Icon size={16} strokeWidth={active ? 2.5 : 1.75} />
+              <Icon size={18} strokeWidth={active ? 2.5 : 2} />
               {label}
             </Link>
           )
         })}
       </nav>
 
-      {/* Logout */}
-      <div className="px-3 py-4 border-t border-white/[0.06]">
+      {/* Theme Toggle + Logout */}
+      <div className="border-t border-white/[0.06] dark:border-white/[0.06] border-black/[0.06] p-3 space-y-2">
+        <button
+          onClick={toggleTheme}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-black/60 dark:text-white/60 transition-all hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white"
+        >
+          {theme === 'dark' ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
+          {theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+        </button>
         <button
           onClick={logout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/40 hover:bg-white/[0.05] hover:text-white/70 transition-colors"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-black/60 dark:text-white/60 transition-all hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white"
         >
-          <LogOut size={16} strokeWidth={1.75} />
+          <LogOut size={18} strokeWidth={2} />
           Cerrar sesión
         </button>
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-[#141414] border border-black/10 dark:border-[#2A2A2A] lg:hidden text-black dark:text-white"
+      >
+        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-white/95 dark:bg-[#0D0D0D]/95 backdrop-blur-xl border-r border-black/[0.06] dark:border-white/[0.06] transition-all duration-300",
+          "lg:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   )
 }

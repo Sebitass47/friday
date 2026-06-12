@@ -1,0 +1,2 @@
+# Placeholder - usar el SVG directamente o generar con herramienta externa
+# Para producción: convertir icon.svg a PNG de 192x192 y 512x512

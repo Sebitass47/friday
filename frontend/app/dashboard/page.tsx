@@ -36,7 +36,7 @@ export default function DashboardPage() {
     return (
       <AppLayout>
         <div className="flex h-64 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#4F8EF7] border-t-transparent" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-white" />
         </div>
       </AppLayout>
     )
@@ -53,23 +53,23 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         {/* Header */}
         <div>
-          <p className="text-sm text-white/40">
+          <p className="text-xs sm:text-sm text-white/40">
             {new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
-          <h1 className="text-2xl font-semibold text-white mt-0.5">
+          <h1 className="text-xl sm:text-2xl font-semibold text-white mt-1">
             Hola{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}
           </h1>
         </div>
 
         {/* KPI cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {/* Disponible este mes */}
-          <div className="col-span-1 bg-[#141414] rounded-2xl p-6 border border-white/[0.06]">
-            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Disponible este mes</p>
-            <p className={`text-4xl font-bold tabular-nums ${isNeg ? 'text-red-400' : 'text-white'}`}>
+          <div className="sm:col-span-2 lg:col-span-1 bg-white/[0.03] backdrop-blur-xl rounded-2xl p-5 sm:p-6 border border-white/10 shadow-lg hover:border-white/20 transition-all">
+            <p className="text-[10px] sm:text-xs font-medium text-white/40 uppercase tracking-wider mb-2 sm:mb-3">Disponible este mes</p>
+            <p className={`text-2xl sm:text-4xl font-bold tabular-nums ${isNeg ? 'text-[#FF4444]' : 'text-white'}`}>
               {fmt(available)}
             </p>
             <div className="flex items-center gap-1.5 mt-2">
@@ -86,16 +86,16 @@ export default function DashboardPage() {
           </div>
 
           {/* Ingreso */}
-          <div className="bg-[#141414] rounded-2xl p-6 border border-white/[0.06]">
-            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Ingreso mensual</p>
-            <p className="text-2xl font-semibold text-white tabular-nums">{fmt(thisMonth?.income ?? 0)}</p>
-            <p className="text-xs text-white/30 mt-2">Base este mes</p>
+          <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-5 sm:p-6 border border-white/10 shadow-lg hover:border-white/20 transition-all">
+            <p className="text-[10px] sm:text-xs font-medium text-white/40 uppercase tracking-wider mb-2 sm:mb-3">Ingreso mensual</p>
+            <p className="text-xl sm:text-2xl font-semibold text-white tabular-nums">{fmt(thisMonth?.income ?? 0)}</p>
+            <p className="text-[10px] sm:text-xs text-white/30 mt-1 sm:mt-2">Base este mes</p>
           </div>
 
           {/* Compromisos */}
-          <div className="bg-[#141414] rounded-2xl p-6 border border-white/[0.06]">
-            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Total compromisos</p>
-            <p className="text-2xl font-semibold text-red-400 tabular-nums">{fmt(totalExpenses)}</p>
+          <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl p-5 sm:p-6 border border-white/10 shadow-lg hover:border-white/20 transition-all">
+            <p className="text-[10px] sm:text-xs font-medium text-white/40 uppercase tracking-wider mb-2 sm:mb-3">Total compromisos</p>
+            <p className="text-xl sm:text-2xl font-semibold text-[#FF4444] tabular-nums">{fmt(totalExpenses)}</p>
             <div className="flex flex-col gap-0.5 mt-2">
               <p className="text-[11px] text-white/30">
                 Recurrentes {fmt(thisMonth?.recurring_expenses ?? 0)} · MSI {fmt(thisMonth?.installments ?? 0)} · Ahorro {fmt(thisMonth?.savings_contributions ?? 0)}

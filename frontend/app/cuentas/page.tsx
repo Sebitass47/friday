@@ -80,7 +80,7 @@ export default function CuentasPage() {
           </div>
           <button
             onClick={openNew}
-            className="flex items-center gap-2 rounded-lg bg-[#4F8EF7] px-3 py-2 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-white text-black px-3 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 transition-colors"
           >
             <Plus size={15} /> Nueva cuenta
           </button>
@@ -88,11 +88,11 @@ export default function CuentasPage() {
 
         {/* Summary */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-[#141414] rounded-xl p-4 border border-white/[0.06]">
+          <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 shadow-lg hover:border-white/20 transition-all">
             <p className="text-xs text-white/40 mb-1">Total activos</p>
             <p className="text-xl font-semibold text-white tabular-nums">{fmt(totalAssets)}</p>
           </div>
-          <div className="bg-[#141414] rounded-xl p-4 border border-white/[0.06]">
+          <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 shadow-lg hover:border-white/20 transition-all">
             <p className="text-xs text-white/40 mb-1">Deuda tarjetas</p>
             <p className="text-xl font-semibold text-amber-400 tabular-nums">{fmt(totalDebt)}</p>
           </div>
@@ -105,7 +105,7 @@ export default function CuentasPage() {
             <div className="text-center py-12 text-white/30 text-sm">No tienes cuentas aún. ¡Agrega tu primera!</div>
           )}
           {accounts.map(a => (
-            <div key={a.id} className="flex items-center justify-between bg-[#141414] rounded-xl px-5 py-4 border border-white/[0.06]">
+            <div key={a.id} className="flex items-center justify-between bg-white/[0.03] backdrop-blur-xl rounded-xl px-5 py-4 border border-white/10 shadow-lg hover:border-white/20 transition-all">
               <div className="flex items-center gap-3">
                 <div className={`${TYPE_COLORS[a.account_type]}`}>{TYPE_ICONS[a.account_type]}</div>
                 <div>
@@ -186,7 +186,7 @@ export default function CuentasPage() {
               <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/[0.05] transition-colors">
                 Cancelar
               </button>
-              <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-[#4F8EF7] px-4 py-2 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 disabled:opacity-50 transition-colors">
+              <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-50 transition-colors">
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>

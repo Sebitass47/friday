@@ -4,12 +4,16 @@ from calendar import month_abbr
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 from app.services.monthly_income_service import get_monthly_income
 from app.services.recurring_expense_service import get_recurring_expenses
 from app.services.installment_purchase_service import get_active_installment_purchases
 from app.services.savings_goal_service import get_savings_goals
 from app.models.recurring_expense import ExpenseFrequency
+from app.models.expense import Expense
+from app.models.enums import PaymentMethod
+from app.models.credit_payment import CreditPayment
 from app.schemas.projection import MonthProjection, ProjectionResponse, SimulateInstallmentRequest, SimulationResponse
 
 MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -56,7 +60,35 @@ def _savings_cost(goals) -> Decimal:
     return sum((g.monthly_contribution for g in goals), Decimal("0"))
 
 
+def _cash_debit_expenses_for_month(db: Session, user_id: UUID, target_month: int, target_year: int) -> Decimal:
+    """Get expenses paid with cash or debit in a specific month."""
+    expenses = db.query(Expense).filter(
+        Expense.user_id == user_id,
+        Expense.payment_method.in_([PaymentMethod.CASH, PaymentMethod.DEBIT]),
+        and_(
+            Expense.date >= date(target_year, target_month, 1),
+            Expense.date < date(target_year, target_month + 1 if target_month < 12 else 1, 1)
+        ) if target_month < 12 else and_(
+            Expense.date >= date(target_year, target_month, 1),
+            Expense.date < date(target_year + 1, 1, 1)
+        )
+    ).all()
+    return sum((Decimal(str(e.amount)) for e in expenses), Decimal("0"))
+
+
+def _credit_payments_for_month(db: Session, user_id: UUID, target_month: int, target_year: int) -> Decimal:
+    """Get credit card payments due in a specific month."""
+    payments = db.query(CreditPayment).filter(
+        CreditPayment.user_id == user_id,
+        CreditPayment.statement_month == target_month,
+        CreditPayment.statement_year == target_year,
+    ).all()
+    return sum((Decimal(str(p.amount_paid)) for p in payments), Decimal("0"))
+
+
 def _build_month_projection(
+    db: Session,
+    user_id: UUID,
     month: int,
     year: int,
     income: Decimal,
@@ -69,12 +101,22 @@ def _build_month_projection(
     inst_total = _installment_cost_for_month(installments, month, year)
     sav_total = _savings_cost(savings_goals)
 
+    # New: add credit card payments for this month
+    credit_payments = _credit_payments_for_month(db, user_id, month, year)
+
+    # For current month: also include cash/debit spending
+    today = date.today()
+    is_current_month = month == today.month and year == today.year
+    cash_debit_total = Decimal("0")
+    if is_current_month:
+        cash_debit_total = _cash_debit_expenses_for_month(db, user_id, month, year)
+
     if extra_installment:
         months_elapsed = (year - extra_installment.start_date.year) * 12 + (month - extra_installment.start_date.month)
         if 0 <= months_elapsed < extra_installment.total_installments:
             inst_total += extra_installment.monthly_amount
 
-    available = income - rec_total - inst_total - sav_total
+    available = income - rec_total - inst_total - sav_total - credit_payments - cash_debit_total
 
     return MonthProjection(
         month=month,
@@ -101,7 +143,7 @@ def calculate_projection(db: Session, user_id: UUID, months: int = 12) -> Projec
     for i in range(months):
         month = (today.month - 1 + i) % 12 + 1
         year = today.year + (today.month - 1 + i) // 12
-        result.append(_build_month_projection(month, year, income, recurring, installments, goals))
+        result.append(_build_month_projection(db, user_id, month, year, income, recurring, installments, goals))
 
     return ProjectionResponse(months=result, total_months=months)
 
@@ -124,7 +166,7 @@ def simulate_projection(
     for i in range(months):
         month = (today.month - 1 + i) % 12 + 1
         year = today.year + (today.month - 1 + i) // 12
-        result.append(_build_month_projection(month, year, income, recurring, installments, goals, simulation))
+        result.append(_build_month_projection(db, user_id, month, year, income, recurring, installments, goals, simulation))
 
     impact = sum(
         (simulation.monthly_amount

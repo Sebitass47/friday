@@ -41,7 +41,7 @@ export default function ConfiguracionPage() {
           <p className="text-xs text-white/40 mt-0.5">Tu ingreso mensual base para la proyección</p>
         </div>
 
-        <div className="bg-[#141414] rounded-2xl border border-white/[0.06] p-6 space-y-6">
+        <div className="bg-[#141414] rounded-2xl border border-white/10 shadow-lg hover:border-white/20 transition-all p-6 space-y-6">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4F8EF7]/15">
               <DollarSign size={18} className="text-[#4F8EF7]" />
@@ -72,13 +72,13 @@ export default function ConfiguracionPage() {
           <button
             onClick={save}
             disabled={saving || loading}
-            className="flex items-center justify-center gap-2 w-full rounded-lg bg-[#4F8EF7] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 disabled:opacity-50 transition-colors"
+            className="flex items-center justify-center gap-2 w-full rounded-lg bg-white text-black px-4 py-2.5 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-50 transition-colors"
           >
             {saving ? 'Guardando…' : saved ? <><Check size={15} /> Guardado</> : 'Guardar ingreso'}
           </button>
         </div>
 
-        <div className="bg-[#141414] rounded-2xl border border-white/[0.06] p-6">
+        <div className="bg-[#141414] rounded-2xl border border-white/10 shadow-lg hover:border-white/20 transition-all p-6">
           <h2 className="text-sm font-medium text-white mb-3">¿Cómo funciona la proyección?</h2>
           <div className="space-y-2 text-xs text-white/40 leading-relaxed">
             <p>FRIDAY usa tu ingreso mensual como base y resta todos tus compromisos mes a mes:</p>

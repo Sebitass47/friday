@@ -23,3 +23,6 @@ class User(Base):
     installment_purchases = relationship("InstallmentPurchase", back_populates="user")
     savings_goals = relationship("SavingsGoal", back_populates="user")
     monthly_income = relationship("MonthlyIncome", back_populates="user", uselist=False)
+    expenses = relationship("Expense", back_populates="user")
+    credit_payments = relationship("CreditPayment", back_populates="user")
+    incomes = relationship("Income", back_populates="user")

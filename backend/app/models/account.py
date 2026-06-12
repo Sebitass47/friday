@@ -23,6 +23,8 @@ class Account(Base):
     currency = Column(String, default="MXN")
     is_active = Column(Boolean, default=True)
     credit_limit = Column(Numeric(12, 2), nullable=True)
+    current_balance_used = Column(Numeric(12, 2), default=0)
+    available_credit = Column(Numeric(12, 2), nullable=True)
     closing_day = Column(Integer, nullable=True)
     payment_day = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -30,3 +32,5 @@ class Account(Base):
 
     # Relationships
     user = relationship("User", back_populates="accounts")
+    expenses = relationship("Expense", back_populates="account")
+    credit_payments = relationship("CreditPayment", back_populates="account")

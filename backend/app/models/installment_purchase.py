@@ -17,6 +17,8 @@ class InstallmentPurchase(Base):
     total_installments = Column(Integer, nullable=False)
     remaining_installments = Column(Integer, nullable=False)
     start_date = Column(Date, nullable=False)
+    payment_day = Column(Integer, nullable=True)
+    closing_day = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

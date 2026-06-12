@@ -46,7 +46,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="bg-[#141414] rounded-lg shadow-xl p-8 w-full max-w-md">
+      <div className="bg-white/[0.03] backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">FRIDAY</h1>
         </div>

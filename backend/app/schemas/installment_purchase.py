@@ -12,6 +12,8 @@ class InstallmentPurchaseBase(BaseModel):
     total_installments: int
     remaining_installments: int
     start_date: date
+    payment_day: Optional[int] = None
+    closing_day: Optional[int] = None
 
     @field_validator("total_installments", "remaining_installments")
     @classmethod
@@ -40,6 +42,8 @@ class InstallmentPurchaseUpdate(BaseModel):
     total_installments: Optional[int] = None
     remaining_installments: Optional[int] = None
     start_date: Optional[date] = None
+    payment_day: Optional[int] = None
+    closing_day: Optional[int] = None
 
 
 class InstallmentPurchaseResponse(InstallmentPurchaseBase):

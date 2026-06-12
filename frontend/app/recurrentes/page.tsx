@@ -64,12 +64,12 @@ export default function RecurrentesPage() {
             <h1 className="text-xl font-semibold text-white">Gastos recurrentes</h1>
             <p className="text-xs text-white/40 mt-0.5">Pagos que salen cada mes</p>
           </div>
-          <button onClick={openNew} className="flex items-center gap-2 rounded-lg bg-[#4F8EF7] px-3 py-2 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 transition-colors">
+          <button onClick={openNew} className="flex items-center gap-2 rounded-lg bg-white text-black px-3 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 transition-colors">
             <Plus size={15} /> Agregar
           </button>
         </div>
 
-        <div className="bg-[#141414] rounded-xl p-4 border border-white/[0.06] flex items-center justify-between">
+        <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-2 text-white/40 text-sm">
             <RefreshCw size={14} />
             <span>{expenses.length} gastos recurrentes</span>
@@ -83,7 +83,7 @@ export default function RecurrentesPage() {
             <div className="text-center py-12 text-white/30 text-sm">Sin gastos recurrentes. ¡Agrega renta, Netflix, gym…!</div>
           )}
           {expenses.map(e => (
-            <div key={e.id} className="flex items-center justify-between bg-[#141414] rounded-xl px-5 py-4 border border-white/[0.06]">
+            <div key={e.id} className="flex items-center justify-between bg-white/[0.03] backdrop-blur-xl rounded-xl px-5 py-4 border border-white/10 shadow-lg hover:border-white/20 transition-all">
               <div>
                 <p className="text-sm font-medium text-white">{e.name}</p>
                 <p className="text-xs text-white/40 mt-0.5">
@@ -104,7 +104,7 @@ export default function RecurrentesPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#141414] rounded-2xl border border-white/[0.08] p-6 space-y-4">
+          <div className="w-full max-w-md bg-white/[0.05] backdrop-blur-xl rounded-2xl border border-white/10 p-6 space-y-4 shadow-2xl">
             <h2 className="text-base font-semibold text-white">{form.id ? 'Editar gasto' : 'Nuevo gasto recurrente'}</h2>
             {error && <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
@@ -136,8 +136,8 @@ export default function RecurrentesPage() {
               )}
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/[0.05] transition-colors">Cancelar</button>
-              <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-[#4F8EF7] px-4 py-2 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 disabled:opacity-50 transition-colors">
+              <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/[0.05] hover:scale-105 active:scale-95 transition-all">Cancelar</button>
+              <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all">
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>

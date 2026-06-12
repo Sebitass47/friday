@@ -1,6 +1,7 @@
 import type {
   User, Account, RecurringExpense, InstallmentPurchase,
-  SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse
+  SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse,
+  Expense, CreditPayment, Income
 } from './types'
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/v1'
@@ -141,4 +142,55 @@ export async function simulateProjection(data: {
   start_date: string
 }, months = 12): Promise<SimulationResponse> {
   return req(`/projection/simulate/?months=${months}`, { method: 'POST', body: JSON.stringify(data) })
+}
+
+// ── Expenses ──────────────────────────────────────────────────────────────────
+
+export async function getExpenses(): Promise<Expense[]> {
+  return req('/expenses/')
+}
+export async function createExpense(data: {
+  account_id: string
+  name: string
+  amount: number
+  date: string
+  payment_method: 'cash' | 'debit' | 'credit'
+  category?: string
+}): Promise<Expense> {
+  return req('/expenses/', { method: 'POST', body: JSON.stringify(data) })
+}
+export async function deleteExpense(id: string): Promise<void> {
+  return req(`/expenses/${id}`, { method: 'DELETE' })
+}
+
+// ── Credit Payments ───────────────────────────────────────────────────────────
+
+export async function getCreditPayments(): Promise<CreditPayment[]> {
+  return req('/credit-payments/')
+}
+export async function createCreditPayment(data: {
+  account_id: string
+  amount_paid: number
+  payment_date: string
+  statement_month: number
+  statement_year: number
+}): Promise<CreditPayment> {
+  return req('/credit-payments/', { method: 'POST', body: JSON.stringify(data) })
+}
+
+// ── Incomes ───────────────────────────────────────────────────────────────────
+
+export async function getIncomes(): Promise<Income[]> {
+  return req('/incomes/')
+}
+export async function createIncome(data: {
+  description: string
+  amount: number
+  date: string
+  category?: string
+}): Promise<Income> {
+  return req('/incomes/', { method: 'POST', body: JSON.stringify(data) })
+}
+export async function deleteIncome(id: string): Promise<void> {
+  return req(`/incomes/${id}`, { method: 'DELETE' })
 }

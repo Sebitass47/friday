@@ -53,7 +53,7 @@ export default function SimuladorPage() {
         </div>
 
         {/* Form */}
-        <div className="bg-[#141414] rounded-2xl border border-white/[0.06] p-6 space-y-4">
+        <div className="bg-[#141414] rounded-2xl border border-white/10 shadow-lg hover:border-white/20 transition-all p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles size={15} className="text-[#4F8EF7]" />
             <h2 className="text-sm font-medium text-white">Simula una compra a MSI</h2>
@@ -98,7 +98,7 @@ export default function SimuladorPage() {
           )}
 
           <button onClick={simulate} disabled={loading}
-            className="flex items-center justify-center gap-2 w-full rounded-lg bg-[#4F8EF7] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 disabled:opacity-50 transition-colors">
+            className="flex items-center justify-center gap-2 w-full rounded-lg bg-white text-black px-4 py-2.5 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-50 transition-colors">
             <Sparkles size={14} />
             {loading ? 'Calculando…' : '¿Puedo pagarlo?'}
           </button>
@@ -109,7 +109,7 @@ export default function SimuladorPage() {
           <>
             {/* Impact cards */}
             <div className="grid grid-cols-3 gap-4">
-              <div className={`bg-[#141414] rounded-xl p-4 border ${negativeMonths > 0 ? 'border-red-500/30' : 'border-white/[0.06]'}`}>
+              <div className={`bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border ${negativeMonths > 0 ? 'border-red-500/30' : 'border-white/[0.06]'}`}>
                 <p className="text-xs text-white/40 mb-2">Meses en déficit</p>
                 <div className="flex items-center gap-2">
                   {negativeMonths > 0
@@ -123,13 +123,13 @@ export default function SimuladorPage() {
                 <p className="text-xs text-white/30 mt-1">de los próximos 12 meses</p>
               </div>
 
-              <div className="bg-[#141414] rounded-xl p-4 border border-white/[0.06]">
+              <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 shadow-lg hover:border-white/20 transition-all">
                 <p className="text-xs text-white/40 mb-2">Impacto total (12m)</p>
                 <p className="text-2xl font-bold text-amber-400 tabular-nums">−{fmt(totalImpact)}</p>
                 <p className="text-xs text-white/30 mt-1">Menos disponible en total</p>
               </div>
 
-              <div className="bg-[#141414] rounded-xl p-4 border border-white/[0.06]">
+              <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 shadow-lg hover:border-white/20 transition-all">
                 <p className="text-xs text-white/40 mb-2">Peor mes</p>
                 <p className={`text-2xl font-bold tabular-nums ${(worstMonth?.available ?? 0) < 0 ? 'text-red-400' : 'text-white'}`}>
                   {fmt(worstMonth?.available ?? 0)}
@@ -164,7 +164,7 @@ export default function SimuladorPage() {
             )}
 
             {/* Chart */}
-            <div className="bg-[#141414] rounded-2xl p-6 border border-white/[0.06]">
+            <div className="bg-[#141414] rounded-2xl p-6 border border-white/10 shadow-lg hover:border-white/20 transition-all">
               <h3 className="text-sm font-semibold text-white mb-1">Comparación mes a mes</h3>
               <p className="text-xs text-white/40 mb-6">Azul = sin este MSI · Naranja = con el MSI</p>
               <ProjectionChart months={base.months} compareMonths={simulation.months} />

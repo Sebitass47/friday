@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="120" fill="url(#glass-bg)"/>
+
+  <!-- Glassmorphism effect -->
+  <defs>
+    <linearGradient id="glass-bg" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" style="stop-color:#1A1A1A;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A0A0A;stop-opacity:1" />
+    </linearGradient>
+
+    <filter id="glass-blur">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" />
+    </filter>
+  </defs>
+
+  <!-- Border with glass effect -->
+  <rect x="1" y="1" width="510" height="510" rx="119" stroke="url(#border-gradient)" stroke-width="2" fill="none"/>
+
+  <defs>
+    <linearGradient id="border-gradient" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.3);stop-opacity:1" />
+      <stop offset="50%" style="stop-color:rgba(255,255,255,0.1);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.2);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- F Letter with modern design -->
+  <path d="M180 160H340V200H230V240H320V280H230V360H180V160Z" fill="white"/>
+
+  <!-- Subtle gradient overlay -->
+  <rect x="0" y="0" width="512" height="256" rx="120" fill="url(#shine)" opacity="0.1"/>
+
+  <defs>
+    <linearGradient id="shine" x1="256" y1="0" x2="256" y2="256">
+      <stop offset="0%" style="stop-color:white;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+</svg>

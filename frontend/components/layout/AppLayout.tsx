@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
+import QuickTransactionFAB from '@/components/QuickTransactionFAB'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -28,9 +29,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-[#0A0A0A]">
       <Sidebar />
-      <main className="ml-56 flex-1 min-w-0 p-8">
+      <main className="lg:ml-64 flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
         {children}
       </main>
+      <QuickTransactionFAB />
     </div>
   )
 }

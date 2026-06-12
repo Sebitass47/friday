@@ -71,12 +71,12 @@ export default function MsiPage() {
             <h1 className="text-xl font-semibold text-white">MSI</h1>
             <p className="text-xs text-white/40 mt-0.5">Meses sin intereses activos</p>
           </div>
-          <button onClick={openNew} className="flex items-center gap-2 rounded-lg bg-[#4F8EF7] px-3 py-2 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 transition-colors">
+          <button onClick={openNew} className="flex items-center gap-2 rounded-lg bg-white text-black px-3 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 transition-colors">
             <Plus size={15} /> Agregar MSI
           </button>
         </div>
 
-        <div className="bg-[#141414] rounded-xl p-4 border border-white/[0.06] flex items-center justify-between">
+        <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 shadow-lg hover:border-white/20 transition-all flex items-center justify-between">
           <div className="flex items-center gap-2 text-white/40 text-sm">
             <Package size={14} />
             <span>{items.filter(i => i.remaining_installments > 0).length} MSI activos</span>
@@ -85,7 +85,7 @@ export default function MsiPage() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1 bg-[#141414] rounded-lg p-1 border border-white/[0.06] w-fit">
+        <div className="flex gap-1 bg-[#141414] rounded-lg p-1 border border-white/10 shadow-lg hover:border-white/20 transition-all w-fit">
           {(['active', 'all', 'done'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filter === f ? 'bg-[#4F8EF7]/20 text-[#4F8EF7]' : 'text-white/40 hover:text-white'}`}>
@@ -106,7 +106,7 @@ export default function MsiPage() {
             const progress = Math.round((paid / item.total_installments) * 100)
             const done = item.remaining_installments === 0
             return (
-              <div key={item.id} className="bg-[#141414] rounded-xl p-5 border border-white/[0.06] space-y-3">
+              <div key={item.id} className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-5 border border-white/10 shadow-lg hover:border-white/20 transition-all space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ export default function MsiPage() {
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/[0.05] transition-colors">Cancelar</button>
-              <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-[#4F8EF7] px-4 py-2 text-sm font-medium text-white hover:bg-[#4F8EF7]/80 disabled:opacity-50 transition-colors">
+              <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-50 transition-colors">
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>

@@ -83,3 +83,41 @@ export interface ProjectionResponse {
 export interface SimulationResponse extends ProjectionResponse {
   impact_summary: number
 }
+
+export interface Expense {
+  id: string
+  user_id: string
+  account_id: string
+  name: string
+  amount: number
+  date: string
+  payment_method: 'cash' | 'debit' | 'credit'
+  category: string | null
+  credit_statement_month: number | null
+  credit_statement_year: number | null
+  paid: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CreditPayment {
+  id: string
+  user_id: string
+  account_id: string
+  amount_paid: number
+  payment_date: string
+  statement_month: number
+  statement_year: number
+  created_at: string
+}
+
+export interface Income {
+  id: string
+  user_id: string
+  description: string
+  amount: number
+  date: string
+  category: string | null
+  created_at: string
+  updated_at: string
+}

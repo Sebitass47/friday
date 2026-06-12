@@ -19,3 +19,5 @@ class User(Base):
     accounts = relationship("Account", back_populates="user")
     recurring_expenses = relationship("RecurringExpense", back_populates="user")
     installment_purchases = relationship("InstallmentPurchase", back_populates="user")
+    savings_goals = relationship("SavingsGoal", back_populates="user")
+    monthly_income = relationship("MonthlyIncome", back_populates="user", uselist=False)

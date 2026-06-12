@@ -18,7 +18,7 @@ class Account(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)
-    account_type = Column(SQLEnum(AccountType), nullable=False)
+    account_type = Column(SQLEnum(AccountType, values_callable=lambda x: [e.value for e in x]), nullable=False)
     balance = Column(Numeric(12, 2), default=0)
     currency = Column(String, default="MXN")
     is_active = Column(Boolean, default=True)

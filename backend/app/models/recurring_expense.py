@@ -20,7 +20,7 @@ class RecurringExpense(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     name = Column(String, nullable=False)
     amount = Column(Numeric(12, 2), nullable=False)
-    frequency = Column(SQLEnum(ExpenseFrequency), nullable=False, default=ExpenseFrequency.MONTHLY)
+    frequency = Column(SQLEnum(ExpenseFrequency, values_callable=lambda x: [e.value for e in x]), nullable=False, default=ExpenseFrequency.MONTHLY)
     interval_days = Column(Integer, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

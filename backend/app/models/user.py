@@ -2,6 +2,7 @@ from typing import Optional
 import uuid
 from sqlalchemy import Column, String, Boolean, DateTime, UUID
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from ..core.database import Base
 
 class User(Base):

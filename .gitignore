@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+.venv
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+.env.local
+.env.production
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+*:Zone.Identifier
+*.Zone.Identifier
+
+# IDE
+.idea/
+.vscode/
+
+# Claude local settings
+.claude/settings.local.json

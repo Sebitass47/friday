@@ -18,3 +18,4 @@ class User(Base):
     # Relationships
     accounts = relationship("Account", back_populates="user")
     recurring_expenses = relationship("RecurringExpense", back_populates="user")
+    installment_purchases = relationship("InstallmentPurchase", back_populates="user")

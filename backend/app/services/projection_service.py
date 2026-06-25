@@ -102,6 +102,7 @@ def _build_month_projection(
     month: int,
     year: int,
     income: Decimal,
+    income_start_day: int,
     recurring_expenses,
     installments,
     savings_goals,
@@ -111,12 +112,17 @@ def _build_month_projection(
     inst_total = _installment_cost_for_month(installments, month, year)
     sav_total = _savings_cost(savings_goals, month, year)
 
-    # New: add credit card payments for this month
     credit_payments = _credit_payments_for_month(db, user_id, month, year)
 
-    # For current month: also include cash/debit spending
     today = date.today()
     is_current_month = month == today.month and year == today.year
+
+    # For the current month: if today is before income_start_day, income hasn't
+    # arrived yet — show 0 so the user sees their real available balance right now.
+    effective_income = income
+    if is_current_month and today.day < income_start_day:
+        effective_income = Decimal("0")
+
     cash_debit_total = Decimal("0")
     if is_current_month:
         cash_debit_total = _cash_debit_expenses_for_month(db, user_id, month, year)
@@ -126,13 +132,13 @@ def _build_month_projection(
         if 0 <= months_elapsed < extra_installment.total_installments:
             inst_total += extra_installment.monthly_amount
 
-    available = income - rec_total - inst_total - sav_total - credit_payments - cash_debit_total
+    available = effective_income - rec_total - inst_total - sav_total - credit_payments - cash_debit_total
 
     return MonthProjection(
         month=month,
         year=year,
         label=f"{MONTHS_ES[month - 1]} {year}",
-        income=income,
+        income=effective_income,
         recurring_expenses=rec_total,
         installments=inst_total,
         savings_contributions=sav_total,
@@ -143,6 +149,7 @@ def _build_month_projection(
 def calculate_projection(db: Session, user_id: UUID, months: int = 12) -> ProjectionResponse:
     income_record = get_monthly_income(db, user_id)
     income = income_record.amount if income_record else Decimal("0")
+    income_start_day = income_record.income_start_day if income_record else 1
 
     recurring = get_recurring_expenses(db, user_id)
     installments = get_active_installment_purchases(db, user_id)
@@ -153,7 +160,9 @@ def calculate_projection(db: Session, user_id: UUID, months: int = 12) -> Projec
     for i in range(months):
         month = (today.month - 1 + i) % 12 + 1
         year = today.year + (today.month - 1 + i) // 12
-        result.append(_build_month_projection(db, user_id, month, year, income, recurring, installments, goals))
+        result.append(_build_month_projection(
+            db, user_id, month, year, income, income_start_day, recurring, installments, goals
+        ))
 
     return ProjectionResponse(months=result, total_months=months)
 
@@ -166,6 +175,7 @@ def simulate_projection(
 ) -> SimulationResponse:
     income_record = get_monthly_income(db, user_id)
     income = income_record.amount if income_record else Decimal("0")
+    income_start_day = income_record.income_start_day if income_record else 1
 
     recurring = get_recurring_expenses(db, user_id)
     installments = get_active_installment_purchases(db, user_id)
@@ -176,7 +186,7 @@ def simulate_projection(
     for i in range(months):
         month = (today.month - 1 + i) % 12 + 1
         year = today.year + (today.month - 1 + i) // 12
-        result.append(_build_month_projection(db, user_id, month, year, income, recurring, installments, goals, simulation))
+        result.append(_build_month_projection(db, user_id, month, year, income, income_start_day, recurring, installments, goals, simulation))
 
     impact = sum(
         (simulation.monthly_amount

@@ -9,13 +9,13 @@ import {
   getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense,
   createInstallmentPurchase, updateInstallmentPurchase, deleteInstallmentPurchase, liquidateMsi,
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
-  createExpense, createIncome, getAccounts, setMonthlyIncome,
+  createExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
   getExpenses, getPushVapidKey, registerPushSubscription, removePushSubscription,
 } from '@/lib/api'
 import type {
   ProjectionResponse, InstallmentPurchase, SavingsGoal,
-  RecurringExpense, User, Account, Expense,
+  RecurringExpense, User, Account, Expense, MonthlyIncome,
 } from '@/lib/types'
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
@@ -148,6 +148,7 @@ export default function DashboardPage() {
   const [recurring, setRecurring] = useState<RecurringExpense[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [monthlyIncomeData, setMonthlyIncomeData] = useState<MonthlyIncome | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Push notifications
@@ -196,14 +197,17 @@ export default function DashboardPage() {
   const [regAccountId, setRegAccountId] = useState('')
   const [regCategory, setRegCategory] = useState('')
   const [regIsMonthly, setRegIsMonthly] = useState(false)
+  const [regIncomeStartDay, setRegIncomeStartDay] = useState(1)
   const [regSaving, setRegSaving] = useState(false)
   const [regError, setRegError] = useState('')
 
   async function loadAll() {
-    const [u, p, m, g, r, a, ex] = await Promise.all([
+    const [u, p, m, g, r, a, ex, inc] = await Promise.all([
       getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses(), getAccounts(), getExpenses(),
+      getMonthlyIncome().catch(() => null),
     ])
     setUser(u); setProjection(p); setMsi(m); setGoals(g); setRecurring(r); setAccounts(a); setExpenses(ex)
+    setMonthlyIncomeData(inc)
   }
 
   useEffect(() => {
@@ -218,7 +222,10 @@ export default function DashboardPage() {
   }, [])
 
   function openRegister() {
-    setRegAmount(''); setRegDesc(''); setRegMethod('cash'); setRegAccountId(''); setRegCategory(''); setRegIsMonthly(false); setRegError('')
+    setRegAmount(''); setRegDesc(''); setRegMethod('cash'); setRegAccountId(''); setRegCategory('')
+    setRegIsMonthly(false)
+    setRegIncomeStartDay(monthlyIncomeData?.income_start_day ?? 1)
+    setRegError('')
     setActiveModal('register')
   }
 
@@ -230,7 +237,7 @@ export default function DashboardPage() {
         await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: today(), payment_method: regMethod, category: regCategory || undefined })
       } else {
         await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: today(), category: regCategory || undefined })
-        if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount))
+        if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount), regIncomeStartDay)
       }
       setActiveModal(null)
       const [p, a, ex] = await Promise.all([getProjection(12), getAccounts(), getExpenses()])
@@ -543,7 +550,7 @@ export default function DashboardPage() {
           </div>
           <SpendingTimelineChart
             expenses={expenses}
-            monthlyIncome={Number(projection?.months[0]?.income ?? 0)}
+            monthlyIncome={monthlyIncomeData?.amount ?? Number(projection?.months[0]?.income ?? 0)}
           />
         </div>
 
@@ -934,13 +941,28 @@ export default function DashboardPage() {
           </FormField>
 
           {regMode === 'income' && (
-            <button type="button" onClick={() => setRegIsMonthly(v => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-sm ${regIsMonthly ? `${ACCENT_BG_SOFT} ${ACCENT_BORDER} ${ACCENT}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50'}`}>
-              <span>¿Es tu ingreso mensual fijo?</span>
-              <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 ${regIsMonthly ? 'bg-[#6B46E5] dark:bg-[#AF9BFF] justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
-                <span className="w-3 h-3 rounded-full bg-white" />
-              </span>
-            </button>
+            <div className="space-y-2">
+              <button type="button" onClick={() => setRegIsMonthly(v => !v)}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-sm ${regIsMonthly ? `${ACCENT_BG_SOFT} ${ACCENT_BORDER} ${ACCENT}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50'}`}>
+                <span>¿Es tu ingreso mensual fijo?</span>
+                <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 ${regIsMonthly ? 'bg-[#6B46E5] dark:bg-[#AF9BFF] justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
+                  <span className="w-3 h-3 rounded-full bg-white" />
+                </span>
+              </button>
+              {regIsMonthly && (
+                <FormField label="Día en que recibes el ingreso (1–28)">
+                  <input
+                    type="number" min={1} max={28}
+                    value={regIncomeStartDay}
+                    onChange={e => setRegIncomeStartDay(Math.min(28, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className={inputCls()}
+                  />
+                  <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">
+                    Antes de este día, el ingreso no se contará en "disponible este mes"
+                  </p>
+                </FormField>
+              )}
+            </div>
           )}
 
           <FormActions onCancel={() => setActiveModal(null)} onSave={handleRegister} saving={regSaving} saveLabel={regMode === 'expense' ? 'Guardar gasto' : 'Guardar ingreso'} error={regError} />

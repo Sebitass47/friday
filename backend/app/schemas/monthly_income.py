@@ -1,12 +1,12 @@
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MonthlyIncomeBase(BaseModel):
     amount: Decimal
+    income_start_day: int = Field(default=1, ge=1, le=28)
 
 
 class MonthlyIncomeCreate(MonthlyIncomeBase):
@@ -15,6 +15,7 @@ class MonthlyIncomeCreate(MonthlyIncomeBase):
 
 class MonthlyIncomeUpdate(BaseModel):
     amount: Decimal
+    income_start_day: int = Field(default=1, ge=1, le=28)
 
 
 class MonthlyIncomeResponse(MonthlyIncomeBase):

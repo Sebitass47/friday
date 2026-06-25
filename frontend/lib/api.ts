@@ -140,8 +140,8 @@ export async function contributeGoal(id: string, amount: number): Promise<Saving
 export async function getMonthlyIncome(): Promise<MonthlyIncome> {
   return req('/monthly-income/')
 }
-export async function setMonthlyIncome(amount: number): Promise<MonthlyIncome> {
-  return req('/monthly-income/', { method: 'PUT', body: JSON.stringify({ amount }) })
+export async function setMonthlyIncome(amount: number, income_start_day = 1): Promise<MonthlyIncome> {
+  return req('/monthly-income/', { method: 'PUT', body: JSON.stringify({ amount, income_start_day }) })
 }
 
 // ── Projection ────────────────────────────────────────────────────────────────

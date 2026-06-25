@@ -13,8 +13,13 @@ def upsert_monthly_income(db: Session, income: MonthlyIncomeCreate, user_id: UUI
     db_income = get_monthly_income(db, user_id)
     if db_income:
         db_income.amount = income.amount
+        db_income.income_start_day = income.income_start_day
     else:
-        db_income = MonthlyIncome(user_id=user_id, amount=income.amount)
+        db_income = MonthlyIncome(
+            user_id=user_id,
+            amount=income.amount,
+            income_start_day=income.income_start_day,
+        )
         db.add(db_income)
     db.commit()
     db.refresh(db_income)

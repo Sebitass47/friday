@@ -68,6 +68,7 @@ export interface MonthlyIncome {
   id: string
   user_id: string
   amount: number
+  income_start_day: number
   created_at: string
   updated_at: string
 }

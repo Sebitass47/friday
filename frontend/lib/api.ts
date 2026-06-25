@@ -122,7 +122,7 @@ export async function liquidateMsi(id: string): Promise<InstallmentPurchase> {
 export async function getSavingsGoals(): Promise<SavingsGoal[]> {
   return req('/savings-goals/')
 }
-export async function createSavingsGoal(data: Omit<SavingsGoal, 'id' | 'user_id' | 'estimated_completion_date' | 'created_at' | 'updated_at'>): Promise<SavingsGoal> {
+export async function createSavingsGoal(data: Omit<SavingsGoal, 'id' | 'user_id' | 'estimated_completion_date' | 'created_at' | 'updated_at' | 'contributed_month' | 'contributed_year' | 'last_contribution_amount'>): Promise<SavingsGoal> {
   return req('/savings-goals/', { method: 'POST', body: JSON.stringify(data) })
 }
 export async function updateSavingsGoal(id: string, data: Partial<SavingsGoal>): Promise<SavingsGoal> {
@@ -130,6 +130,9 @@ export async function updateSavingsGoal(id: string, data: Partial<SavingsGoal>):
 }
 export async function deleteSavingsGoal(id: string): Promise<void> {
   return req(`/savings-goals/${id}`, { method: 'DELETE' })
+}
+export async function contributeGoal(id: string, amount: number): Promise<SavingsGoal> {
+  return req(`/savings-goals/${id}/contribute`, { method: 'POST', body: JSON.stringify({ amount }) })
 }
 
 // ── Monthly Income ────────────────────────────────────────────────────────────

@@ -76,3 +76,26 @@ def enrich_with_completion_date(goal: SavingsGoal) -> dict:
     data = {c.name: getattr(goal, c.name) for c in goal.__table__.columns}
     data["estimated_completion_date"] = _estimated_completion(goal)
     return data
+
+
+def mark_contribution(
+    db: Session, goal_id: UUID, user_id: UUID, amount: Decimal
+) -> Optional[SavingsGoal]:
+    """Record that the user saved `amount` towards this goal this month."""
+    goal = get_savings_goal(db, goal_id, user_id)
+    if not goal:
+        return None
+
+    today = date.today()
+    goal.current_amount = (goal.current_amount or Decimal("0")) + amount
+    goal.contributed_month = today.month
+    goal.contributed_year = today.year
+    goal.last_contribution_amount = amount
+
+    # Cap at target
+    if goal.current_amount > goal.target_amount:
+        goal.current_amount = goal.target_amount
+
+    db.commit()
+    db.refresh(goal)
+    return goal

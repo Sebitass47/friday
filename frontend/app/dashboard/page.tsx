@@ -7,7 +7,7 @@ import {
   getProjection, getInstallmentPurchases, getSavingsGoals, getMe,
   getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense,
   createInstallmentPurchase, updateInstallmentPurchase, deleteInstallmentPurchase, liquidateMsi,
-  createSavingsGoal, updateSavingsGoal, deleteSavingsGoal,
+  createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
   createExpense, createIncome, getAccounts, setMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
 } from '@/lib/api'
@@ -158,6 +158,12 @@ export default function DashboardPage() {
   const [goalSaving, setGoalSaving] = useState(false)
   const [goalError, setGoalError] = useState('')
 
+  // Contribute to goal modal
+  interface ContributeState { goal: SavingsGoal; amount: number }
+  const [contributeState, setContributeState] = useState<ContributeState | null>(null)
+  const [contributeSaving, setContributeSaving] = useState(false)
+  const [contributeError, setContributeError] = useState('')
+
   // Recurring form
   const [recForm, setRecForm] = useState<typeof REC_EMPTY & { id?: string }>(REC_EMPTY)
   const [recSaving, setRecSaving] = useState(false)
@@ -271,6 +277,23 @@ export default function DashboardPage() {
     if (!confirm('¿Eliminar esta meta?')) return
     await deleteSavingsGoal(id)
     setGoals(prev => prev.filter(g => g.id !== id))
+  }
+  function openContributeGoal(g: SavingsGoal) {
+    setContributeState({ goal: g, amount: Number(g.monthly_contribution) })
+    setContributeError('')
+  }
+  async function handleContribute() {
+    if (!contributeState) return
+    if (contributeState.amount <= 0) { setContributeError('El monto debe ser mayor a 0'); return }
+    setContributeSaving(true); setContributeError('')
+    try {
+      const updated = await contributeGoal(contributeState.goal.id, contributeState.amount)
+      setGoals(prev => prev.map(g => g.id === updated.id ? updated : g))
+      setContributeState(null)
+      // Refresh projection since savings now count this month
+      getProjection(12).then(p => setProjection(p))
+    } catch (e: unknown) { setContributeError(e instanceof Error ? e.message : 'Error') }
+    finally { setContributeSaving(false) }
   }
 
   // Recurring CRUD
@@ -684,9 +707,12 @@ export default function DashboardPage() {
               <div className="space-y-3.5">
                 {goals.slice(0, 4).map(g => {
                   const progress = pct(Number(g.current_amount), Number(g.target_amount))
+                  const today = new Date()
+                  const contributedThisMonth = g.contributed_month === today.getMonth() + 1 && g.contributed_year === today.getFullYear()
+                  const isComplete = Number(g.current_amount) >= Number(g.target_amount)
                   return (
-                    <div key={g.id} className="group">
-                      <div className="flex items-center justify-between mb-1">
+                    <div key={g.id} className="group space-y-1.5">
+                      <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-black dark:text-white truncate max-w-[50%]">{g.name}</span>
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-semibold text-black/60 dark:text-white/60 tabular-nums">{progress}%</span>
@@ -697,7 +723,7 @@ export default function DashboardPage() {
                       <div className="h-1 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
                         <div className="h-1 rounded-full bg-emerald-500/60 dark:bg-emerald-400/70" style={{ width: `${progress}%` }} />
                       </div>
-                      <div className="flex items-center justify-between mt-0.5">
+                      <div className="flex items-center justify-between">
                         <p className="text-[10px] text-black/25 dark:text-white/25">{fmt(Number(g.current_amount))} de {fmt(Number(g.target_amount))}</p>
                         {g.estimated_completion_date && (
                           <div className="flex items-center gap-0.5 text-[10px] text-black/25 dark:text-white/25">
@@ -706,6 +732,21 @@ export default function DashboardPage() {
                           </div>
                         )}
                       </div>
+                      {!isComplete && (
+                        contributedThisMonth ? (
+                          <div className="flex items-center gap-1 text-[10px] text-emerald-500 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 size={10} />
+                            Aportado: {fmt(Number(g.last_contribution_amount))} este mes
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openContributeGoal(g)}
+                            className="text-[10px] px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium hover:opacity-80 transition-opacity"
+                          >
+                            + Ahorré este mes
+                          </button>
+                        )
+                      )}
                     </div>
                   )
                 })}
@@ -989,6 +1030,35 @@ export default function DashboardPage() {
           )}
 
           <FormActions onCancel={() => setActiveModal(null)} onSave={saveAccount} saving={accountSaving} error={accountError} />
+        </Modal>
+      )}
+
+      {/* Contribute to Goal Modal */}
+      {contributeState && (
+        <Modal title={`Ahorré este mes · ${contributeState.goal.name}`} onClose={() => setContributeState(null)}>
+          <p className="text-xs text-black/50 dark:text-white/40 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl px-3 py-2">
+            La aportación se sumará a tu ahorro acumulado y se descontará de tu disponible de este mes.
+          </p>
+          <FormField label="Monto ahorrado">
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={contributeState.amount}
+              onChange={e => setContributeState({ ...contributeState, amount: Number(e.target.value) })}
+              className={inputCls()}
+            />
+            <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">
+              Meta mensual: {fmt(Number(contributeState.goal.monthly_contribution))} · Restante: {fmt(Math.max(0, Number(contributeState.goal.target_amount) - Number(contributeState.goal.current_amount)))}
+            </p>
+          </FormField>
+          <FormActions
+            onCancel={() => setContributeState(null)}
+            onSave={handleContribute}
+            saving={contributeSaving}
+            saveLabel="Confirmar ahorro"
+            error={contributeError}
+          />
         </Modal>
       )}
 

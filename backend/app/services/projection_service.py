@@ -56,8 +56,18 @@ def _installment_cost_for_month(purchases, target_month: int, target_year: int) 
     return total
 
 
-def _savings_cost(goals) -> Decimal:
-    return sum((g.monthly_contribution for g in goals), Decimal("0"))
+def _savings_cost(goals, month: int, year: int) -> Decimal:
+    total = Decimal("0")
+    today = date.today()
+    is_current = month == today.month and year == today.year
+    for g in goals:
+        if is_current:
+            # Only count what the user actually confirmed saving this month
+            if g.contributed_month == today.month and g.contributed_year == today.year:
+                total += g.last_contribution_amount or Decimal("0")
+        else:
+            total += g.monthly_contribution
+    return total
 
 
 def _cash_debit_expenses_for_month(db: Session, user_id: UUID, target_month: int, target_year: int) -> Decimal:
@@ -99,7 +109,7 @@ def _build_month_projection(
 ) -> MonthProjection:
     rec_total = _recurring_cost_for_month(recurring_expenses, month, year)
     inst_total = _installment_cost_for_month(installments, month, year)
-    sav_total = _savings_cost(savings_goals)
+    sav_total = _savings_cost(savings_goals, month, year)
 
     # New: add credit card payments for this month
     credit_payments = _credit_payments_for_month(db, user_id, month, year)

@@ -1,6 +1,8 @@
 from typing import List
 from uuid import UUID
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -12,12 +14,17 @@ from app.services.savings_goal_service import (
     update_savings_goal,
     delete_savings_goal,
     enrich_with_completion_date,
+    mark_contribution,
 )
 from app.schemas.savings_goal import (
     SavingsGoalCreate,
     SavingsGoalUpdate,
     SavingsGoalResponse,
 )
+
+
+class ContributeBody(BaseModel):
+    amount: Decimal
 
 router = APIRouter(prefix="/savings-goals", tags=["savings-goals"])
 
@@ -75,3 +82,16 @@ def delete_savings_goal_endpoint(
     success = delete_savings_goal(db, goal_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Meta de ahorro no encontrada")
+
+
+@router.post("/{goal_id}/contribute", response_model=SavingsGoalResponse)
+def contribute_endpoint(
+    goal_id: UUID,
+    body: ContributeBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    goal = mark_contribution(db, goal_id, current_user.id, body.amount)
+    if not goal:
+        raise HTTPException(status_code=404, detail="Meta de ahorro no encontrada")
+    return enrich_with_completion_date(goal)

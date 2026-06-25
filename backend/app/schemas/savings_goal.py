@@ -27,6 +27,9 @@ class SavingsGoalUpdate(BaseModel):
 class SavingsGoalResponse(SavingsGoalBase):
     id: UUID
     user_id: UUID
+    contributed_month: Optional[int] = None
+    contributed_year: Optional[int] = None
+    last_contribution_amount: Optional[Decimal] = None
     created_at: datetime
     updated_at: datetime
     estimated_completion_date: Optional[date] = None

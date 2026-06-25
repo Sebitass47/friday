@@ -56,6 +56,9 @@ export interface SavingsGoal {
   target_amount: number
   current_amount: number
   monthly_contribution: number
+  contributed_month: number | null
+  contributed_year: number | null
+  last_contribution_amount: number | null
   estimated_completion_date: string | null
   created_at: string
   updated_at: string

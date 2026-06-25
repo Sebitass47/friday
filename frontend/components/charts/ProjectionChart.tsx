@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { MonthProjection } from '@/lib/types'
+import { useTheme } from '@/components/ThemeProvider'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
@@ -13,6 +14,11 @@ interface Props {
 
 export default function ProjectionChart({ months, compareMonths }: Props) {
   const [hovered, setHovered] = useState<number | null>(null)
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
+
+  const accent = isDark ? '#AF9BFF' : '#6B46E5'
+  const coral = '#FF6B6B'
 
   const allValues = [
     ...months.map(m => m.available),
@@ -26,8 +32,8 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
       <div className="flex items-end gap-1.5 h-[200px] relative">
         {/* Zero line */}
         <div
-          className="absolute left-0 right-0 border-t border-white/10"
-          style={{ bottom: `${(chartHeight / 2)}px` }}
+          className="absolute left-0 right-0 border-t border-black/10 dark:border-white/10"
+          style={{ bottom: `${chartHeight / 2}px` }}
         />
 
         {months.map((m, i) => {
@@ -41,23 +47,27 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
           return (
             <div
               key={i}
-              className="flex-1 flex flex-col items-center gap-0.5 relative cursor-pointer group"
+              className="flex-1 flex flex-col items-center gap-0.5 relative cursor-pointer"
               style={{ height: '200px', justifyContent: 'flex-end' }}
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
             >
               {/* Tooltip */}
               {isHovered && (
-                <div className="absolute bottom-full mb-2 z-10 left-1/2 -translate-x-1/2 bg-[#1A1A1A] border border-white/10 rounded-lg p-2.5 text-xs whitespace-nowrap shadow-xl">
-                  <p className="font-semibold text-white mb-1">{m.label}</p>
-                  <p className="text-white/50">Ingreso: <span className="text-white">{fmt(m.income)}</span></p>
-                  <p className="text-white/50">Recurrentes: <span className="text-red-400">−{fmt(m.recurring_expenses)}</span></p>
-                  <p className="text-white/50">MSI: <span className="text-red-400">−{fmt(m.installments)}</span></p>
-                  <p className="text-white/50">Ahorro: <span className="text-amber-400">−{fmt(m.savings_contributions)}</span></p>
-                  <div className="mt-1.5 pt-1.5 border-t border-white/10">
-                    <p className="text-white/50">Disponible: <span className={isNeg ? 'text-red-400 font-semibold' : 'text-emerald-400 font-semibold'}>{fmt(m.available)}</span></p>
+                <div className="absolute bottom-full mb-2 z-10 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1A1A1A] border border-black/10 dark:border-white/10 rounded-xl p-2.5 text-xs whitespace-nowrap shadow-xl">
+                  <p className="font-semibold text-black dark:text-white mb-1">{m.label}</p>
+                  <p className="text-black/50 dark:text-white/50">Ingreso: <span className="text-black dark:text-white">{fmt(m.income)}</span></p>
+                  <p className="text-black/50 dark:text-white/50">Recurrentes: <span style={{ color: coral }}>−{fmt(m.recurring_expenses)}</span></p>
+                  <p className="text-black/50 dark:text-white/50">MSI: <span style={{ color: coral }}>−{fmt(m.installments)}</span></p>
+                  <p className="text-black/50 dark:text-white/50">Ahorro: <span className="text-amber-500 dark:text-amber-400">−{fmt(m.savings_contributions)}</span></p>
+                  <div className="mt-1.5 pt-1.5 border-t border-black/10 dark:border-white/10">
+                    <p className="text-black/50 dark:text-white/50">Disponible:{' '}
+                      <span style={{ color: isNeg ? coral : accent }} className="font-semibold">{fmt(m.available)}</span>
+                    </p>
                     {comp && (
-                      <p className="text-white/50 mt-0.5">Con MSI: <span className={compIsNeg ? 'text-red-400 font-semibold' : 'text-orange-400 font-semibold'}>{fmt(comp.available)}</span></p>
+                      <p className="text-black/50 dark:text-white/50 mt-0.5">Con MSI:{' '}
+                        <span style={{ color: compIsNeg ? coral : '#F59E0B' }} className="font-semibold">{fmt(comp.available)}</span>
+                      </p>
                     )}
                   </div>
                 </div>
@@ -65,25 +75,21 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
 
               {/* Bars area */}
               <div className="flex items-end gap-0.5 w-full px-0.5" style={{ height: `${chartHeight}px` }}>
-                {/* Base bar */}
                 <div
-                  className={`flex-1 rounded-sm transition-all duration-150 ${
-                    isNeg ? 'bg-red-500/70' : isHovered ? 'bg-[#4F8EF7]' : 'bg-[#4F8EF7]/70'
-                  }`}
+                  className="flex-1 rounded-sm transition-all duration-150"
                   style={{
                     height: `${barH}px`,
+                    backgroundColor: isNeg ? coral : isHovered ? accent : `${accent}b3`,
                     alignSelf: isNeg ? 'flex-start' : 'flex-end',
                     marginTop: isNeg ? `${chartHeight / 2 - barH}px` : '0',
                   }}
                 />
-                {/* Comparison bar */}
                 {comp && (
                   <div
-                    className={`flex-1 rounded-sm transition-all duration-150 opacity-70 ${
-                      compIsNeg ? 'bg-red-400/50' : 'bg-orange-400/60'
-                    }`}
+                    className="flex-1 rounded-sm transition-all duration-150 opacity-70"
                     style={{
                       height: `${compBarH}px`,
+                      backgroundColor: compIsNeg ? `${coral}80` : '#F59E0B99',
                       alignSelf: compIsNeg ? 'flex-start' : 'flex-end',
                       marginTop: compIsNeg ? `${chartHeight / 2 - compBarH}px` : '0',
                     }}
@@ -92,22 +98,23 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
               </div>
 
               {/* Month label */}
-              <span className="text-[10px] text-white/30 leading-none pb-0.5">{m.label.split(' ')[0]}</span>
+              <span className="text-[10px] text-black/30 dark:text-white/30 leading-none pb-0.5">
+                {m.label.split(' ')[0]}
+              </span>
             </div>
           )
         })}
       </div>
 
-      {/* Legend */}
       {compareMonths && (
         <div className="flex items-center gap-4 mt-3">
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-sm bg-[#4F8EF7]/70" />
-            <span className="text-xs text-white/40">Sin el MSI</span>
+            <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `${accent}b3` }} />
+            <span className="text-xs text-black/40 dark:text-white/40">Sin el MSI</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-sm bg-orange-400/60" />
-            <span className="text-xs text-white/40">Con el MSI</span>
+            <div className="h-2.5 w-2.5 rounded-sm bg-amber-400/60" />
+            <span className="text-xs text-black/40 dark:text-white/40">Con el MSI</span>
           </div>
         </div>
       )}

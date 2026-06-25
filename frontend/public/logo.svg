@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Orbital ring -->
+  <circle cx="256" cy="256" r="180" stroke="currentColor" stroke-width="8" opacity="0.2"/>
+  <circle cx="256" cy="256" r="160" stroke="currentColor" stroke-width="4" opacity="0.3"/>
+
+  <!-- Growth bars (3 ascending bars with glow) -->
+  <g transform="translate(256, 256)">
+    <!-- Bar 1 (shortest) -->
+    <rect x="-80" y="-40" width="32" height="80" rx="16" fill="currentColor" opacity="0.6"/>
+    <rect x="-80" y="-40" width="32" height="80" rx="16" fill="currentColor" opacity="0.3" filter="url(#glow)"/>
+
+    <!-- Bar 2 (medium) -->
+    <rect x="-16" y="-80" width="32" height="120" rx="16" fill="currentColor" opacity="0.8"/>
+    <rect x="-16" y="-80" width="32" height="120" rx="16" fill="currentColor" opacity="0.4" filter="url(#glow)"/>
+
+    <!-- Bar 3 (tallest) -->
+    <rect x="48" y="-120" width="32" height="160" rx="16" fill="currentColor"/>
+    <rect x="48" y="-120" width="32" height="160" rx="16" fill="currentColor" opacity="0.5" filter="url(#glow)"/>
+
+    <!-- Central node/core -->
+    <circle cx="0" cy="40" r="12" fill="currentColor"/>
+    <circle cx="0" cy="40" r="20" fill="currentColor" opacity="0.2" filter="url(#glow)"/>
+  </g>
+
+  <!-- Accent lines (data streams) -->
+  <path d="M 256 436 Q 300 400 320 360" stroke="currentColor" stroke-width="2" opacity="0.15" fill="none"/>
+  <path d="M 256 436 Q 212 400 192 360" stroke="currentColor" stroke-width="2" opacity="0.15" fill="none"/>
+
+  <!-- Glow filter -->
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

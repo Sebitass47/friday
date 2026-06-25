@@ -14,6 +14,8 @@ export interface Account {
   currency: string
   is_active: boolean
   credit_limit: number | null
+  current_balance_used: number | null
+  available_credit: number | null
   closing_day: number | null
   payment_day: number | null
   created_at: string

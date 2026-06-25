@@ -96,15 +96,31 @@ export default function QuickTransactionFAB() {
 
   const selectedAccount = accounts.find(a => a.id === accountId)
 
+  function getBillingMonth(card: typeof selectedAccount): string {
+    if (!card || !card.closing_day) return ''
+    const today = new Date()
+    let month = today.getMonth()
+    let year = today.getFullYear()
+    if (today.getDate() > card.closing_day) {
+      month++
+      if (month > 11) { month = 0; year++ }
+    }
+    return new Date(year, month, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+  }
+
+  const billingMonth = paymentMethod === 'credit' && selectedAccount?.account_type === 'credit_card'
+    ? getBillingMonth(selectedAccount)
+    : ''
+
   return (
     <>
       {/* FAB Button */}
       <button
         onClick={() => setOpen(true)}
-        className="group fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-white/[0.05] backdrop-blur-xl border border-white/10 shadow-lg transition-all hover:border-white/20 hover:shadow-xl hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/30"
+        className="group fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-black/[0.05] dark:bg-white/[0.05] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-lg transition-all hover:border-black/20 dark:hover:border-white/20 hover:shadow-xl hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30"
         aria-label="Agregar transacción"
       >
-        <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-white transition-transform group-hover:rotate-90" />
+        <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-black dark:text-white transition-transform group-hover:rotate-90" />
       </button>
 
       {/* Floating Bubble */}
@@ -117,15 +133,15 @@ export default function QuickTransactionFAB() {
           />
 
           {/* Bubble */}
-          <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-96 max-w-md rounded-2xl border border-white/10 bg-[#141414]/95 backdrop-blur-xl shadow-2xl">
+          <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-96 max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-white/95 dark:bg-[#141414]/95 backdrop-blur-xl shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#2A2A2A] px-4 py-3">
-              <h3 className="text-sm font-medium text-white">
+            <div className="flex items-center justify-between border-b border-black/10 dark:border-[#2A2A2A] px-4 py-3">
+              <h3 className="text-sm font-medium text-black dark:text-white">
                 {!mode ? 'Nueva transacción' : mode === 'expense' ? 'Registrar gasto' : 'Registrar ingreso'}
               </h3>
               <button
                 onClick={handleClose}
-                className="rounded-full p-1 text-gray-400 transition-colors hover:bg-[#2A2A2A] hover:text-white"
+                className="rounded-full p-1 text-black/40 dark:text-gray-400 transition-colors hover:bg-black/5 dark:hover:bg-[#2A2A2A] hover:text-black dark:hover:text-white"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -138,27 +154,27 @@ export default function QuickTransactionFAB() {
                 <div className="grid gap-2">
                   <button
                     onClick={() => setMode('expense')}
-                    className="group flex items-start gap-3 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-left transition-all hover:border-[#FF4444]/50 hover:bg-[#FF4444]/5"
+                    className="group flex items-start gap-3 rounded-lg border border-black/10 dark:border-[#2A2A2A] bg-black/[0.02] dark:bg-[#0A0A0A] p-3 text-left transition-all hover:border-[#FF4444]/50 hover:bg-[#FF4444]/5"
                   >
                     <div className="mt-0.5 rounded-full bg-[#FF4444]/10 p-1.5">
                       <Receipt className="h-4 w-4 text-[#FF4444]" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-white">Gasto</div>
-                      <div className="text-xs text-gray-400">Registrar un gasto de hoy</div>
+                      <div className="text-sm font-medium text-black dark:text-white">Gasto</div>
+                      <div className="text-xs text-black/40 dark:text-gray-400">Registrar un gasto de hoy</div>
                     </div>
                   </button>
 
                   <button
                     onClick={() => setMode('income')}
-                    className="group flex items-start gap-3 rounded-lg border border-[#2A2A2A] bg-[#0A0A0A] p-3 text-left transition-all hover:border-[#A8FF3E]/50 hover:bg-[#A8FF3E]/5"
+                    className="group flex items-start gap-3 rounded-lg border border-black/10 dark:border-[#2A2A2A] bg-black/[0.02] dark:bg-[#0A0A0A] p-3 text-left transition-all hover:border-[#A8FF3E]/50 hover:bg-[#A8FF3E]/5"
                   >
                     <div className="mt-0.5 rounded-full bg-[#A8FF3E]/10 p-1.5">
                       <DollarSign className="h-4 w-4 text-[#A8FF3E]" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-sm font-medium text-white">Ingreso</div>
-                      <div className="text-xs text-gray-400">Dinero que recibiste hoy</div>
+                      <div className="text-sm font-medium text-black dark:text-white">Ingreso</div>
+                      <div className="text-xs text-black/40 dark:text-gray-400">Dinero que recibiste hoy</div>
                     </div>
                   </button>
                 </div>
@@ -230,6 +246,11 @@ export default function QuickTransactionFAB() {
                             ))}
                         </SelectContent>
                       </Select>
+                      {billingMonth && (
+                        <p className="text-[11px] text-[#4F8EF7] bg-[#4F8EF7]/10 rounded-md px-2 py-1">
+                          Se cobra en el estado de: <span className="font-medium capitalize">{billingMonth}</span>
+                        </p>
+                      )}
                     </div>
                   )}
 

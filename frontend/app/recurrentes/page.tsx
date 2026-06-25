@@ -61,16 +61,16 @@ export default function RecurrentesPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-white">Gastos recurrentes</h1>
-            <p className="text-xs text-white/40 mt-0.5">Pagos que salen cada mes</p>
+            <h1 className="text-xl font-semibold text-black dark:text-white">Gastos recurrentes</h1>
+            <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Pagos que salen cada mes</p>
           </div>
           <button onClick={openNew} className="flex items-center gap-2 rounded-lg bg-white text-black px-3 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 transition-colors">
             <Plus size={15} /> Agregar
           </button>
         </div>
 
-        <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2 text-white/40 text-sm">
+        <div className="bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-black/10 dark:border-white/10 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2 text-black/40 dark:text-white/40 text-sm">
             <RefreshCw size={14} />
             <span>{expenses.length} gastos recurrentes</span>
           </div>
@@ -80,21 +80,21 @@ export default function RecurrentesPage() {
         <div className="space-y-2">
           {loading && <div className="flex justify-center py-8"><div className="h-5 w-5 animate-spin rounded-full border-2 border-[#4F8EF7] border-t-transparent" /></div>}
           {!loading && expenses.length === 0 && (
-            <div className="text-center py-12 text-white/30 text-sm">Sin gastos recurrentes. ¡Agrega renta, Netflix, gym…!</div>
+            <div className="text-center py-12 text-black/30 dark:text-white/30 text-sm">Sin gastos recurrentes. ¡Agrega renta, Netflix, gym…!</div>
           )}
           {expenses.map(e => (
-            <div key={e.id} className="flex items-center justify-between bg-white/[0.03] backdrop-blur-xl rounded-xl px-5 py-4 border border-white/10 shadow-lg hover:border-white/20 transition-all">
+            <div key={e.id} className="flex items-center justify-between bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-xl px-5 py-4 border border-black/10 dark:border-white/10 shadow-lg hover:border-black/20 dark:border-white/20 transition-all">
               <div>
-                <p className="text-sm font-medium text-white">{e.name}</p>
-                <p className="text-xs text-white/40 mt-0.5">
+                <p className="text-sm font-medium text-black dark:text-white">{e.name}</p>
+                <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">
                   {FREQ_LABELS[e.frequency]}{e.frequency === 'custom' && e.interval_days ? ` · cada ${e.interval_days} días` : ''}
                 </p>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm font-semibold text-white tabular-nums">{fmt(Number(e.amount))}</span>
+                <span className="text-sm font-semibold text-black dark:text-white tabular-nums">{fmt(Number(e.amount))}</span>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => openEdit(e)} className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors"><Pencil size={13} /></button>
-                  <button onClick={() => remove(e.id)} className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={13} /></button>
+                  <button onClick={() => openEdit(e)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:text-white hover:bg-white/[0.06] transition-colors"><Pencil size={13} /></button>
+                  <button onClick={() => remove(e.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={13} /></button>
                 </div>
               </div>
             </div>
@@ -104,24 +104,24 @@ export default function RecurrentesPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white/[0.05] backdrop-blur-xl rounded-2xl border border-white/10 p-6 space-y-4 shadow-2xl">
-            <h2 className="text-base font-semibold text-white">{form.id ? 'Editar gasto' : 'Nuevo gasto recurrente'}</h2>
+          <div className="w-full max-w-md bg-white/[0.05] backdrop-blur-xl rounded-2xl border border-black/10 dark:border-white/10 p-6 space-y-4 shadow-2xl">
+            <h2 className="text-base font-semibold text-black dark:text-white">{form.id ? 'Editar gasto' : 'Nuevo gasto recurrente'}</h2>
             {error && <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-white/50 mb-1">Nombre</label>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Nombre</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]" placeholder="Ej. Renta, Netflix, Gym…" />
+                  className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" placeholder="Ej. Renta, Netflix, Gym…" />
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1">Monto</label>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Monto</label>
                 <input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: Number(e.target.value) }))}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]" />
+                  className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" />
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1">Frecuencia</label>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Frecuencia</label>
                 <select value={form.frequency} onChange={e => setForm(f => ({ ...f, frequency: e.target.value as RecurringExpense['frequency'] }))}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]">
+                  className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]">
                   <option value="monthly">Mensual</option>
                   <option value="weekly">Semanal</option>
                   <option value="custom">Personalizado</option>
@@ -129,14 +129,14 @@ export default function RecurrentesPage() {
               </div>
               {form.frequency === 'custom' && (
                 <div>
-                  <label className="block text-xs text-white/50 mb-1">Cada cuántos días</label>
+                  <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Cada cuántos días</label>
                   <input type="number" min={1} value={form.interval_days ?? ''} onChange={e => setForm(f => ({ ...f, interval_days: e.target.value ? Number(e.target.value) : null }))}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]" />
+                    className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" />
                 </div>
               )}
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/[0.05] hover:scale-105 active:scale-95 transition-all">Cancelar</button>
+              <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 text-sm text-black/60 dark:text-white/60 hover:bg-white/[0.05] hover:scale-105 active:scale-95 transition-all">Cancelar</button>
               <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all">
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>

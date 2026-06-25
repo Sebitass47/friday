@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
-import QuickTransactionFAB from '@/components/QuickTransactionFAB'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -20,19 +19,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0A0A0A]">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#4F8EF7] border-t-transparent" />
+      <div className="flex h-screen items-center justify-center bg-white dark:bg-[#0A0A0A]">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0A0A0A]">
+    <div className="flex min-h-screen bg-white dark:bg-[#0A0A0A]">
       <Sidebar />
-      <main className="lg:ml-64 flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+      <main className="lg:ml-60 flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
         {children}
       </main>
-      <QuickTransactionFAB />
     </div>
   )
 }

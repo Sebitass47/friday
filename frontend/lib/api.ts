@@ -65,7 +65,7 @@ export async function getMe(): Promise<User> {
 export async function getAccounts(): Promise<Account[]> {
   return req('/accounts/')
 }
-export async function createAccount(data: Omit<Account, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Account> {
+export async function createAccount(data: Omit<Account, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'available_credit'>): Promise<Account> {
   return req('/accounts/', { method: 'POST', body: JSON.stringify(data) })
 }
 export async function updateAccount(id: string, data: Partial<Account>): Promise<Account> {
@@ -150,7 +150,7 @@ export async function getExpenses(): Promise<Expense[]> {
   return req('/expenses/')
 }
 export async function createExpense(data: {
-  account_id: string
+  account_id?: string
   name: string
   amount: number
   date: string

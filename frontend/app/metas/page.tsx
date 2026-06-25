@@ -58,16 +58,16 @@ export default function MetasPage() {
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-white">Metas de ahorro</h1>
-            <p className="text-xs text-white/40 mt-0.5">Hacia dónde va tu dinero</p>
+            <h1 className="text-xl font-semibold text-black dark:text-white">Metas de ahorro</h1>
+            <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Hacia dónde va tu dinero</p>
           </div>
           <button onClick={openNew} className="flex items-center gap-2 rounded-lg bg-white text-black px-3 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 transition-colors">
             <Plus size={15} /> Nueva meta
           </button>
         </div>
 
-        <div className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-white/10 shadow-lg hover:border-white/20 transition-all flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white/40 text-sm">
+        <div className="bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-xl p-4 border border-black/10 dark:border-white/10 shadow-lg hover:border-black/20 dark:border-white/20 transition-all flex items-center justify-between">
+          <div className="flex items-center gap-2 text-black/40 dark:text-white/40 text-sm">
             <Target size={14} className="text-emerald-400" />
             <span>{goals.length} metas activas</span>
           </div>
@@ -77,7 +77,7 @@ export default function MetasPage() {
         <div className="grid grid-cols-1 gap-4">
           {loading && <div className="flex justify-center py-8"><div className="h-5 w-5 animate-spin rounded-full border-2 border-[#4F8EF7] border-t-transparent" /></div>}
           {!loading && goals.length === 0 && (
-            <div className="text-center py-12 text-white/30 text-sm">
+            <div className="text-center py-12 text-black/30 dark:text-white/30 text-sm">
               Sin metas aún. ¿Para qué estás ahorrando?
             </div>
           )}
@@ -87,27 +87,27 @@ export default function MetasPage() {
             const done = remaining <= 0
 
             return (
-              <div key={g.id} className="bg-white/[0.03] backdrop-blur-xl rounded-xl p-5 border border-white/10 shadow-lg hover:border-white/20 transition-all space-y-4">
+              <div key={g.id} className="bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-xl p-5 border border-black/10 dark:border-white/10 shadow-lg hover:border-black/20 dark:border-white/20 transition-all space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white">{g.name}</p>
-                    <p className="text-xs text-white/40 mt-0.5">
+                    <p className="text-sm font-semibold text-black dark:text-white">{g.name}</p>
+                    <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">
                       {fmt(Number(g.monthly_contribution))}/mes · {fmt(Number(g.current_amount))} ahorrado
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => openEdit(g)} className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.06] transition-colors"><Pencil size={13} /></button>
-                    <button onClick={() => remove(g.id)} className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={13} /></button>
+                    <button onClick={() => openEdit(g)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:text-white hover:bg-white/[0.06] transition-colors"><Pencil size={13} /></button>
+                    <button onClick={() => remove(g.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={13} /></button>
                   </div>
                 </div>
 
                 {/* Progress */}
                 <div>
                   <div className="flex justify-between items-baseline mb-2">
-                    <span className={`text-2xl font-bold tabular-nums ${done ? 'text-emerald-400' : 'text-white'}`}>
+                    <span className={`text-2xl font-bold tabular-nums ${done ? 'text-emerald-400' : 'text-black dark:text-white'}`}>
                       {progress}%
                     </span>
-                    <span className="text-sm text-white/40 tabular-nums">
+                    <span className="text-sm text-black/40 dark:text-white/40 tabular-nums">
                       {done ? '¡Meta alcanzada!' : `${fmt(remaining)} restante`}
                     </span>
                   </div>
@@ -117,14 +117,14 @@ export default function MetasPage() {
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <div className="flex justify-between mt-1.5 text-[11px] text-white/30">
+                  <div className="flex justify-between mt-1.5 text-[11px] text-black/30 dark:text-white/30">
                     <span>{fmt(Number(g.current_amount))}</span>
                     <span>{fmt(Number(g.target_amount))}</span>
                   </div>
                 </div>
 
                 {g.estimated_completion_date && !done && (
-                  <div className="flex items-center gap-1.5 text-xs text-white/30">
+                  <div className="flex items-center gap-1.5 text-xs text-black/30 dark:text-white/30">
                     <CalendarDays size={12} />
                     <span>
                       Llegas en {new Date(g.estimated_completion_date + 'T00:00:00').toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
@@ -139,29 +139,29 @@ export default function MetasPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-[#141414] rounded-2xl border border-white/[0.08] p-6 space-y-4">
-            <h2 className="text-base font-semibold text-white">{form.id ? 'Editar meta' : 'Nueva meta de ahorro'}</h2>
+          <div className="w-full max-w-md bg-white dark:bg-[#141414] rounded-2xl border border-white/[0.08] p-6 space-y-4">
+            <h2 className="text-base font-semibold text-black dark:text-white">{form.id ? 'Editar meta' : 'Nueva meta de ahorro'}</h2>
             {error && <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{error}</p>}
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-white/50 mb-1">¿Para qué estás ahorrando?</label>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">¿Para qué estás ahorrando?</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]" placeholder="Ej. PC gaming, viaje, emergencias…" />
+                  className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" placeholder="Ej. PC gaming, viaje, emergencias…" />
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1">Meta total</label>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Meta total</label>
                 <input type="number" value={form.target_amount} onChange={e => setForm(f => ({ ...f, target_amount: Number(e.target.value) }))}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]" />
+                  className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" />
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1">Ya ahorré</label>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Ya ahorré</label>
                 <input type="number" value={form.current_amount} onChange={e => setForm(f => ({ ...f, current_amount: Number(e.target.value) }))}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]" />
+                  className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" />
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1">Ahorro mensual comprometido</label>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Ahorro mensual comprometido</label>
                 <input type="number" value={form.monthly_contribution} onChange={e => setForm(f => ({ ...f, monthly_contribution: Number(e.target.value) }))}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-[#4F8EF7]" />
+                  className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" />
               </div>
               {form.monthly_contribution > 0 && form.target_amount > form.current_amount && (
                 <p className="text-xs text-emerald-400/80 bg-emerald-400/10 rounded-lg px-3 py-2">
@@ -170,7 +170,7 @@ export default function MetasPage() {
               )}
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/[0.05] transition-colors">Cancelar</button>
+              <button onClick={() => setShowForm(false)} className="flex-1 rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 text-sm text-black/60 dark:text-white/60 hover:bg-white/[0.05] transition-colors">Cancelar</button>
               <button onClick={save} disabled={saving} className="flex-1 rounded-lg bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 hover:scale-105 active:scale-95 disabled:opacity-50 transition-colors">
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>

@@ -27,6 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full antialiased">
+      <head>
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-white dark:bg-[#0A0A0A] text-black dark:text-white transition-colors duration-300">
         <ThemeProvider>
           {children}

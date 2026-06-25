@@ -28,44 +28,37 @@ def _calculate_credit_statement_month(expense_date: date, closing_day: int) -> t
 
 def create_expense(db: Session, expense: ExpenseCreate, user_id: UUID) -> Expense:
     """Create a new expense and update account balances."""
-    # Get account
-    account = db.query(Account).filter(
-        Account.id == expense.account_id,
-        Account.user_id == user_id
-    ).first()
+    account = None
+    if expense.account_id:
+        account = db.query(Account).filter(
+            Account.id == expense.account_id,
+            Account.user_id == user_id
+        ).first()
+        if not account:
+            raise ValueError("Cuenta no encontrada")
 
-    if not account:
-        raise ValueError("Cuenta no encontrada")
-
-    # Create expense
     db_expense = Expense(
         user_id=user_id,
         account_id=expense.account_id,
         name=expense.name,
         amount=expense.amount,
-        date=expense.date,
+        date=expense.expense_date,
         payment_method=expense.payment_method,
         category=expense.category,
     )
 
-    # Handle different payment methods
-    if expense.payment_method == PaymentMethod.CREDIT:
-        if not account.closing_day:
-            raise ValueError("La tarjeta no tiene día de cierre configurado")
-
-        # Calculate statement month
-        stmt_month, stmt_year = _calculate_credit_statement_month(expense.date, account.closing_day)
-        db_expense.credit_statement_month = stmt_month
-        db_expense.credit_statement_year = stmt_year
-
-        # Update available credit
-        account.current_balance_used = (account.current_balance_used or 0) + expense.amount
-        if account.credit_limit:
-            account.available_credit = account.credit_limit - account.current_balance_used
-
-    elif expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH):
-        # Reduce account balance
-        account.balance = (account.balance or 0) - expense.amount
+    if account:
+        if expense.payment_method == PaymentMethod.CREDIT:
+            if not account.closing_day:
+                raise ValueError("La tarjeta no tiene día de cierre configurado")
+            stmt_month, stmt_year = _calculate_credit_statement_month(expense.expense_date, account.closing_day)
+            db_expense.credit_statement_month = stmt_month
+            db_expense.credit_statement_year = stmt_year
+            account.current_balance_used = (account.current_balance_used or 0) + expense.amount
+            if account.credit_limit:
+                account.available_credit = account.credit_limit - account.current_balance_used
+        elif expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH):
+            account.balance = (account.balance or 0) - expense.amount
 
     db.add(db_expense)
     db.commit()

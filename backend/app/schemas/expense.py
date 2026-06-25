@@ -9,7 +9,7 @@ from app.models.enums import PaymentMethod
 class ExpenseBase(BaseModel):
     model_config = {"populate_by_name": True}
 
-    account_id: UUID = Field(..., description="ID de la cuenta/tarjeta")
+    account_id: Optional[UUID] = Field(None, description="ID de la cuenta/tarjeta")
     name: str = Field(..., description="Descripción del gasto")
     amount: Decimal = Field(..., description="Monto gastado")
     expense_date: date = Field(..., description="Fecha del gasto", alias="date")

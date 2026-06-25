@@ -11,8 +11,8 @@ function Card({
       className={cn(
         "rounded-xl border transition-all duration-200",
         glass
-          ? "bg-white/[0.03] backdrop-blur-xl border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]"
-          : "bg-[#141414] border-[#2A2A2A]",
+          ? "bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl border-black/10 dark:border-white/10 shadow-lg"
+          : "bg-white dark:bg-[#141414] border-black/10 dark:border-[#2A2A2A]",
         className
       )}
       {...props}
@@ -32,7 +32,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
   return (
     <h3
-      className={cn("text-base sm:text-lg font-semibold leading-none tracking-tight text-white", className)}
+      className={cn("text-base sm:text-lg font-semibold leading-none tracking-tight text-black dark:text-white", className)}
       {...props}
     />
   )
@@ -41,7 +41,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"h3">) {
 function CardDescription({ className, ...props }: React.ComponentProps<"p">) {
   return (
     <p
-      className={cn("text-xs sm:text-sm text-gray-400", className)}
+      className={cn("text-xs sm:text-sm text-black/60 dark:text-gray-400", className)}
       {...props}
     />
   )

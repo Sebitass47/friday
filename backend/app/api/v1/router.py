@@ -9,6 +9,7 @@ from .endpoints.projection import router as projection_router
 from .endpoints.expenses import router as expenses_router
 from .endpoints.credit_payments import router as credit_payments_router
 from .endpoints.incomes import router as incomes_router
+from .endpoints.push import router as push_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -21,3 +22,4 @@ router.include_router(projection_router)
 router.include_router(expenses_router)
 router.include_router(credit_payments_router)
 router.include_router(incomes_router, prefix="/incomes", tags=["incomes"])
+router.include_router(push_router)

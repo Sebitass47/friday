@@ -209,3 +209,16 @@ export async function createIncome(data: {
 export async function deleteIncome(id: string): Promise<void> {
   return req(`/incomes/${id}`, { method: 'DELETE' })
 }
+
+// ── Push Notifications ────────────────────────────────────────────────────────
+
+export async function getPushVapidKey(): Promise<string> {
+  const res = await req<{ public_key: string }>('/push/vapid-public-key')
+  return res.public_key
+}
+export async function registerPushSubscription(data: { endpoint: string; p256dh: string; auth: string }): Promise<void> {
+  return req('/push/subscribe', { method: 'POST', body: JSON.stringify(data) })
+}
+export async function removePushSubscription(data: { endpoint: string; p256dh: string; auth: string }): Promise<void> {
+  return req('/push/unsubscribe', { method: 'DELETE', body: JSON.stringify(data) })
+}

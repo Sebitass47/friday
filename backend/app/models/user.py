@@ -26,3 +26,4 @@ class User(Base):
     expenses = relationship("Expense", back_populates="user")
     credit_payments = relationship("CreditPayment", back_populates="user")
     incomes = relationship("Income", back_populates="user")
+    push_subscriptions = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")

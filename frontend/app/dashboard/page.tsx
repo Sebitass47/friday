@@ -11,7 +11,7 @@ import {
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
   createExpense, createIncome, getAccounts, setMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
-  getExpenses,
+  getExpenses, getPushVapidKey, registerPushSubscription, removePushSubscription,
 } from '@/lib/api'
 import type {
   ProjectionResponse, InstallmentPurchase, SavingsGoal,
@@ -20,9 +20,10 @@ import type {
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
   RefreshCw, Plus, X, Pencil, Trash2, CheckCircle2, CalendarDays,
-  Wallet, PiggyBank, Banknote, Zap,
+  Wallet, PiggyBank, Banknote, Zap, Bell, BellOff,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { pushSupported, getRegistration, getCurrentSubscription, subscribePush, unsubscribePush } from '@/lib/push'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
@@ -149,6 +150,10 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Push notifications
+  const [pushSubscribed, setPushSubscribed] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
+
   const [activeModal, setActiveModal] = useState<ActiveModal>(null)
 
   // MSI form
@@ -203,6 +208,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadAll().catch(console.error).finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (!pushSupported()) return
+    getRegistration().then(() => getCurrentSubscription()).then(sub => {
+      setPushSubscribed(!!sub)
+    }).catch(() => {})
   }, [])
 
   function openRegister() {
@@ -369,6 +381,34 @@ export default function DashboardPage() {
     } catch (e: unknown) { setPayCardError(e instanceof Error ? e.message : 'Error') }
     finally { setPayCardSaving(false) }
   }
+  async function togglePushNotifications() {
+    if (!pushSupported()) { alert('Tu navegador no soporta notificaciones push'); return }
+    setPushLoading(true)
+    try {
+      if (pushSubscribed) {
+        const sub = await getCurrentSubscription()
+        if (sub) {
+          const p256dh = sub.getKey('p256dh')
+          const auth = sub.getKey('auth')
+          await removePushSubscription({
+            endpoint: sub.endpoint,
+            p256dh: p256dh ? btoa(String.fromCharCode(...new Uint8Array(p256dh))) : '',
+            auth: auth ? btoa(String.fromCharCode(...new Uint8Array(auth))) : '',
+          })
+          await unsubscribePush()
+        }
+        setPushSubscribed(false)
+      } else {
+        const vapidKey = await getPushVapidKey()
+        const subData = await subscribePush(vapidKey)
+        if (subData) {
+          await registerPushSubscription(subData)
+          setPushSubscribed(true)
+        }
+      }
+    } catch (e) { console.error('Push toggle error', e) }
+    finally { setPushLoading(false) }
+  }
   async function handleLiquidateCard(id: string, name: string) {
     if (!confirm(`¿Liquidar la tarjeta "${name}"? Se saldarán todos los MSI vinculados y el saldo quedará en $0.`)) return
     try {
@@ -432,13 +472,29 @@ export default function DashboardPage() {
               Buenos días{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}
             </h1>
           </div>
-          <button
-            onClick={openRegister}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 ${ACCENT_BG}`}
-          >
-            <Plus size={15} strokeWidth={2.5} />
-            Registrar
-          </button>
+          <div className="flex items-center gap-2">
+            {pushSupported() && (
+              <button
+                onClick={togglePushNotifications}
+                disabled={pushLoading}
+                title={pushSubscribed ? 'Desactivar notificaciones' : 'Activar notificaciones de pago'}
+                className={`p-2 rounded-xl border transition-all disabled:opacity-50 ${
+                  pushSubscribed
+                    ? 'border-[#6B46E5]/30 dark:border-[#AF9BFF]/30 bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF]'
+                    : 'border-black/10 dark:border-white/10 text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:border-black/20 dark:hover:border-white/20'
+                }`}
+              >
+                {pushSubscribed ? <Bell size={15} /> : <BellOff size={15} />}
+              </button>
+            )}
+            <button
+              onClick={openRegister}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 ${ACCENT_BG}`}
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              Registrar
+            </button>
+          </div>
         </div>
 
         {/* KPI cards */}

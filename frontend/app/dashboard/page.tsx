@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import ProjectionChart from '@/components/charts/ProjectionChart'
+import SpendingTimelineChart from '@/components/charts/SpendingTimelineChart'
 import {
   getProjection, getInstallmentPurchases, getSavingsGoals, getMe,
   getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense,
@@ -10,10 +11,11 @@ import {
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
   createExpense, createIncome, getAccounts, setMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
+  getExpenses,
 } from '@/lib/api'
 import type {
   ProjectionResponse, InstallmentPurchase, SavingsGoal,
-  RecurringExpense, User, Account,
+  RecurringExpense, User, Account, Expense,
 } from '@/lib/types'
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
@@ -144,6 +146,7 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([])
   const [recurring, setRecurring] = useState<RecurringExpense[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
   const [activeModal, setActiveModal] = useState<ActiveModal>(null)
@@ -192,10 +195,10 @@ export default function DashboardPage() {
   const [regError, setRegError] = useState('')
 
   async function loadAll() {
-    const [u, p, m, g, r, a] = await Promise.all([
-      getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses(), getAccounts(),
+    const [u, p, m, g, r, a, ex] = await Promise.all([
+      getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses(), getAccounts(), getExpenses(),
     ])
-    setUser(u); setProjection(p); setMsi(m); setGoals(g); setRecurring(r); setAccounts(a)
+    setUser(u); setProjection(p); setMsi(m); setGoals(g); setRecurring(r); setAccounts(a); setExpenses(ex)
   }
 
   useEffect(() => {
@@ -218,8 +221,8 @@ export default function DashboardPage() {
         if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount))
       }
       setActiveModal(null)
-      const [p, a] = await Promise.all([getProjection(12), getAccounts()])
-      setProjection(p); setAccounts(a)
+      const [p, a, ex] = await Promise.all([getProjection(12), getAccounts(), getExpenses()])
+      setProjection(p); setAccounts(a); setExpenses(ex)
     } catch { setRegError('Error al guardar') }
     finally { setRegSaving(false) }
   }
@@ -474,6 +477,18 @@ export default function DashboardPage() {
               <p className="text-2xl font-semibold tabular-nums" style={{ color: CORAL }}>{fmt(totalExpenses)}</p>
             </div>
           </div>
+        </div>
+
+        {/* Spending timeline */}
+        <div className={`${cardCls} p-5`}>
+          <div className="mb-3">
+            <h2 className="text-sm font-semibold text-black dark:text-white">Gastos del mes</h2>
+            <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Balance real · cada punto es un día con gastos</p>
+          </div>
+          <SpendingTimelineChart
+            expenses={expenses}
+            monthlyIncome={Number(projection?.months[0]?.income ?? 0)}
+          />
         </div>
 
         {/* Chart */}

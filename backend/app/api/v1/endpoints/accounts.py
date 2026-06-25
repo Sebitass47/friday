@@ -1,6 +1,8 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -10,9 +12,15 @@ from app.services.account_service import (
     get_account,
     create_account,
     update_account,
-    delete_account
+    delete_account,
+    pay_card_month,
+    liquidate_card,
 )
 from app.schemas.account import AccountCreate, AccountUpdate, AccountResponse
+
+
+class PayCardMonthBody(BaseModel):
+    new_balance_used: Optional[Decimal] = None
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -69,3 +77,28 @@ def delete_account_endpoint(
     if not success:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
     return success
+
+
+@router.post("/{account_id}/pay-month", response_model=AccountResponse)
+def pay_card_month_endpoint(
+    account_id: UUID,
+    body: PayCardMonthBody = PayCardMonthBody(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = pay_card_month(db, account_id, current_user.id, body.new_balance_used)
+    if not result:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    return result
+
+
+@router.post("/{account_id}/liquidate", response_model=AccountResponse)
+def liquidate_card_endpoint(
+    account_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = liquidate_card(db, account_id, current_user.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    return result

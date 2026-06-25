@@ -6,9 +6,10 @@ import ProjectionChart from '@/components/charts/ProjectionChart'
 import {
   getProjection, getInstallmentPurchases, getSavingsGoals, getMe,
   getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense,
-  createInstallmentPurchase, updateInstallmentPurchase, deleteInstallmentPurchase,
+  createInstallmentPurchase, updateInstallmentPurchase, deleteInstallmentPurchase, liquidateMsi,
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal,
   createExpense, createIncome, getAccounts, setMonthlyIncome,
+  createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
 } from '@/lib/api'
 import type {
   ProjectionResponse, InstallmentPurchase, SavingsGoal,
@@ -17,7 +18,9 @@ import type {
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
   RefreshCw, Plus, X, Pencil, Trash2, CheckCircle2, CalendarDays,
+  Wallet, PiggyBank, Banknote, Zap,
 } from 'lucide-react'
+import { CustomSelect } from '@/components/ui/custom-select'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
@@ -30,11 +33,28 @@ const ACCENT_BG_SOFT = 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10'
 const ACCENT_BORDER = 'border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
 const CORAL = '#FF6B6B'
 
-type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | null
+type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | null
 
-const MSI_EMPTY = { name: '', total_amount: 0, monthly_amount: 0, total_installments: 12, remaining_installments: 12, start_date: today() }
+const MSI_EMPTY = { name: '', total_amount: 0, monthly_amount: 0, total_installments: 12, remaining_installments: 12, start_date: today(), account_id: null as string | null, is_new_charge: true }
 const GOAL_EMPTY = { name: '', target_amount: 0, current_amount: 0, monthly_contribution: 0 }
 const REC_EMPTY = { name: '', amount: 0, frequency: 'monthly' as RecurringExpense['frequency'], interval_days: null as number | null }
+
+interface AccountForm {
+  name: string
+  account_type: Account['account_type']
+  balance: number
+  currency: string
+  is_active: boolean
+  credit_limit: number | null
+  current_balance_used: number | null
+  closing_day: number | null
+  payment_day: number | null
+  id?: string
+}
+const ACCOUNT_EMPTY: AccountForm = {
+  name: '', account_type: 'checking', balance: 0, currency: 'MXN', is_active: true,
+  credit_limit: null, current_balance_used: null, closing_day: null, payment_day: null,
+}
 
 function inputCls() {
   return 'w-full bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#6B46E5] dark:focus:border-[#AF9BFF] transition-colors'
@@ -45,7 +65,7 @@ function Modal({ title, subtitle, onClose, children }: {
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white dark:bg-[#141414] rounded-2xl border border-black/10 dark:border-white/10 shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md bg-white dark:bg-[#141414] rounded-2xl border border-black/10 dark:border-white/10 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.06]">
           <div>
             <h2 className="text-sm font-semibold text-black dark:text-white">{title}</h2>
@@ -86,6 +106,37 @@ function FormActions({ onCancel, onSave, saving, saveLabel = 'Guardar', error }:
   )
 }
 
+function usagePct(used: number, limit: number) {
+  return limit > 0 ? used / limit : 0
+}
+function usageTextColor(pct: number) {
+  if (pct >= 0.66) return 'text-red-400'
+  if (pct >= 0.33) return 'text-amber-400'
+  return 'text-[#6B46E5] dark:text-[#AF9BFF]'
+}
+function usageBgColor(pct: number) {
+  if (pct >= 0.66) return 'bg-red-400'
+  if (pct >= 0.33) return 'bg-amber-400'
+  return 'bg-[#6B46E5] dark:bg-[#AF9BFF]'
+}
+
+function CreditUsageBar({ used, limit }: { used: number; limit: number }) {
+  const pct = usagePct(used, limit)
+  const p = Math.min(100, Math.round(pct * 100))
+  const color = usageBgColor(pct)
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-[10px] text-black/40 dark:text-white/40">
+        <span>{fmt(used)} usado · {fmt(limit - used)} disp.</span>
+        <span>{p}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-black/10 dark:bg-white/[0.08]">
+        <div className={`h-1.5 rounded-full transition-all ${color}`} style={{ width: `${p}%` }} />
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [projection, setProjection] = useState<ProjectionResponse | null>(null)
@@ -95,7 +146,6 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Modal
   const [activeModal, setActiveModal] = useState<ActiveModal>(null)
 
   // MSI form
@@ -113,6 +163,17 @@ export default function DashboardPage() {
   const [recSaving, setRecSaving] = useState(false)
   const [recError, setRecError] = useState('')
 
+  // Account form
+  const [accountForm, setAccountForm] = useState<AccountForm>(ACCOUNT_EMPTY)
+  const [accountSaving, setAccountSaving] = useState(false)
+  const [accountError, setAccountError] = useState('')
+
+  // Pay card modal
+  interface PayCardState { card: Account; amountToPay: number; newBalanceUsed: number }
+  const [payCardState, setPayCardState] = useState<PayCardState | null>(null)
+  const [payCardSaving, setPayCardSaving] = useState(false)
+  const [payCardError, setPayCardError] = useState('')
+
   // Register (quick transaction)
   const [regMode, setRegMode] = useState<'expense' | 'income'>('expense')
   const [regAmount, setRegAmount] = useState('')
@@ -124,16 +185,19 @@ export default function DashboardPage() {
   const [regSaving, setRegSaving] = useState(false)
   const [regError, setRegError] = useState('')
 
+  async function loadAll() {
+    const [u, p, m, g, r, a] = await Promise.all([
+      getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses(), getAccounts(),
+    ])
+    setUser(u); setProjection(p); setMsi(m); setGoals(g); setRecurring(r); setAccounts(a)
+  }
+
   useEffect(() => {
-    Promise.all([getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses()])
-      .then(([u, p, m, g, r]) => { setUser(u); setProjection(p); setMsi(m); setGoals(g); setRecurring(r) })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    loadAll().catch(console.error).finally(() => setLoading(false))
   }, [])
 
   function openRegister() {
     setRegAmount(''); setRegDesc(''); setRegMethod('cash'); setRegAccountId(''); setRegCategory(''); setRegIsMonthly(false); setRegError('')
-    getAccounts().then(setAccounts).catch(console.error)
     setActiveModal('register')
   }
 
@@ -148,8 +212,8 @@ export default function DashboardPage() {
         if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount))
       }
       setActiveModal(null)
-      const p = await getProjection(12)
-      setProjection(p)
+      const [p, a] = await Promise.all([getProjection(12), getAccounts()])
+      setProjection(p); setAccounts(a)
     } catch { setRegError('Error al guardar') }
     finally { setRegSaving(false) }
   }
@@ -157,7 +221,7 @@ export default function DashboardPage() {
   // MSI CRUD
   function openNewMsi() { setMsiForm({ ...MSI_EMPTY, start_date: today() }); setMsiError(''); setActiveModal('msi') }
   function openEditMsi(item: InstallmentPurchase) {
-    setMsiForm({ name: item.name, total_amount: Number(item.total_amount), monthly_amount: Number(item.monthly_amount), total_installments: item.total_installments, remaining_installments: item.remaining_installments, start_date: item.start_date, id: item.id })
+    setMsiForm({ name: item.name, total_amount: Number(item.total_amount), monthly_amount: Number(item.monthly_amount), total_installments: item.total_installments, remaining_installments: item.remaining_installments, start_date: item.start_date, account_id: item.account_id, is_new_charge: false, id: item.id })
     setMsiError(''); setActiveModal('msi')
   }
   async function saveMsi() {
@@ -167,7 +231,8 @@ export default function DashboardPage() {
     try {
       if (msiForm.id) await updateInstallmentPurchase(msiForm.id, msiForm)
       else await createInstallmentPurchase(msiForm)
-      setMsi(await getInstallmentPurchases()); setActiveModal(null)
+      const [m, a] = await Promise.all([getInstallmentPurchases(), getAccounts()])
+      setMsi(m); setAccounts(a); setActiveModal(null)
     } catch (e: unknown) { setMsiError(e instanceof Error ? e.message : 'Error') }
     finally { setMsiSaving(false) }
   }
@@ -175,6 +240,14 @@ export default function DashboardPage() {
     if (!confirm('¿Eliminar este MSI?')) return
     await deleteInstallmentPurchase(id)
     setMsi(prev => prev.filter(i => i.id !== id))
+  }
+  async function handleLiquidateMsi(id: string, name: string) {
+    if (!confirm(`¿Liquidar "${name}"? Se pagará el saldo restante y se liberará el crédito de tu tarjeta.`)) return
+    try {
+      const updated = await liquidateMsi(id)
+      setMsi(prev => prev.map(i => i.id === id ? updated : i))
+      const a = await getAccounts(); setAccounts(a)
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error') }
   }
 
   // Goal CRUD
@@ -223,6 +296,62 @@ export default function DashboardPage() {
     setRecurring(prev => prev.filter(e => e.id !== id))
   }
 
+  // Account CRUD
+  function openNewAccount() { setAccountForm(ACCOUNT_EMPTY); setAccountError(''); setActiveModal('account') }
+  function openEditAccount(a: Account) {
+    setAccountForm({
+      name: a.name, account_type: a.account_type, balance: Number(a.balance),
+      currency: a.currency, is_active: a.is_active,
+      credit_limit: a.credit_limit ? Number(a.credit_limit) : null,
+      current_balance_used: a.current_balance_used ? Number(a.current_balance_used) : null,
+      closing_day: a.closing_day, payment_day: a.payment_day, id: a.id,
+    })
+    setAccountError(''); setActiveModal('account')
+  }
+  async function saveAccount() {
+    if (!accountForm.name.trim()) { setAccountError('El nombre es requerido'); return }
+    setAccountSaving(true); setAccountError('')
+    try {
+      const { id, ...payload } = accountForm
+      if (id) await updateAccount(id, payload)
+      else await createAccount(payload)
+      setAccounts(await getAccounts()); setActiveModal(null)
+    } catch (e: unknown) { setAccountError(e instanceof Error ? e.message : 'Error') }
+    finally { setAccountSaving(false) }
+  }
+  async function removeAccount(id: string) {
+    if (!confirm('¿Eliminar esta cuenta?')) return
+    await deleteAccount(id)
+    setAccounts(prev => prev.filter(a => a.id !== id))
+  }
+  function openPayCardModal(card: Account) {
+    const linkedMsis = msi.filter(m => m.account_id === card.id && m.remaining_installments > 0)
+    const computedPayment = linkedMsis.reduce((sum, m) => sum + Number(m.monthly_amount), 0)
+    const currentUsed = Number(card.current_balance_used) || 0
+    const newBalance = Math.max(0, currentUsed - computedPayment)
+    setPayCardState({ card, amountToPay: computedPayment, newBalanceUsed: newBalance })
+    setPayCardError('')
+  }
+  async function handleConfirmPayCard() {
+    if (!payCardState) return
+    setPayCardSaving(true); setPayCardError('')
+    try {
+      const updated = await payCardMonth(payCardState.card.id, { new_balance_used: payCardState.newBalanceUsed })
+      setAccounts(prev => prev.map(a => a.id === payCardState.card.id ? updated : a))
+      setMsi(await getInstallmentPurchases())
+      setPayCardState(null)
+    } catch (e: unknown) { setPayCardError(e instanceof Error ? e.message : 'Error') }
+    finally { setPayCardSaving(false) }
+  }
+  async function handleLiquidateCard(id: string, name: string) {
+    if (!confirm(`¿Liquidar la tarjeta "${name}"? Se saldarán todos los MSI vinculados y el saldo quedará en $0.`)) return
+    try {
+      const updated = await liquidateCard(id)
+      setAccounts(prev => prev.map(a => a.id === id ? updated : a))
+      setMsi(await getInstallmentPurchases())
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error') }
+  }
+
   if (loading) {
     return (
       <AppLayout>
@@ -242,7 +371,26 @@ export default function DashboardPage() {
   const activeMsi = msi.filter(m => m.remaining_installments > 0)
   const totalRecurring = recurring.reduce((s, e) => s + Number(e.amount), 0)
 
+  const creditCards = accounts.filter(a => a.account_type === 'credit_card')
+  const otherAccounts = accounts.filter(a => a.account_type !== 'credit_card')
+  const totalUsed = creditCards.reduce((s, a) => s + (Number(a.current_balance_used) || 0), 0)
+  const totalCreditAvail = creditCards.reduce((s, a) => s + (Number(a.available_credit) || 0), 0)
+  const totalCreditLimit = creditCards.reduce((s, a) => s + (Number(a.credit_limit) || 0), 0)
+  const debtColor = usageTextColor(usagePct(totalUsed, totalCreditLimit))
+
   const cardCls = 'bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-black/[0.08] dark:border-white/[0.08] hover:border-black/[0.14] dark:hover:border-white/[0.14] transition-all shadow-sm'
+
+  // Billing month helper for register modal
+  function getBillingMonth(card: Account): string {
+    if (!card.closing_day) return ''
+    const d = new Date()
+    let m = d.getMonth(), y = d.getFullYear()
+    if (d.getDate() > card.closing_day) { m++; if (m > 11) { m = 0; y++ } }
+    return new Date(y, m, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+  }
+  const selectedRegCard = accounts.find(a => a.id === regAccountId)
+  const billingMonth = regMethod === 'credit' && selectedRegCard?.account_type === 'credit_card'
+    ? getBillingMonth(selectedRegCard) : ''
 
   return (
     <AppLayout>
@@ -269,11 +417,10 @@ export default function DashboardPage() {
 
         {/* KPI cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Disponible */}
           <div className={`${cardCls} p-6`}>
             <p className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest mb-3">Disponible este mes</p>
-            <p className={`text-4xl font-bold tabular-nums`} style={{ color: isNeg ? CORAL : undefined, ...(isNeg ? {} : {}) }}>
-              <span className={isNeg ? '' : 'text-black dark:text-white'}>{fmt(available)}</span>
+            <p className={`text-4xl font-bold tabular-nums ${isNeg ? '' : 'text-black dark:text-white'}`} style={isNeg ? { color: CORAL } : {}}>
+              {fmt(available)}
             </p>
             <div className="flex items-center gap-1.5 mt-2">
               {isNeg
@@ -288,7 +435,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Ingreso + Compromisos */}
           <div className="flex flex-col gap-4">
             <div className={`${cardCls} p-5 flex-1`}>
               <div className="flex items-center gap-2 mb-1">
@@ -316,17 +462,146 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-4 text-xs text-black/40 dark:text-white/40">
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-[#6B46E5]/70 dark:bg-[#AF9BFF]/70" />
-                Positivo
+                <span className="h-2 w-2 rounded-sm bg-[#6B46E5]/70 dark:bg-[#AF9BFF]/70" />Positivo
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: `${CORAL}b3` }} />
-                Déficit
+                <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: `${CORAL}b3` }} />Déficit
               </span>
             </div>
           </div>
           {projection && <ProjectionChart months={projection.months} />}
         </div>
+
+        {/* Accounts section */}
+        {accounts.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Cuentas y tarjetas</h2>
+              <button onClick={openNewAccount} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${ACCENT_BG_SOFT} ${ACCENT} transition-opacity hover:opacity-80`}>
+                <Plus size={12} strokeWidth={2.5} /> Nueva
+              </button>
+            </div>
+
+            {/* Summary row */}
+            {creditCards.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className={`${cardCls} p-4`}>
+                  <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Total activos</p>
+                  <p className="text-base font-semibold text-black dark:text-white tabular-nums">{fmt(otherAccounts.reduce((s, a) => s + Number(a.balance), 0))}</p>
+                </div>
+                <div className={`${cardCls} p-4`}>
+                  <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Deuda tarjetas</p>
+                  <p className={`text-base font-semibold tabular-nums ${debtColor}`}>{fmt(totalUsed)}</p>
+                </div>
+                <div className={`${cardCls} p-4`}>
+                  <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Crédito disp.</p>
+                  <p className="text-base font-semibold text-emerald-400 tabular-nums">{fmt(totalCreditAvail)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Credit cards */}
+            {creditCards.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {creditCards.map(a => {
+                  const used = Number(a.current_balance_used) || 0
+                  const limit = Number(a.credit_limit) || 0
+                  const cardUsedColor = usageTextColor(usagePct(used, limit))
+                  return (
+                    <div key={a.id} className={`${cardCls} p-5 space-y-3 hover:border-amber-400/30`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-xl bg-amber-400/10 p-2">
+                            <CreditCard size={16} className="text-amber-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-black dark:text-white">{a.name}</p>
+                            <p className="text-[11px] text-black/40 dark:text-white/40">Tarjeta de crédito</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEditAccount(a)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={12} /></button>
+                          <button onClick={() => removeAccount(a.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={12} /></button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-black/[0.03] dark:bg-white/[0.03] rounded-xl p-2.5">
+                          <p className="text-[9px] text-black/40 dark:text-white/40 mb-0.5">Usado</p>
+                          <p className={`text-xs font-semibold tabular-nums ${cardUsedColor}`}>{fmt(used)}</p>
+                        </div>
+                        <div className="bg-black/[0.03] dark:bg-white/[0.03] rounded-xl p-2.5">
+                          <p className="text-[9px] text-black/40 dark:text-white/40 mb-0.5">Disponible</p>
+                          <p className="text-xs font-semibold text-emerald-400 tabular-nums">{limit > 0 ? fmt(limit - used) : '—'}</p>
+                        </div>
+                        <div className="bg-black/[0.03] dark:bg-white/[0.03] rounded-xl p-2.5">
+                          <p className="text-[9px] text-black/40 dark:text-white/40 mb-0.5">Límite</p>
+                          <p className="text-xs font-semibold text-black dark:text-white tabular-nums">{limit > 0 ? fmt(limit) : '—'}</p>
+                        </div>
+                      </div>
+                      {limit > 0 && <CreditUsageBar used={used} limit={limit} />}
+                      {(a.closing_day || a.payment_day) && (
+                        <div className="flex items-center gap-3 pt-1 border-t border-black/[0.05] dark:border-white/[0.05] text-[11px]">
+                          {a.closing_day && <span className="text-black/40 dark:text-white/40">Corte: <span className="font-medium text-black dark:text-white">día {a.closing_day}</span></span>}
+                          {a.closing_day && a.payment_day && <span className="text-black/20 dark:text-white/20">·</span>}
+                          {a.payment_day && <span className="text-black/40 dark:text-white/40">Pago: <span className="font-medium text-[#6B46E5] dark:text-[#AF9BFF]">día {a.payment_day}</span></span>}
+                        </div>
+                      )}
+                      {/* Card actions */}
+                      <div className="flex gap-2 pt-1 border-t border-black/[0.05] dark:border-white/[0.05]">
+                        <button
+                          onClick={() => openPayCardModal(a)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF] text-xs font-medium hover:opacity-80 transition-opacity"
+                        >
+                          <Banknote size={13} /> Pagar este mes
+                        </button>
+                        <button
+                          onClick={() => handleLiquidateCard(a.id, a.name)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-400/10 text-amber-500 dark:text-amber-400 text-xs font-medium hover:opacity-80 transition-opacity"
+                        >
+                          <Zap size={13} /> Liquidar tarjeta
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Other accounts */}
+            {otherAccounts.length > 0 && (
+              <div className="space-y-2">
+                {otherAccounts.map(a => (
+                  <div key={a.id} className={`${cardCls} flex items-center justify-between px-5 py-3.5`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`${a.account_type === 'savings' ? 'text-emerald-400' : 'text-[#6B46E5] dark:text-[#AF9BFF]'}`}>
+                        {a.account_type === 'savings' ? <PiggyBank size={16} /> : <Wallet size={16} />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-black dark:text-white">{a.name}</p>
+                        <p className="text-[11px] text-black/40 dark:text-white/40">{a.account_type === 'savings' ? 'Ahorro' : 'Débito'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-sm font-semibold tabular-nums ${a.account_type === 'savings' ? 'text-emerald-400' : 'text-black dark:text-white'}`}>{fmt(Number(a.balance))}</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEditAccount(a)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={12} /></button>
+                        <button onClick={() => removeAccount(a.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={12} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Add first account prompt */}
+        {accounts.length === 0 && (
+          <button onClick={openNewAccount} className={`w-full ${cardCls} p-5 flex items-center justify-center gap-3 text-sm text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white border-dashed`}>
+            <Plus size={16} />
+            Agrega tu primera cuenta o tarjeta
+          </button>
+        )}
 
         {/* Bottom 3 sections */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -344,15 +619,21 @@ export default function DashboardPage() {
             {activeMsi.length === 0 ? (
               <p className="text-xs text-black/30 dark:text-white/30 py-4 text-center">Sin MSI activos</p>
             ) : (
-              <div className="space-y-3.5">
-                {activeMsi.slice(0, 4).map(item => {
+              <div className="space-y-3">
+                {activeMsi.slice(0, 5).map(item => {
                   const paid = item.total_installments - item.remaining_installments
                   const progress = pct(paid, item.total_installments)
+                  const now = new Date()
+                  const paidThisMonth = item.paid_month === (now.getMonth() + 1) && item.paid_year === now.getFullYear()
+                  const linkedCard = accounts.find(a => a.id === item.account_id)
                   return (
-                    <div key={item.id} className="group">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-black dark:text-white truncate max-w-[55%]">{item.name}</span>
-                        <div className="flex items-center gap-1.5">
+                    <div key={item.id} className="group space-y-1.5 pb-3 border-b border-black/[0.05] dark:border-white/[0.05] last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0">
+                          <span className="text-xs font-medium text-black dark:text-white truncate block">{item.name}</span>
+                          {linkedCard && <span className="text-[10px] text-black/35 dark:text-white/35">{linkedCard.name}</span>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
                           <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">{fmt(Number(item.monthly_amount))}/mes</span>
                           <button onClick={() => openEditMsi(item)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil size={11} /></button>
                           <button onClick={() => deleteMsi(item.id)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 size={11} /></button>
@@ -361,12 +642,27 @@ export default function DashboardPage() {
                       <div className="h-1 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
                         <div className="h-1 rounded-full bg-[#6B46E5]/60 dark:bg-[#AF9BFF]/60" style={{ width: `${progress}%` }} />
                       </div>
-                      <p className="text-[10px] text-black/25 dark:text-white/25 mt-0.5">{paid} de {item.total_installments} meses</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] text-black/25 dark:text-white/25">{paid} de {item.total_installments} meses</p>
+                        <div className="flex items-center gap-1.5">
+                          {paidThisMonth && (
+                            <span className="flex items-center gap-1 text-[10px] text-emerald-500 dark:text-emerald-400 font-medium">
+                              <CheckCircle2 size={10} /> Pagado este mes
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleLiquidateMsi(item.id, item.name)}
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-amber-400/10 text-amber-500 dark:text-amber-400 font-medium hover:opacity-80 transition-opacity"
+                          >
+                            Liquidar
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )
                 })}
-                {activeMsi.length > 4 && (
-                  <p className="text-xs text-black/30 dark:text-white/30 text-center pt-1">+{activeMsi.length - 4} más</p>
+                {activeMsi.length > 5 && (
+                  <p className="text-xs text-black/30 dark:text-white/30 text-center pt-1">+{activeMsi.length - 5} más</p>
                 )}
               </div>
             )}
@@ -465,7 +761,6 @@ export default function DashboardPage() {
       {/* Quick Register */}
       {activeModal === 'register' && (
         <Modal title="Registrar" subtitle={`Captura rápida · ${new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`} onClose={() => setActiveModal(null)}>
-          {/* Mode toggle */}
           <div className="flex rounded-xl border border-black/10 dark:border-white/10 overflow-hidden p-0.5 bg-black/[0.03] dark:bg-white/[0.03]">
             {(['expense', 'income'] as const).map(m => (
               <button key={m} onClick={() => setRegMode(m)}
@@ -475,15 +770,10 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Amount */}
           <FormField label="Monto">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-black/40 dark:text-white/40">$</span>
-              <input
-                type="number" step="0.01" placeholder="0.00" value={regAmount}
-                onChange={e => setRegAmount(e.target.value)}
-                className={`${inputCls()} pl-7 text-xl font-bold`}
-              />
+              <input type="number" step="0.01" placeholder="0.00" value={regAmount} onChange={e => setRegAmount(e.target.value)} className={`${inputCls()} pl-7 text-xl font-bold`} />
             </div>
           </FormField>
 
@@ -506,12 +796,22 @@ export default function DashboardPage() {
 
               {regMethod !== 'cash' && accounts.length > 0 && (
                 <FormField label={regMethod === 'credit' ? 'Tarjeta' : 'Cuenta'}>
-                  <select value={regAccountId} onChange={e => setRegAccountId(e.target.value)} className={inputCls()}>
-                    <option value="">Selecciona</option>
-                    {accounts.filter(a => regMethod === 'credit' ? a.account_type === 'credit_card' : a.account_type !== 'credit_card').map(a => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    value={regAccountId}
+                    onChange={setRegAccountId}
+                    placeholder="Selecciona"
+                    options={[
+                      { value: '', label: 'Sin cuenta' },
+                      ...accounts
+                        .filter(a => regMethod === 'credit' ? a.account_type === 'credit_card' : a.account_type !== 'credit_card')
+                        .map(a => ({ value: a.id, label: a.name }))
+                    ]}
+                  />
+                  {billingMonth && (
+                    <p className="text-[11px] text-[#6B46E5] dark:text-[#AF9BFF] bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                      Se cobra en el estado de: <span className="font-semibold capitalize">{billingMonth}</span>
+                    </p>
+                  )}
                 </FormField>
               )}
             </>
@@ -522,11 +822,8 @@ export default function DashboardPage() {
           </FormField>
 
           {regMode === 'income' && (
-            <button
-              type="button"
-              onClick={() => setRegIsMonthly(v => !v)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-sm ${regIsMonthly ? `${ACCENT_BG_SOFT} ${ACCENT_BORDER} ${ACCENT}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50'}`}
-            >
+            <button type="button" onClick={() => setRegIsMonthly(v => !v)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-sm ${regIsMonthly ? `${ACCENT_BG_SOFT} ${ACCENT_BORDER} ${ACCENT}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50'}`}>
               <span>¿Es tu ingreso mensual fijo?</span>
               <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 ${regIsMonthly ? 'bg-[#6B46E5] dark:bg-[#AF9BFF] justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
                 <span className="w-3 h-3 rounded-full bg-white" />
@@ -561,6 +858,36 @@ export default function DashboardPage() {
           <FormField label="Fecha de inicio">
             <input type="date" value={msiForm.start_date} onChange={e => setMsiForm(f => ({ ...f, start_date: e.target.value }))} className={inputCls()} />
           </FormField>
+
+          {creditCards.length > 0 && (
+            <FormField label="Tarjeta de crédito (opcional)">
+              <CustomSelect
+                value={msiForm.account_id ?? ''}
+                onChange={v => setMsiForm(f => ({ ...f, account_id: v || null }))}
+                options={[
+                  { value: '', label: 'Sin tarjeta vinculada' },
+                  ...creditCards.map(c => ({ value: c.id, label: c.name }))
+                ]}
+              />
+            </FormField>
+          )}
+
+          {msiForm.account_id && !msiForm.id && (
+            <button
+              type="button"
+              onClick={() => setMsiForm(f => ({ ...f, is_new_charge: !f.is_new_charge }))}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-sm ${msiForm.is_new_charge ? `${ACCENT_BG_SOFT} ${ACCENT_BORDER} ${ACCENT}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50'}`}
+            >
+              <div className="text-left">
+                <p className="text-xs font-medium">¿Es un cargo nuevo a la tarjeta?</p>
+                <p className="text-[10px] opacity-60 mt-0.5">{msiForm.is_new_charge ? 'Se sumará al saldo usado de la tarjeta' : 'Ya está contemplado en el saldo inicial'}</p>
+              </div>
+              <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 shrink-0 ml-3 ${msiForm.is_new_charge ? 'bg-[#6B46E5] dark:bg-[#AF9BFF] justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
+                <span className="w-3 h-3 rounded-full bg-white" />
+              </span>
+            </button>
+          )}
+
           <FormActions onCancel={() => setActiveModal(null)} onSave={saveMsi} saving={msiSaving} error={msiError} />
         </Modal>
       )}
@@ -599,11 +926,15 @@ export default function DashboardPage() {
             <input type="number" value={recForm.amount} onChange={e => setRecForm(f => ({ ...f, amount: Number(e.target.value) }))} className={inputCls()} />
           </FormField>
           <FormField label="Frecuencia">
-            <select value={recForm.frequency} onChange={e => setRecForm(f => ({ ...f, frequency: e.target.value as RecurringExpense['frequency'] }))} className={inputCls()}>
-              <option value="monthly">Mensual</option>
-              <option value="weekly">Semanal</option>
-              <option value="custom">Personalizado</option>
-            </select>
+            <CustomSelect
+              value={recForm.frequency}
+              onChange={v => setRecForm(f => ({ ...f, frequency: v as RecurringExpense['frequency'] }))}
+              options={[
+                { value: 'monthly', label: 'Mensual' },
+                { value: 'weekly', label: 'Semanal' },
+                { value: 'custom', label: 'Personalizado' },
+              ]}
+            />
           </FormField>
           {recForm.frequency === 'custom' && (
             <FormField label="Cada cuántos días">
@@ -611,6 +942,96 @@ export default function DashboardPage() {
             </FormField>
           )}
           <FormActions onCancel={() => setActiveModal(null)} onSave={saveRec} saving={recSaving} error={recError} />
+        </Modal>
+      )}
+
+      {/* Add/Edit Account */}
+      {activeModal === 'account' && (
+        <Modal title={accountForm.id ? 'Editar cuenta' : 'Nueva cuenta'} onClose={() => setActiveModal(null)}>
+          <FormField label="Nombre">
+            <input value={accountForm.name} onChange={e => setAccountForm({ ...accountForm, name: e.target.value })} placeholder="Ej. BBVA Oro, Débito HSBC…" className={inputCls()} />
+          </FormField>
+          <FormField label="Tipo">
+            <CustomSelect
+              value={accountForm.account_type}
+              onChange={v => setAccountForm({ ...accountForm, account_type: v as Account['account_type'] })}
+              options={[
+                { value: 'checking', label: 'Débito / Cheques' },
+                { value: 'savings', label: 'Ahorro' },
+                { value: 'credit_card', label: 'Tarjeta de crédito' },
+              ]}
+            />
+          </FormField>
+
+          {accountForm.account_type !== 'credit_card' ? (
+            <FormField label="Saldo actual">
+              <input type="number" value={accountForm.balance} onChange={e => setAccountForm({ ...accountForm, balance: Number(e.target.value) })} className={inputCls()} />
+            </FormField>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Límite de crédito">
+                  <input type="number" value={accountForm.credit_limit ?? ''} onChange={e => setAccountForm({ ...accountForm, credit_limit: e.target.value ? Number(e.target.value) : null })} placeholder="0" className={inputCls()} />
+                </FormField>
+                <FormField label="Saldo usado ahora">
+                  <input type="number" value={accountForm.current_balance_used ?? ''} onChange={e => setAccountForm({ ...accountForm, current_balance_used: e.target.value ? Number(e.target.value) : null })} placeholder="0" className={inputCls()} />
+                </FormField>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Día de corte">
+                  <input type="number" min={1} max={31} value={accountForm.closing_day ?? ''} onChange={e => setAccountForm({ ...accountForm, closing_day: e.target.value ? Number(e.target.value) : null })} placeholder="15" className={inputCls()} />
+                </FormField>
+                <FormField label="Día de pago">
+                  <input type="number" min={1} max={31} value={accountForm.payment_day ?? ''} onChange={e => setAccountForm({ ...accountForm, payment_day: e.target.value ? Number(e.target.value) : null })} placeholder="10" className={inputCls()} />
+                </FormField>
+              </div>
+            </>
+          )}
+
+          <FormActions onCancel={() => setActiveModal(null)} onSave={saveAccount} saving={accountSaving} error={accountError} />
+        </Modal>
+      )}
+
+      {/* Pay Card Month Modal */}
+      {payCardState && (
+        <Modal title={`Pagar tarjeta · ${payCardState.card.name}`} onClose={() => setPayCardState(null)}>
+          <p className="text-xs text-black/50 dark:text-white/40 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl px-3 py-2">
+            Los MSI vinculados avanzarán 1 cuota automáticamente. Ajusta los valores si tienes gastos no registrados en la app.
+          </p>
+          <FormField label="Pago a realizar">
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={payCardState.amountToPay}
+              onChange={e => {
+                const val = Number(e.target.value)
+                const currentUsed = Number(payCardState.card.current_balance_used) || 0
+                setPayCardState({ ...payCardState, amountToPay: val, newBalanceUsed: Math.max(0, currentUsed - val) })
+              }}
+              className={inputCls()}
+            />
+          </FormField>
+          <FormField label="Crédito usado después de pagar">
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={payCardState.newBalanceUsed}
+              onChange={e => setPayCardState({ ...payCardState, newBalanceUsed: Number(e.target.value) })}
+              className={inputCls()}
+            />
+            <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">
+              Actual: {fmt(Number(payCardState.card.current_balance_used) || 0)} · Límite: {fmt(Number(payCardState.card.credit_limit) || 0)}
+            </p>
+          </FormField>
+          <FormActions
+            onCancel={() => setPayCardState(null)}
+            onSave={handleConfirmPayCard}
+            saving={payCardSaving}
+            saveLabel="Confirmar pago"
+            error={payCardError}
+          />
         </Modal>
       )}
 

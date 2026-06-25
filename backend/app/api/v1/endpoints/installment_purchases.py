@@ -11,6 +11,8 @@ from app.services.installment_purchase_service import (
     create_installment_purchase,
     update_installment_purchase,
     delete_installment_purchase,
+    mark_paid_this_month,
+    liquidate,
 )
 from app.schemas.installment_purchase import (
     InstallmentPurchaseCreate,
@@ -72,3 +74,27 @@ def delete_installment_purchase_endpoint(
     success = delete_installment_purchase(db, purchase_id, current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="MSI no encontrado")
+
+
+@router.post("/{purchase_id}/mark-paid", response_model=InstallmentPurchaseResponse)
+def mark_paid_endpoint(
+    purchase_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = mark_paid_this_month(db, purchase_id, current_user.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="MSI no encontrado o sin cuotas restantes")
+    return result
+
+
+@router.post("/{purchase_id}/liquidate", response_model=InstallmentPurchaseResponse)
+def liquidate_endpoint(
+    purchase_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = liquidate(db, purchase_id, current_user.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="MSI no encontrado o sin cuotas restantes")
+    return result

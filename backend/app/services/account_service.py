@@ -1,5 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID
+from datetime import date
+from decimal import Decimal
 from sqlalchemy.orm import Session
 from app.models.account import Account, AccountType
 from app.schemas.account import AccountCreate, AccountUpdate
@@ -62,7 +64,78 @@ def delete_account(db: Session, account_id: UUID, user_id: UUID) -> bool:
     db_account = get_account(db, account_id, user_id)
     if not db_account:
         return False
-    
+
     db.delete(db_account)
     db.commit()
     return True
+
+
+def _recompute_available(account: Account) -> None:
+    if account.credit_limit:
+        account.available_credit = account.credit_limit - (account.current_balance_used or Decimal(0))
+
+
+def pay_card_month(
+    db: Session,
+    account_id: UUID,
+    user_id: UUID,
+    new_balance_used: Optional[Decimal] = None,
+) -> Optional[Account]:
+    """Mark the card as paid for this month: advance all linked MSIs by one installment.
+
+    new_balance_used: if provided, set credit used to this value directly (user override).
+    Otherwise, auto-deduct each MSI's monthly_amount from the current balance.
+    """
+    from app.models.installment_purchase import InstallmentPurchase
+
+    account = get_account(db, account_id, user_id)
+    if not account:
+        return None
+
+    today = date.today()
+    active_msi = db.query(InstallmentPurchase).filter(
+        InstallmentPurchase.account_id == account_id,
+        InstallmentPurchase.remaining_installments > 0,
+    ).all()
+
+    for msi in active_msi:
+        msi.remaining_installments = msi.remaining_installments - 1
+        msi.paid_month = today.month
+        msi.paid_year = today.year
+
+    if new_balance_used is not None:
+        account.current_balance_used = new_balance_used
+    else:
+        for msi in active_msi:
+            account.current_balance_used = (account.current_balance_used or Decimal(0)) - msi.monthly_amount
+
+    if account.current_balance_used is not None and account.current_balance_used < Decimal(0):
+        account.current_balance_used = Decimal(0)
+
+    _recompute_available(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def liquidate_card(db: Session, account_id: UUID, user_id: UUID) -> Optional[Account]:
+    """Liquidate the card: pay off all linked MSIs entirely and zero the balance."""
+    from app.models.installment_purchase import InstallmentPurchase
+
+    account = get_account(db, account_id, user_id)
+    if not account:
+        return None
+
+    active_msi = db.query(InstallmentPurchase).filter(
+        InstallmentPurchase.account_id == account_id,
+        InstallmentPurchase.remaining_installments > 0,
+    ).all()
+
+    for msi in active_msi:
+        msi.remaining_installments = 0
+
+    account.current_balance_used = Decimal(0)
+    account.available_credit = account.credit_limit or Decimal(0)
+    db.commit()
+    db.refresh(account)
+    return account

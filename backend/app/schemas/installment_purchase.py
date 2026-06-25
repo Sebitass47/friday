@@ -12,6 +12,7 @@ class InstallmentPurchaseBase(BaseModel):
     total_installments: int
     remaining_installments: int
     start_date: date
+    account_id: Optional[UUID] = None
     payment_day: Optional[int] = None
     closing_day: Optional[int] = None
 
@@ -32,7 +33,7 @@ class InstallmentPurchaseBase(BaseModel):
 
 
 class InstallmentPurchaseCreate(InstallmentPurchaseBase):
-    pass
+    is_new_charge: bool = True
 
 
 class InstallmentPurchaseUpdate(BaseModel):
@@ -42,6 +43,7 @@ class InstallmentPurchaseUpdate(BaseModel):
     total_installments: Optional[int] = None
     remaining_installments: Optional[int] = None
     start_date: Optional[date] = None
+    account_id: Optional[UUID] = None
     payment_day: Optional[int] = None
     closing_day: Optional[int] = None
 
@@ -49,6 +51,8 @@ class InstallmentPurchaseUpdate(BaseModel):
 class InstallmentPurchaseResponse(InstallmentPurchaseBase):
     id: UUID
     user_id: UUID
+    paid_month: Optional[int] = None
+    paid_year: Optional[int] = None
     created_at: datetime
     updated_at: datetime
 

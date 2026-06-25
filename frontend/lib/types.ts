@@ -36,12 +36,15 @@ export interface RecurringExpense {
 export interface InstallmentPurchase {
   id: string
   user_id: string
+  account_id: string | null
   name: string
   total_amount: number
   monthly_amount: number
   total_installments: number
   remaining_installments: number
   start_date: string
+  paid_month: number | null
+  paid_year: number | null
   created_at: string
   updated_at: string
 }

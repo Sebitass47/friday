@@ -74,6 +74,12 @@ export async function updateAccount(id: string, data: Partial<Account>): Promise
 export async function deleteAccount(id: string): Promise<void> {
   return req(`/accounts/${id}`, { method: 'DELETE' })
 }
+export async function payCardMonth(id: string, body: { new_balance_used: number }): Promise<Account> {
+  return req(`/accounts/${id}/pay-month`, { method: 'POST', body: JSON.stringify(body) })
+}
+export async function liquidateCard(id: string): Promise<Account> {
+  return req(`/accounts/${id}/liquidate`, { method: 'POST' })
+}
 
 // ── Recurring Expenses ───────────────────────────────────────────────────────
 
@@ -95,7 +101,7 @@ export async function deleteRecurringExpense(id: string): Promise<void> {
 export async function getInstallmentPurchases(): Promise<InstallmentPurchase[]> {
   return req('/installment-purchases/')
 }
-export async function createInstallmentPurchase(data: Omit<InstallmentPurchase, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<InstallmentPurchase> {
+export async function createInstallmentPurchase(data: Omit<InstallmentPurchase, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'paid_month' | 'paid_year'> & { is_new_charge?: boolean }): Promise<InstallmentPurchase> {
   return req('/installment-purchases/', { method: 'POST', body: JSON.stringify(data) })
 }
 export async function updateInstallmentPurchase(id: string, data: Partial<InstallmentPurchase>): Promise<InstallmentPurchase> {
@@ -103,6 +109,12 @@ export async function updateInstallmentPurchase(id: string, data: Partial<Instal
 }
 export async function deleteInstallmentPurchase(id: string): Promise<void> {
   return req(`/installment-purchases/${id}`, { method: 'DELETE' })
+}
+export async function markMsiPaid(id: string): Promise<InstallmentPurchase> {
+  return req(`/installment-purchases/${id}/mark-paid`, { method: 'POST' })
+}
+export async function liquidateMsi(id: string): Promise<InstallmentPurchase> {
+  return req(`/installment-purchases/${id}/liquidate`, { method: 'POST' })
 }
 
 // ── Savings Goals ─────────────────────────────────────────────────────────────

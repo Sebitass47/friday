@@ -8,7 +8,7 @@ import {
   createSubtask, updateSubtask, deleteSubtask,
 } from '@/lib/api'
 import type { Task } from '@/lib/types'
-import { Search, Star, Plus, X, Trash2, Check, RotateCcw, AlarmClock, Calendar, CheckSquare } from 'lucide-react'
+import { Search, Star, Plus, X, Trash2, Check, RotateCcw, AlarmClock, Calendar, CheckSquare, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LABELS = ['Trabajo', 'Personal', 'Hogar', 'Finanzas', 'Salud']
@@ -389,22 +389,29 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
         <p className={cn('text-[15px] font-bold truncate', task.is_completed ? 'line-through text-black/30 dark:text-white/40' : 'text-black/90 dark:text-white/90')}>
           {task.title}
         </p>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           {task.label && (
             <span className={cn('text-[11.5px] px-1.5 py-0.5 rounded border font-extrabold', LABEL_COLORS[task.label] ?? 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black/40 dark:text-white/40')}>
               {task.label}
             </span>
           )}
-          {task.due_time && (
+          {task.reminder_at && (
             <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35">
-              <AlarmClock size={11} /> {task.due_time.slice(0, 5)}
+              <AlarmClock size={11} />
+              {task.reminder_at.slice(11, 16)}
             </span>
           )}
           {subtasksTotal > 0 && (
-            <span className="text-[12px] font-bold text-black/40 dark:text-white/35">{subtasksDone}/{subtasksTotal}</span>
+            <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35">
+              <Check size={11} />
+              {subtasksDone}/{subtasksTotal}
+            </span>
+          )}
+          {task.notes && (
+            <FileText size={11} className="text-black/30 dark:text-white/25" />
           )}
           {task.recurrence && (
-            <RotateCcw size={11} className="text-black/25 dark:text-white/25" />
+            <RotateCcw size={11} className="text-black/30 dark:text-white/25" />
           )}
         </div>
       </div>

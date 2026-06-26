@@ -1,7 +1,7 @@
 import type {
   User, Account, RecurringExpense, InstallmentPurchase,
   SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse,
-  Expense, CreditPayment, Income
+  Expense, CreditPayment, Income, Task, Subtask
 } from './types'
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/v1'
@@ -221,4 +221,67 @@ export async function registerPushSubscription(data: { endpoint: string; p256dh:
 }
 export async function removePushSubscription(data: { endpoint: string; p256dh: string; auth: string }): Promise<void> {
   return req('/push/unsubscribe', { method: 'DELETE', body: JSON.stringify(data) })
+}
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
+
+export async function getTasks(params: { is_event?: boolean; label?: string; search?: string } = {}): Promise<Task[]> {
+  const qs = new URLSearchParams()
+  if (params.is_event !== undefined) qs.set('is_event', String(params.is_event))
+  if (params.label) qs.set('label', params.label)
+  if (params.search) qs.set('search', params.search)
+  return req(`/tasks/?${qs}`)
+}
+
+export async function createTask(data: {
+  title: string
+  notes?: string | null
+  label?: string | null
+  is_event?: boolean
+  due_date?: string | null
+  due_time?: string | null
+  location?: string | null
+  is_starred?: boolean
+  recurrence?: string | null
+  reminder_at?: string | null
+  remind_day_before?: boolean
+}): Promise<Task> {
+  return req('/tasks/', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateTask(id: string, data: Partial<{
+  title: string
+  notes: string | null
+  label: string | null
+  is_event: boolean
+  due_date: string | null
+  due_time: string | null
+  location: string | null
+  is_starred: boolean
+  is_completed: boolean
+  recurrence: string | null
+  reminder_at: string | null
+  remind_day_before: boolean
+}>): Promise<Task> {
+  return req(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  return req(`/tasks/${id}`, { method: 'DELETE' })
+}
+
+export async function toggleTaskComplete(id: string): Promise<Task> {
+  return req(`/tasks/${id}/complete`, { method: 'POST' })
+}
+
+export async function createSubtask(taskId: string, title: string): Promise<Subtask> {
+  return req(`/tasks/${taskId}/subtasks`, { method: 'POST', body: JSON.stringify({ title }) })
+}
+
+export async function updateSubtask(taskId: string, subtaskId: string, data: { title?: string; is_completed?: boolean }): Promise<Subtask> {
+  return req(`/tasks/${taskId}/subtasks/${subtaskId}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteSubtask(taskId: string, subtaskId: string): Promise<void> {
+  return req(`/tasks/${taskId}/subtasks/${subtaskId}`, { method: 'DELETE' })
 }

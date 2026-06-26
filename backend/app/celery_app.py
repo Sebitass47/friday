@@ -9,8 +9,11 @@ celery = Celery("friday", broker=REDIS_URL, backend=REDIS_URL)
 celery.conf.beat_schedule = {
     "check-payment-due-dates": {
         "task": "app.tasks.check_payment_due_dates",
-        # Every day at 9:00 AM Mexico City time
         "schedule": crontab(hour=9, minute=0),
+    },
+    "check-task-reminders": {
+        "task": "app.tasks.check_task_reminders",
+        "schedule": crontab(minute="*/5"),  # every 5 minutes
     },
 }
 celery.conf.timezone = "America/Mexico_City"

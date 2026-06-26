@@ -53,6 +53,29 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 
 Página standalone. Simula el impacto de una compra a MSI en los próximos 12 meses. Llama a `POST /projection/simulate/`.
 
+### Tareas (`/to_do`)
+
+Lista de recordatorios/tareas personales. Diseño minimalista dark con panel lateral derecho para crear/editar.
+
+**Funcionalidades:**
+- Crear tareas con título, etiqueta, fecha, hora de recordatorio, opción "avisar 1 día antes", repetición y notas
+- Subtareas con progreso (2/3)
+- Marcar como completada (toggle), estrella (favorita)
+- Filtros por etiqueta, búsqueda de texto, ordenar por fecha/nombre/estrella
+- Lista agrupada por: Hoy, Mañana, Esta semana, Sin fecha
+- Push notifications via Celery Beat cada 5 minutos
+
+### Eventos (`/events`)
+
+Lista de eventos tipo calendario. Mismo diseño que `/to_do` pero para cosas con fecha fija (citas, reuniones, etc.).
+
+**Funcionalidades:**
+- Crear eventos con título, etiqueta, fecha, hora, "Todo el día", ubicación y notas
+- Lista agrupada por: Pasados, Hoy, Mañana, Próximamente, Sin fecha
+- Push notifications automáticas 3 días, 1 día y 1 hora antes (sin configuración manual)
+- Filtro por etiqueta y búsqueda
+- Los eventos no se marcan como completados, solo se archivan en "Pasados"
+
 ---
 
 ## Backend — Endpoints por archivo
@@ -69,6 +92,7 @@ expenses.py          GET /expenses/, POST /expenses/, DELETE /expenses/{id}
 incomes.py           GET /incomes/, POST /incomes/, DELETE /incomes/{id}
 credit_payments.py   GET /credit-payments/, POST /credit-payments/
 push.py              GET /push/vapid-public-key, POST /push/subscribe, DELETE /push/unsubscribe
+tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
 ```
 
 Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/auth/login`.
@@ -90,7 +114,7 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `credit_payments` | registro de pagos de tarjeta por `statement_month/year` |
 | `push_subscriptions` | endpoint VAPID por usuario, para notificaciones push |
 
-Migraciones numeradas `0001`–`0013` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0014` en `backend/alembic/versions/`.
 
 ---
 
@@ -172,7 +196,6 @@ frontend/
 Sebastian quiere que FRIDAY sea su app personal completa. Los módulos planeados fuera de finanzas:
 
 - **Lofi / ambiente** (`/lofi`) — imagen de fondo chill, sonidos de ambiente (lluvia, ciudad, café), reproducibles con mezcla de volúmenes
-- **To-dos** — lista de tareas con recordatorios (push notifications ya están implementadas)
 - **Mininotas** — notas rápidas tipo sticky notes
 
 Todo va en el mismo repo/contenedores. No separar en microservicios.

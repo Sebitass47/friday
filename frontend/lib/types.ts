@@ -130,3 +130,31 @@ export interface Income {
   created_at: string
   updated_at: string
 }
+
+export interface Subtask {
+  id: string
+  task_id: string
+  title: string
+  is_completed: boolean
+  created_at: string
+}
+
+export interface Task {
+  id: string
+  user_id: string
+  title: string
+  notes: string | null
+  label: string | null
+  is_event: boolean
+  due_date: string | null
+  due_time: string | null
+  location: string | null
+  is_starred: boolean
+  is_completed: boolean
+  recurrence: string | null
+  reminder_at: string | null
+  remind_day_before: boolean
+  subtasks: Subtask[]
+  created_at: string
+  updated_at: string
+}

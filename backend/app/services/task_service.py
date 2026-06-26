@@ -14,6 +14,8 @@ def get_tasks(
     is_event: bool = False,
     label: Optional[str] = None,
     search: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
 ) -> List[Task]:
     q = (
         db.query(Task)
@@ -22,6 +24,10 @@ def get_tasks(
     )
     if label:
         q = q.filter(Task.label == label)
+    if date_from:
+        q = q.filter(Task.due_date >= date_from)
+    if date_to:
+        q = q.filter(Task.due_date <= date_to)
     if search:
         q = q.filter(Task.title.ilike(f"%{search}%"))
     return q.order_by(Task.due_date.asc().nullslast(), Task.created_at.desc()).all()

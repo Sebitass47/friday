@@ -17,10 +17,15 @@ def list_tasks(
     is_event: bool = Query(False),
     label: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return task_service.get_tasks(db, current_user.id, is_event=is_event, label=label, search=search)
+    from datetime import date as date_type
+    df = date_type.fromisoformat(date_from) if date_from else None
+    dt = date_type.fromisoformat(date_to) if date_to else None
+    return task_service.get_tasks(db, current_user.id, is_event=is_event, label=label, search=search, date_from=df, date_to=dt)
 
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)

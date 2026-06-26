@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/api'
 import type { Task } from '@/lib/types'
-import { Search, Plus, X, Trash2, MapPin, Clock, Calendar, AlarmClock, CalendarDays } from 'lucide-react'
+import { Search, Plus, X, Trash2, MapPin, Clock, Calendar, AlarmClock, CalendarDays, History, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LABELS = ['Trabajo', 'Personal', 'Hogar', 'Finanzas', 'Salud']
@@ -289,23 +289,33 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<Task[]>([])
+  const [allEvents, setAllEvents] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
+  const [filterDate, setFilterDate] = useState('')
+  const [showPast, setShowPast] = useState(false)
   const [panelEvent, setPanelEvent] = useState<Task | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [creating, setCreating] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const data = await getTasks({ is_event: true, label: filterLabel ?? undefined, search: search || undefined })
-      setEvents(data)
+      const data = await getTasks({ is_event: true })
+      setAllEvents(data)
     } catch { /* ignore */ }
     finally { setLoading(false) }
-  }, [filterLabel, search])
+  }, [])
 
   useEffect(() => { load() }, [load])
+
+  // ── Client-side filtering ──────────────────────────────────────────────────
+  const filtered = allEvents.filter(e => {
+    if (filterLabel && e.label !== filterLabel) return false
+    if (search && !e.title.toLowerCase().includes(search.toLowerCase())) return false
+    if (filterDate && e.due_date !== filterDate) return false
+    return true
+  })
 
   function openCreate() { setPanelEvent(null); setCreating(true); setPanelOpen(true) }
   function openEdit(e: Task) { setPanelEvent(e); setCreating(false); setPanelOpen(true) }
@@ -317,7 +327,7 @@ export default function EventsPage() {
 
   async function handleUpdate(id: string, data: Parameters<typeof updateTask>[1]) {
     const updated = await updateTask(id, data)
-    setEvents(es => es.map(e => e.id === id ? updated : e))
+    setAllEvents(es => es.map(e => e.id === id ? updated : e))
     setPanelEvent(updated)
   }
 
@@ -325,9 +335,18 @@ export default function EventsPage() {
     await deleteTask(id); await load(); closePanel()
   }
 
-  const upcoming = events.filter(e => !e.due_date || e.due_date >= today())
+  const upcoming = allEvents.filter(e => !e.due_date || e.due_date >= today())
   const dateLabel = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
-  const groups = groupEvents(events)
+
+  // Groups: when date filter active show flat list; otherwise normal groups hiding/showing past
+  const hasDateFilter = !!filterDate
+  const eventsForGroups = hasDateFilter ? filtered : filtered.filter(e => showPast || !e.due_date || e.due_date >= today())
+  const pastCount = filtered.filter(e => e.due_date && e.due_date < today()).length
+  const groups = groupEvents(eventsForGroups)
+
+  const anyFilter = !!search || !!filterLabel || !!filterDate
+
+  function clearFilters() { setSearch(''); setFilterLabel(null); setFilterDate('') }
 
   return (
     <AppLayout>
@@ -358,21 +377,44 @@ export default function EventsPage() {
             </button>
           </div>
 
-          {/* Search */}
-          <div className="mb-4">
-            <div className="relative">
+          {/* Search + date filter */}
+          <div className="flex gap-2 mb-3">
+            <div className="flex-1 relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar eventos..."
+                placeholder="Buscar por nombre..."
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-sm text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 outline-none focus:border-[#6B46E5]/40 transition-colors"
               />
             </div>
+            {/* Date picker */}
+            <div className="relative">
+              <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30 pointer-events-none" />
+              <input
+                type="date"
+                value={filterDate}
+                onChange={e => setFilterDate(e.target.value)}
+                className={cn(
+                  'pl-9 pr-3 py-2.5 rounded-xl border text-sm outline-none transition-colors cursor-pointer',
+                  filterDate
+                    ? 'bg-[#6B46E5]/10 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF] font-semibold'
+                    : 'bg-black/[0.04] dark:bg-white/[0.04] border-black/10 dark:border-white/10 text-black/60 dark:text-white/60 focus:border-[#6B46E5]/40'
+                )}
+              />
+              {filterDate && (
+                <button
+                  onClick={() => setFilterDate('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Label filters */}
-          <div className="flex gap-2 mb-6 flex-wrap">
+          {/* Label filters + past toggle */}
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
             {['Todas', ...LABELS].map(l => (
               <button
                 key={l}
@@ -387,7 +429,50 @@ export default function EventsPage() {
                 {l}
               </button>
             ))}
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Past events toggle */}
+            {!hasDateFilter && pastCount > 0 && (
+              <button
+                onClick={() => setShowPast(v => !v)}
+                className={cn(
+                  'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-semibold border transition-all',
+                  showPast
+                    ? 'bg-black/10 dark:bg-white/10 border-black/20 dark:border-white/20 text-black/70 dark:text-white/70'
+                    : 'border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:border-black/20 dark:hover:border-white/20 hover:text-black/60 dark:hover:text-white/60'
+                )}
+              >
+                <History size={12} />
+                {showPast ? 'Ocultar pasados' : `Ver pasados (${pastCount})`}
+                {showPast ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+              </button>
+            )}
+
+            {/* Clear all filters */}
+            {anyFilter && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-full border border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-all"
+              >
+                <X size={11} /> Limpiar
+              </button>
+            )}
           </div>
+
+          {/* Date filter banner */}
+          {filterDate && (
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-[#6B46E5]/10 border border-[#6B46E5]/20">
+              <Calendar size={14} className="text-[#6B46E5] dark:text-[#AF9BFF]" />
+              <span className="text-sm font-semibold text-[#6B46E5] dark:text-[#AF9BFF]">
+                Eventos del {new Date(filterDate + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+              <span className="text-xs text-[#6B46E5]/60 dark:text-[#AF9BFF]/60 ml-auto">
+                {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
 
           {/* Events list */}
           {loading ? (
@@ -395,7 +480,14 @@ export default function EventsPage() {
           ) : groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 gap-3 text-black/30 dark:text-white/30">
               <CalendarDays size={32} strokeWidth={1.5} />
-              <p className="text-sm">Sin eventos. ¡Crea uno!</p>
+              <p className="text-sm">
+                {anyFilter ? 'Sin resultados para tu búsqueda' : 'Sin eventos. ¡Crea uno!'}
+              </p>
+              {anyFilter && (
+                <button onClick={clearFilters} className="text-xs text-[#6B46E5] dark:text-[#AF9BFF] underline">
+                  Limpiar filtros
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-6">

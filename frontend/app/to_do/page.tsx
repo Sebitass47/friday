@@ -2,15 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
+import { CustomSelect } from '@/components/ui/custom-select'
 import {
   getTasks, createTask, updateTask, deleteTask, toggleTaskComplete,
   createSubtask, updateSubtask, deleteSubtask,
 } from '@/lib/api'
-import type { Task, Subtask } from '@/lib/types'
-import {
-  Search, Star, Plus, X, Trash2, Check, RotateCcw,
-  AlarmClock, Calendar, CheckSquare,
-} from 'lucide-react'
+import type { Task } from '@/lib/types'
+import { Search, Star, Plus, X, Trash2, Check, RotateCcw, AlarmClock, Calendar, CheckSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LABELS = ['Trabajo', 'Personal', 'Hogar', 'Finanzas', 'Salud']
@@ -21,13 +19,26 @@ const LABEL_COLORS: Record<string, string> = {
   Finanzas: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   Salud: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
 }
-const RECURRENCE_OPTIONS = ['No se repite', 'Diario', 'Semanal', 'Mensual']
 const RECURRENCE_MAP: Record<string, string | null> = {
   'No se repite': null, 'Diario': 'daily', 'Semanal': 'weekly', 'Mensual': 'monthly',
 }
 const RECURRENCE_LABEL: Record<string, string> = {
   daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual',
 }
+const RECURRENCE_OPTIONS = [
+  { value: 'No se repite', label: 'No se repite' },
+  { value: 'Diario', label: 'Diario' },
+  { value: 'Semanal', label: 'Semanal' },
+  { value: 'Mensual', label: 'Mensual' },
+]
+const SORT_OPTIONS = [
+  { value: 'fecha', label: 'Por fecha' },
+  { value: 'nombre', label: 'Por nombre' },
+  { value: 'estrella', label: 'Destacadas' },
+]
+
+// shared classes for light/dark inputs
+const inputCls = 'w-full text-xs bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/50 dark:focus:border-[#6B46E5]/40 transition-colors'
 
 function today() { return new Date().toISOString().split('T')[0] }
 function tomorrow() {
@@ -38,22 +49,28 @@ function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
   const tod = today()
   const tom = tomorrow()
   const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate() + 7)
-
   const groups: Record<string, Task[]> = { Hoy: [], Mañana: [], 'Esta semana': [], 'Sin fecha': [] }
+  const extra: Record<string, Task[]> = {}
+
   for (const t of tasks) {
     if (!t.due_date) { groups['Sin fecha'].push(t); continue }
     if (t.due_date === tod) { groups['Hoy'].push(t); continue }
     if (t.due_date === tom) { groups['Mañana'].push(t); continue }
-    const d = new Date(t.due_date)
+    const d = new Date(t.due_date + 'T12:00:00')
     if (d <= weekEnd) { groups['Esta semana'].push(t) } else {
       const label = d.toLocaleDateString('es-MX', { month: 'long', day: 'numeric' })
-      if (!groups[label]) groups[label] = []
-      groups[label].push(t)
+      if (!extra[label]) extra[label] = []
+      extra[label].push(t)
     }
   }
-  return Object.entries(groups)
+
+  const result = Object.entries(groups)
     .filter(([, ts]) => ts.length > 0)
     .map(([label, tasks]) => ({ label, tasks }))
+  for (const [label, tasks] of Object.entries(extra)) {
+    if (tasks.length > 0) result.push({ label, tasks })
+  }
+  return result
 }
 
 function progressRing(tasks: Task[]) {
@@ -65,10 +82,11 @@ function progressRing(tasks: Task[]) {
   return { pct, offset, circ, r }
 }
 
-// ── Task Panel (right drawer) ─────────────────────────────────────────────────
+// ── Task Panel ────────────────────────────────────────────────────────────────
 
 interface PanelProps {
   task: Task | null
+  creating: boolean
   onClose: () => void
   onSave: (data: Parameters<typeof createTask>[0]) => Promise<void>
   onUpdate: (id: string, data: Parameters<typeof updateTask>[1]) => Promise<void>
@@ -76,10 +94,9 @@ interface PanelProps {
   onAddSubtask: (taskId: string, title: string) => Promise<void>
   onToggleSubtask: (taskId: string, subId: string, done: boolean) => Promise<void>
   onDeleteSubtask: (taskId: string, subId: string) => Promise<void>
-  creating: boolean
 }
 
-function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, onToggleSubtask, onDeleteSubtask, creating }: PanelProps) {
+function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddSubtask, onToggleSubtask, onDeleteSubtask }: PanelProps) {
   const [title, setTitle] = useState(task?.title ?? '')
   const [label, setLabel] = useState<string | null>(task?.label ?? null)
   const [dueDateType, setDueDateType] = useState<'hoy' | 'manana' | 'custom' | 'none'>(
@@ -138,10 +155,14 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
     setNewSubtask('')
   }
 
+  // panel always dark — it's a drawer overlay
+  const panelLabel = 'text-[10px] text-white/30 uppercase tracking-widest mb-2'
+  const panelInput = 'w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
+
   return (
-    <div className="flex flex-col h-full bg-[#111] border-l border-white/10 w-80 min-w-[300px]">
+    <div className="flex flex-col h-full bg-[#111] border-l border-white/[0.08] w-80 min-w-[300px]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
         <span className="text-sm font-semibold text-white/80">{creating ? 'Nueva tarea' : 'Editar tarea'}</span>
         <div className="flex gap-1">
           {!creating && task && (
@@ -168,7 +189,7 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
 
         {/* Label */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Etiqueta</p>
+          <p className={panelLabel}>Etiqueta</p>
           <div className="flex flex-wrap gap-1.5">
             {LABELS.map(l => (
               <button
@@ -187,7 +208,7 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
 
         {/* Due date */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Fecha</p>
+          <p className={panelLabel}>Fecha</p>
           <div className="flex gap-1.5 mb-2">
             {(['hoy', 'manana', 'none'] as const).map(t => (
               <button
@@ -206,7 +227,7 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
             <button
               onClick={() => setDueDateType('custom')}
               className={cn(
-                'text-xs px-3 py-1.5 rounded-lg border transition-all',
+                'text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center',
                 dueDateType === 'custom'
                   ? 'bg-[#6B46E5]/20 border-[#6B46E5]/40 text-[#AF9BFF]'
                   : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
@@ -216,18 +237,13 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
             </button>
           </div>
           {dueDateType === 'custom' && (
-            <input
-              type="date"
-              value={customDate}
-              onChange={e => setCustomDate(e.target.value)}
-              className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40"
-            />
+            <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)} className={panelInput} />
           )}
         </div>
 
         {/* Reminder */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Recordatorio</p>
+          <p className={panelLabel}>Recordatorio</p>
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <AlarmClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
@@ -235,24 +251,21 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
                 type="date"
                 value={reminderDate}
                 onChange={e => setReminderDate(e.target.value)}
-                className="w-full text-xs bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40"
+                className="w-full text-xs bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
               />
             </div>
             <input
               type="time"
               value={reminderTime}
               onChange={e => setReminderTime(e.target.value)}
-              className="w-24 text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40"
+              className="w-24 text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
             />
           </div>
           {reminderTime && (
             <label className="flex items-center gap-2 mt-2 cursor-pointer">
               <div
                 onClick={() => setDayBefore(b => !b)}
-                className={cn(
-                  'w-8 h-4 rounded-full transition-colors relative',
-                  dayBefore ? 'bg-[#6B46E5]' : 'bg-white/10'
-                )}
+                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', dayBefore ? 'bg-[#6B46E5]' : 'bg-white/10')}
               >
                 <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', dayBefore ? 'left-4' : 'left-0.5')} />
               </div>
@@ -263,33 +276,31 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
 
         {/* Recurrence */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Repetir</p>
-          <select
+          <p className={panelLabel}>Repetir</p>
+          <CustomSelect
             value={recurrence}
-            onChange={e => setRecurrence(e.target.value)}
-            className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40"
-          >
-            {RECURRENCE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-          </select>
+            onChange={setRecurrence}
+            options={RECURRENCE_OPTIONS}
+          />
         </div>
 
         {/* Notes */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Notas</p>
+          <p className={panelLabel}>Notas</p>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder="Agregar nota..."
             rows={3}
-            className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 resize-none"
+            className={cn(panelInput, 'resize-none')}
           />
         </div>
 
         {/* Subtasks */}
         {!creating && task && (
           <div>
-            <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">
-              Subtareas {task.subtasks.length > 0 && `${task.subtasks.filter(s => s.is_completed).length}/${task.subtasks.length}`}
+            <p className={panelLabel}>
+              Subtareas{task.subtasks.length > 0 && ` ${task.subtasks.filter(s => s.is_completed).length}/${task.subtasks.length}`}
             </p>
             <div className="space-y-1 mb-2">
               {task.subtasks.map(sub => (
@@ -326,8 +337,8 @@ function TaskPanel({ task, onClose, onSave, onUpdate, onDelete, onAddSubtask, on
         )}
       </div>
 
-      {/* Save button */}
-      <div className="p-4 border-t border-white/10">
+      {/* Save */}
+      <div className="p-4 border-t border-white/[0.08]">
         <button
           onClick={handleSave}
           disabled={!title.trim() || saving}
@@ -350,8 +361,8 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
       className={cn(
         'flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer group transition-all',
         task.is_completed
-          ? 'bg-white/[0.01] border-white/5 opacity-60'
-          : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.05] hover:border-white/10'
+          ? 'bg-black/[0.01] dark:bg-white/[0.01] border-black/[0.05] dark:border-white/5 opacity-60'
+          : 'bg-black/[0.03] dark:bg-white/[0.03] border-black/[0.07] dark:border-white/[0.07] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:border-black/10 dark:hover:border-white/10'
       )}
       onClick={onClick}
     >
@@ -359,39 +370,39 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
         onClick={e => { e.stopPropagation(); onToggle() }}
         className={cn(
           'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-          task.is_completed ? 'bg-[#6B46E5] border-[#6B46E5]' : 'border-white/25 hover:border-[#6B46E5]/70'
+          task.is_completed ? 'bg-[#6B46E5] border-[#6B46E5]' : 'border-black/25 dark:border-white/25 hover:border-[#6B46E5]/70'
         )}
       >
         {task.is_completed && <Check size={11} className="text-white" />}
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', task.is_completed ? 'line-through text-white/40' : 'text-white/90')}>
+        <p className={cn('text-sm font-medium truncate', task.is_completed ? 'line-through text-black/30 dark:text-white/40' : 'text-black/90 dark:text-white/90')}>
           {task.title}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           {task.label && (
-            <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', LABEL_COLORS[task.label] ?? 'bg-white/5 border-white/10 text-white/40')}>
+            <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', LABEL_COLORS[task.label] ?? 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black/40 dark:text-white/40')}>
               {task.label}
             </span>
           )}
           {task.due_time && (
-            <span className="flex items-center gap-1 text-[10px] text-white/35">
+            <span className="flex items-center gap-1 text-[10px] text-black/35 dark:text-white/35">
               <AlarmClock size={10} /> {task.due_time.slice(0, 5)}
             </span>
           )}
           {subtasksTotal > 0 && (
-            <span className="text-[10px] text-white/35">{subtasksDone}/{subtasksTotal}</span>
+            <span className="text-[10px] text-black/35 dark:text-white/35">{subtasksDone}/{subtasksTotal}</span>
           )}
           {task.recurrence && (
-            <RotateCcw size={10} className="text-white/25" />
+            <RotateCcw size={10} className="text-black/25 dark:text-white/25" />
           )}
         </div>
       </div>
 
       <button
         onClick={e => { e.stopPropagation(); onStar() }}
-        className={cn('flex-shrink-0 transition-colors', task.is_starred ? 'text-amber-400' : 'text-white/20 hover:text-amber-400/60 opacity-0 group-hover:opacity-100')}
+        className={cn('flex-shrink-0 transition-colors', task.is_starred ? 'text-amber-400' : 'text-black/20 dark:text-white/20 hover:text-amber-400/60 opacity-0 group-hover:opacity-100')}
       >
         <Star size={14} fill={task.is_starred ? 'currentColor' : 'none'} />
       </button>
@@ -406,7 +417,7 @@ export default function ToDoPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<'fecha' | 'nombre' | 'estrella'>('fecha')
+  const [sortBy, setSortBy] = useState('fecha')
   const [panelTask, setPanelTask] = useState<Task | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -453,34 +464,31 @@ export default function ToDoPage() {
     setTasks(ts => ts.map(t => t.id === id ? updated : t))
   }
 
+  async function refreshAndSync(taskId: string) {
+    const all = await getTasks({ is_event: false })
+    setTasks(all)
+    const found = all.find(t => t.id === taskId)
+    if (found) setPanelTask({ ...found })
+  }
+
   async function handleAddSubtask(taskId: string, title: string) {
-    const sub = await createSubtask(taskId, title)
-    const refreshed = await getTasks({ is_event: false })
-    setTasks(refreshed)
-    const updated = refreshed.find(t => t.id === taskId) ?? panelTask
-    if (updated) setPanelTask({ ...updated })
+    await createSubtask(taskId, title)
+    await refreshAndSync(taskId)
   }
 
   async function handleToggleSubtask(taskId: string, subId: string, done: boolean) {
     await updateSubtask(taskId, subId, { is_completed: done })
-    const refreshed = await getTasks({ is_event: false })
-    setTasks(refreshed)
-    const updated = refreshed.find(t => t.id === taskId)
-    if (updated) setPanelTask({ ...updated })
+    await refreshAndSync(taskId)
   }
 
   async function handleDeleteSubtask(taskId: string, subId: string) {
     await deleteSubtask(taskId, subId)
-    const refreshed = await getTasks({ is_event: false })
-    setTasks(refreshed)
-    const updated = refreshed.find(t => t.id === taskId)
-    if (updated) setPanelTask({ ...updated })
+    await refreshAndSync(taskId)
   }
 
   const sorted = [...tasks].sort((a, b) => {
     if (sortBy === 'nombre') return a.title.localeCompare(b.title)
     if (sortBy === 'estrella') return Number(b.is_starred) - Number(a.is_starred)
-    // fecha: null last
     if (!a.due_date && !b.due_date) return 0
     if (!a.due_date) return 1
     if (!b.due_date) return -1
@@ -489,13 +497,12 @@ export default function ToDoPage() {
 
   const pending = todayTasks.filter(t => !t.is_completed).length
   const dateLabel = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
-
   const groups = groupTasks(sorted)
 
   return (
     <AppLayout>
       <div className="flex h-full">
-        {/* Main content */}
+        {/* Main */}
         <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8">
           {/* Hero */}
           <div className="flex gap-4 mb-6">
@@ -518,7 +525,7 @@ export default function ToDoPage() {
             </div>
             <button
               onClick={openCreate}
-              className="w-20 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition-all flex flex-col items-center justify-center gap-1.5 text-white/60 hover:text-white"
+              className="w-20 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all flex flex-col items-center justify-center gap-1.5 text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white"
             >
               <Plus size={20} />
               <span className="text-xs">Nueva</span>
@@ -528,23 +535,17 @@ export default function ToDoPage() {
           {/* Search + sort */}
           <div className="flex gap-3 mb-4">
             <div className="flex-1 relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar tareas..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-white placeholder-white/30 outline-none focus:border-[#6B46E5]/40 transition-colors"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-sm text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 outline-none focus:border-[#6B46E5]/40 transition-colors"
               />
             </div>
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value as typeof sortBy)}
-              className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-white/70 outline-none focus:border-[#6B46E5]/40 cursor-pointer"
-            >
-              <option value="fecha">Por fecha</option>
-              <option value="nombre">Por nombre</option>
-              <option value="estrella">Destacadas</option>
-            </select>
+            <div className="w-40">
+              <CustomSelect value={sortBy} onChange={setSortBy} options={SORT_OPTIONS} />
+            </div>
           </div>
 
           {/* Label filters */}
@@ -557,7 +558,7 @@ export default function ToDoPage() {
                   'text-xs px-3 py-1.5 rounded-full font-medium transition-all',
                   (l === 'Todas' && !filterLabel) || filterLabel === l
                     ? 'bg-[#6B46E5] text-white'
-                    : 'bg-white/[0.04] border border-white/10 text-white/50 hover:text-white hover:bg-white/[0.07]'
+                    : 'bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/[0.07] dark:hover:bg-white/[0.07]'
                 )}
               >
                 {l}
@@ -567,19 +568,19 @@ export default function ToDoPage() {
 
           {/* Task list */}
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-white/30 text-sm">Cargando...</div>
+            <div className="flex items-center justify-center h-40 text-black/30 dark:text-white/30 text-sm">Cargando...</div>
           ) : groups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 gap-3 text-white/30">
+            <div className="flex flex-col items-center justify-center h-40 gap-3 text-black/30 dark:text-white/30">
               <CheckSquare size={32} strokeWidth={1.5} />
               <p className="text-sm">Sin tareas. ¡Crea una!</p>
             </div>
           ) : (
             <div className="space-y-6">
-              {groups.map(({ label, tasks: groupTasks }) => (
+              {groups.map(({ label, tasks: gt }) => (
                 <div key={label}>
-                  <p className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-2">{label}</p>
+                  <p className="text-xs font-semibold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2">{label}</p>
                   <div className="space-y-1.5">
-                    {groupTasks.map(t => (
+                    {gt.map(t => (
                       <TaskRow
                         key={t.id}
                         task={t}
@@ -595,10 +596,11 @@ export default function ToDoPage() {
           )}
         </div>
 
-        {/* Right panel */}
+        {/* Right panel — always dark */}
         {panelOpen && (
           <TaskPanel
             task={panelTask}
+            creating={creating}
             onClose={closePanel}
             onSave={handleSave}
             onUpdate={handleUpdate}
@@ -606,7 +608,6 @@ export default function ToDoPage() {
             onAddSubtask={handleAddSubtask}
             onToggleSubtask={handleToggleSubtask}
             onDeleteSubtask={handleDeleteSubtask}
-            creating={creating}
           />
         )}
       </div>

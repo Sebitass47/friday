@@ -15,9 +15,7 @@ const LABEL_COLORS: Record<string, string> = {
   Finanzas: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   Salud: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
 }
-
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
-const MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
 function today() { return new Date().toISOString().split('T')[0] }
 function tomorrow() {
@@ -27,8 +25,6 @@ function tomorrow() {
 function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
   const tod = today()
   const tom = tomorrow()
-  const groups: { label: string; events: Task[] }[] = []
-
   const past: Task[] = []
   const todayEvs: Task[] = []
   const tomEvs: Task[] = []
@@ -43,16 +39,16 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
     upcoming.push(e)
   }
 
+  const groups: { label: string; events: Task[] }[] = []
   if (past.length) groups.push({ label: 'Pasados', events: past.reverse() })
   if (todayEvs.length) groups.push({ label: 'Hoy', events: todayEvs })
   if (tomEvs.length) groups.push({ label: 'Mañana', events: tomEvs })
   if (upcoming.length) groups.push({ label: 'Próximamente', events: upcoming })
   if (noDate.length) groups.push({ label: 'Sin fecha', events: noDate })
-
   return groups
 }
 
-// ── Event Panel ───────────────────────────────────────────────────────────────
+// ── Event Panel — always dark ─────────────────────────────────────────────────
 
 interface PanelProps {
   event: Task | null
@@ -72,6 +68,9 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
   const [location, setLocation] = useState(event?.location ?? '')
   const [notes, setNotes] = useState(event?.notes ?? '')
   const [saving, setSaving] = useState(false)
+
+  const panelLabel = 'text-[10px] text-white/30 uppercase tracking-widest mb-2'
+  const panelInput = 'w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
 
   function buildPayload() {
     return {
@@ -97,8 +96,8 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#111] border-l border-white/10 w-80 min-w-[300px]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+    <div className="flex flex-col h-full bg-[#111] border-l border-white/[0.08] w-80 min-w-[300px]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
         <span className="text-sm font-semibold text-white/80">{creating ? 'Nuevo evento' : 'Editar evento'}</span>
         <div className="flex gap-1">
           {!creating && event && (
@@ -124,7 +123,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
 
         {/* Label */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Etiqueta</p>
+          <p className={panelLabel}>Etiqueta</p>
           <div className="flex flex-wrap gap-1.5">
             {LABELS.map(l => (
               <button
@@ -143,23 +142,18 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
 
         {/* Date */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Fecha</p>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={e => setDueDate(e.target.value)}
-            className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40"
-          />
+          <p className={panelLabel}>Fecha</p>
+          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={panelInput} />
         </div>
 
         {/* Time */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] text-white/30 uppercase tracking-widest">Hora</p>
+            <p className={panelLabel + ' mb-0'}>Hora</p>
             <label className="flex items-center gap-2 cursor-pointer">
               <div
                 onClick={() => setAllDay(v => !v)}
-                className={cn('w-8 h-4 rounded-full transition-colors relative', allDay ? 'bg-[#6B46E5]' : 'bg-white/10')}
+                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', allDay ? 'bg-[#6B46E5]' : 'bg-white/10')}
               >
                 <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', allDay ? 'left-4' : 'left-0.5')} />
               </div>
@@ -167,42 +161,37 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
             </label>
           </div>
           {!allDay && (
-            <input
-              type="time"
-              value={dueTime}
-              onChange={e => setDueTime(e.target.value)}
-              className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40"
-            />
+            <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className={panelInput} />
           )}
         </div>
 
         {/* Location */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Ubicación</p>
+          <p className={panelLabel}>Ubicación</p>
           <div className="relative">
             <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
             <input
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder="Agregar ubicación..."
-              className="w-full pl-8 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40"
+              className="w-full pl-8 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors"
             />
           </div>
         </div>
 
         {/* Notes */}
         <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Notas</p>
+          <p className={panelLabel}>Notas</p>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             placeholder="Agregar nota..."
             rows={3}
-            className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 resize-none"
+            className={cn(panelInput, 'resize-none')}
           />
         </div>
 
-        {/* Reminder info */}
+        {/* Auto-reminder info */}
         <div className="rounded-xl bg-[#6B46E5]/10 border border-[#6B46E5]/20 p-3">
           <div className="flex items-start gap-2">
             <AlarmClock size={14} className="text-[#AF9BFF] mt-0.5 flex-shrink-0" />
@@ -213,7 +202,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
         </div>
       </div>
 
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/[0.08]">
         <button
           onClick={handleSave}
           disabled={!title.trim() || saving}
@@ -240,38 +229,38 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
       className={cn(
         'flex items-center gap-4 px-4 py-3.5 rounded-xl border cursor-pointer group transition-all',
         isPast
-          ? 'bg-white/[0.01] border-white/[0.05] opacity-50'
-          : 'bg-white/[0.03] border-white/[0.07] hover:bg-white/[0.05] hover:border-white/10'
+          ? 'bg-black/[0.01] dark:bg-white/[0.01] border-black/[0.05] dark:border-white/[0.05] opacity-50'
+          : 'bg-black/[0.03] dark:bg-white/[0.03] border-black/[0.07] dark:border-white/[0.07] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:border-black/10 dark:hover:border-white/10'
       )}
     >
       {/* Date badge */}
       {d ? (
         <div className={cn(
           'flex flex-col items-center justify-center w-11 h-11 rounded-xl flex-shrink-0',
-          isPast ? 'bg-white/[0.04]' : 'bg-[#6B46E5]/20 border border-[#6B46E5]/30'
+          isPast ? 'bg-black/[0.04] dark:bg-white/[0.04]' : 'bg-[#6B46E5]/20 border border-[#6B46E5]/30'
         )}>
-          <span className={cn('text-lg font-bold leading-none', isPast ? 'text-white/30' : 'text-[#AF9BFF]')}>{day}</span>
-          <span className={cn('text-[9px] font-semibold uppercase', isPast ? 'text-white/20' : 'text-[#AF9BFF]/60')}>{month}</span>
+          <span className={cn('text-lg font-bold leading-none', isPast ? 'text-black/30 dark:text-white/30' : 'text-[#6B46E5] dark:text-[#AF9BFF]')}>{day}</span>
+          <span className={cn('text-[9px] font-semibold uppercase', isPast ? 'text-black/20 dark:text-white/20' : 'text-[#6B46E5]/60 dark:text-[#AF9BFF]/60')}>{month}</span>
         </div>
       ) : (
-        <div className="w-11 h-11 rounded-xl bg-white/[0.04] flex items-center justify-center flex-shrink-0">
-          <Calendar size={16} className="text-white/20" />
+        <div className="w-11 h-11 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center flex-shrink-0">
+          <Calendar size={16} className="text-black/20 dark:text-white/20" />
         </div>
       )}
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', isPast ? 'text-white/40' : 'text-white/90')}>
+        <p className={cn('text-sm font-medium truncate', isPast ? 'text-black/40 dark:text-white/40' : 'text-black/90 dark:text-white/90')}>
           {event.title}
         </p>
         <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-          {event.due_time && !event.due_time.startsWith('00:00') && (
-            <span className="flex items-center gap-1 text-[10px] text-white/35">
+          {event.due_time && (
+            <span className="flex items-center gap-1 text-[10px] text-black/35 dark:text-white/35">
               <Clock size={10} /> {event.due_time.slice(0, 5)}
             </span>
           )}
           {event.location && (
-            <span className="flex items-center gap-1 text-[10px] text-white/35 truncate max-w-[120px]">
+            <span className="flex items-center gap-1 text-[10px] text-black/35 dark:text-white/35 truncate max-w-[120px]">
               <MapPin size={10} /> {event.location}
             </span>
           )}
@@ -280,7 +269,7 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
 
       {/* Label */}
       {event.label && (
-        <span className={cn('text-[10px] px-2 py-1 rounded-lg border font-medium flex-shrink-0', LABEL_COLORS[event.label] ?? 'bg-white/5 border-white/10 text-white/40')}>
+        <span className={cn('text-[10px] px-2 py-1 rounded-lg border font-medium flex-shrink-0', LABEL_COLORS[event.label] ?? 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black/40 dark:text-white/40')}>
           {event.label}
         </span>
       )}
@@ -329,7 +318,6 @@ export default function EventsPage() {
 
   const upcoming = events.filter(e => !e.due_date || e.due_date >= today())
   const dateLabel = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()
-
   const groups = groupEvents(events)
 
   return (
@@ -343,7 +331,9 @@ export default function EventsPage() {
                 <p className="text-xs text-purple-200/80 font-medium uppercase tracking-widest mb-1">{dateLabel}</p>
                 <h1 className="text-2xl font-bold text-white">¡Vamos, Sebastián! 👍</h1>
                 <p className="text-sm text-purple-200/80 mt-1">
-                  {upcoming.length === 0 ? 'Sin eventos próximos' : `${upcoming.length} evento${upcoming.length !== 1 ? 's' : ''} próximo${upcoming.length !== 1 ? 's' : ''}`}
+                  {upcoming.length === 0
+                    ? 'Sin eventos próximos'
+                    : `${upcoming.length} evento${upcoming.length !== 1 ? 's' : ''} próximo${upcoming.length !== 1 ? 's' : ''}`}
                 </p>
               </div>
               <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10">
@@ -352,30 +342,22 @@ export default function EventsPage() {
             </div>
             <button
               onClick={openCreate}
-              className="w-20 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition-all flex flex-col items-center justify-center gap-1.5 text-white/60 hover:text-white"
+              className="w-20 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-all flex flex-col items-center justify-center gap-1.5 text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white"
             >
               <Plus size={20} />
               <span className="text-xs">Nuevo</span>
             </button>
           </div>
 
-          {/* Note */}
-          <div className="flex items-center gap-2 mb-5 px-1">
-            <span className="text-base">💜</span>
-            <p className="text-sm text-white/40 italic">
-              Tus eventos viven aparte de los pendientes — una cena con Ana no es lo mismo que pagar la tarjeta.
-            </p>
-          </div>
-
-          {/* Search + filter */}
-          <div className="flex gap-3 mb-4">
-            <div className="flex-1 relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+          {/* Search */}
+          <div className="mb-4">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar eventos..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-sm text-white placeholder-white/30 outline-none focus:border-[#6B46E5]/40 transition-colors"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-sm text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 outline-none focus:border-[#6B46E5]/40 transition-colors"
               />
             </div>
           </div>
@@ -390,7 +372,7 @@ export default function EventsPage() {
                   'text-xs px-3 py-1.5 rounded-full font-medium transition-all',
                   (l === 'Todas' && !filterLabel) || filterLabel === l
                     ? 'bg-[#6B46E5] text-white'
-                    : 'bg-white/[0.04] border border-white/10 text-white/50 hover:text-white hover:bg-white/[0.07]'
+                    : 'bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/[0.07] dark:hover:bg-white/[0.07]'
                 )}
               >
                 {l}
@@ -400,19 +382,19 @@ export default function EventsPage() {
 
           {/* Events list */}
           {loading ? (
-            <div className="flex items-center justify-center h-40 text-white/30 text-sm">Cargando...</div>
+            <div className="flex items-center justify-center h-40 text-black/30 dark:text-white/30 text-sm">Cargando...</div>
           ) : groups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 gap-3 text-white/30">
+            <div className="flex flex-col items-center justify-center h-40 gap-3 text-black/30 dark:text-white/30">
               <CalendarDays size={32} strokeWidth={1.5} />
               <p className="text-sm">Sin eventos. ¡Crea uno!</p>
             </div>
           ) : (
             <div className="space-y-6">
-              {groups.map(({ label, events: groupEvs }) => (
+              {groups.map(({ label, events: ge }) => (
                 <div key={label}>
-                  <p className="text-xs font-semibold text-white/30 uppercase tracking-widest mb-2">{label}</p>
+                  <p className="text-xs font-semibold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2">{label}</p>
                   <div className="space-y-1.5">
-                    {groupEvs.map(e => (
+                    {ge.map(e => (
                       <EventCard key={e.id} event={e} onClick={() => openEdit(e)} />
                     ))}
                   </div>
@@ -422,7 +404,7 @@ export default function EventsPage() {
           )}
         </div>
 
-        {/* Right panel */}
+        {/* Right panel — always dark */}
         {panelOpen && (
           <EventPanel
             event={panelEvent}
@@ -437,4 +419,3 @@ export default function EventsPage() {
     </AppLayout>
   )
 }
-

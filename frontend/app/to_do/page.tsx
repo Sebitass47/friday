@@ -13,11 +13,18 @@ import { cn } from '@/lib/utils'
 
 const LABELS = ['Trabajo', 'Personal', 'Hogar', 'Finanzas', 'Salud']
 const LABEL_COLORS: Record<string, string> = {
-  Trabajo: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  Personal: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  Hogar: 'bg-green-500/20 text-green-400 border-green-500/30',
-  Finanzas: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  Salud: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
+  Trabajo: 'bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/30',
+  Personal: 'bg-purple-500/20 text-purple-500 dark:text-purple-400 border-purple-500/30',
+  Hogar: 'bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/30',
+  Finanzas: 'bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/30',
+  Salud: 'bg-pink-500/20 text-pink-500 dark:text-pink-400 border-pink-500/30',
+}
+const LABEL_LEFT_BORDER: Record<string, string> = {
+  Trabajo: 'border-l-blue-500',
+  Personal: 'border-l-purple-500',
+  Hogar: 'border-l-green-500',
+  Finanzas: 'border-l-amber-500',
+  Salud: 'border-l-pink-500',
 }
 const RECURRENCE_MAP: Record<string, string | null> = {
   'No se repite': null, 'Diario': 'daily', 'Semanal': 'weekly', 'Mensual': 'monthly',
@@ -155,14 +162,14 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
     setNewSubtask('')
   }
 
-  const panelLabel = 'text-[10px] text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
-  const panelInput = 'w-full text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
+  const panelLabel = 'text-[11px] font-extrabold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
+  const panelInput = 'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#141414] border-l border-black/[0.06] dark:border-white/[0.08] w-80 min-w-[300px]">
+    <div className="flex flex-col h-full bg-white dark:bg-[#141414] border-l border-black/[0.06] dark:border-white/[0.08] w-80 min-w-[300px]" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
-        <span className="text-sm font-semibold text-black/80 dark:text-white/80">{creating ? 'Nueva tarea' : 'Editar tarea'}</span>
+        <span className="text-[14px] font-bold text-black/80 dark:text-white/80">{creating ? 'Nueva tarea' : 'Editar tarea'}</span>
         <div className="flex gap-1">
           {!creating && task && (
             <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 transition-colors">
@@ -182,7 +189,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Nombre de la tarea"
-          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-base font-medium outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
+          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-[19px] font-bold outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
           onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
         />
 
@@ -355,10 +362,13 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
 function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: () => void; onStar: () => void; onClick: () => void }) {
   const subtasksDone = task.subtasks.filter(s => s.is_completed).length
   const subtasksTotal = task.subtasks.length
+  const leftBorder = task.label ? LABEL_LEFT_BORDER[task.label] : null
+
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer group transition-all',
+        'flex items-center gap-3 px-4 py-3 rounded-xl border border-l-4 cursor-pointer group transition-all overflow-hidden',
+        leftBorder ?? 'border-l-transparent',
         task.is_completed
           ? 'bg-black/[0.01] dark:bg-white/[0.01] border-black/[0.05] dark:border-white/5 opacity-60'
           : 'bg-black/[0.03] dark:bg-white/[0.03] border-black/[0.07] dark:border-white/[0.07] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:border-black/10 dark:hover:border-white/10'
@@ -376,25 +386,25 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
       </button>
 
       <div className="flex-1 min-w-0">
-        <p className={cn('text-sm font-medium truncate', task.is_completed ? 'line-through text-black/30 dark:text-white/40' : 'text-black/90 dark:text-white/90')}>
+        <p className={cn('text-[15px] font-bold truncate', task.is_completed ? 'line-through text-black/30 dark:text-white/40' : 'text-black/90 dark:text-white/90')}>
           {task.title}
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           {task.label && (
-            <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', LABEL_COLORS[task.label] ?? 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black/40 dark:text-white/40')}>
+            <span className={cn('text-[11.5px] px-1.5 py-0.5 rounded border font-extrabold', LABEL_COLORS[task.label] ?? 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-black/40 dark:text-white/40')}>
               {task.label}
             </span>
           )}
           {task.due_time && (
-            <span className="flex items-center gap-1 text-[10px] text-black/35 dark:text-white/35">
-              <AlarmClock size={10} /> {task.due_time.slice(0, 5)}
+            <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35">
+              <AlarmClock size={11} /> {task.due_time.slice(0, 5)}
             </span>
           )}
           {subtasksTotal > 0 && (
-            <span className="text-[10px] text-black/35 dark:text-white/35">{subtasksDone}/{subtasksTotal}</span>
+            <span className="text-[12px] font-bold text-black/40 dark:text-white/35">{subtasksDone}/{subtasksTotal}</span>
           )}
           {task.recurrence && (
-            <RotateCcw size={10} className="text-black/25 dark:text-white/25" />
+            <RotateCcw size={11} className="text-black/25 dark:text-white/25" />
           )}
         </div>
       </div>
@@ -507,9 +517,9 @@ export default function ToDoPage() {
           <div className="flex gap-4 mb-6">
             <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between">
               <div>
-                <p className="text-xs text-purple-200/80 font-medium uppercase tracking-widest mb-1">{dateLabel}</p>
-                <h1 className="text-2xl font-bold text-white">¡Vamos, Sebastián! 👍</h1>
-                <p className="text-sm text-purple-200/80 mt-1">
+                <p className="text-[12px] font-bold text-purple-200/80 uppercase tracking-widest mb-1">{dateLabel}</p>
+                <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, Sebastián! 👍</h1>
+                <p className="text-[15px] font-semibold text-purple-200/80 mt-1">
                   {pending === 0 ? 'Todas las tareas de hoy completadas 🎉' : `Te quedan ${pending} tareas para hoy`}
                 </p>
               </div>
@@ -519,7 +529,7 @@ export default function ToDoPage() {
                   <circle cx={36} cy={36} r={r} fill="none" stroke="white" strokeWidth={5}
                     strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700" />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold">{pct}%</span>
+                <span className="absolute inset-0 flex items-center justify-center text-white text-[21px] font-extrabold">{pct}%</span>
               </div>
             </div>
             <button
@@ -577,7 +587,7 @@ export default function ToDoPage() {
             <div className="space-y-6">
               {groups.map(({ label, tasks: gt }) => (
                 <div key={label}>
-                  <p className="text-xs font-semibold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2">{label}</p>
+                  <p className="text-[13px] font-extrabold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2">{label}</p>
                   <div className="space-y-1.5">
                     {gt.map(t => (
                       <TaskRow

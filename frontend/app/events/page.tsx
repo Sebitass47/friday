@@ -69,8 +69,8 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
   const [notes, setNotes] = useState(event?.notes ?? '')
   const [saving, setSaving] = useState(false)
 
-  const panelLabel = 'text-[10px] text-white/30 uppercase tracking-widest mb-2'
-  const panelInput = 'w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
+  const panelLabel = 'text-[10px] text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
+  const panelInput = 'w-full text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
 
   function buildPayload() {
     return {
@@ -96,16 +96,16 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#111] border-l border-white/[0.08] w-80 min-w-[300px]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
-        <span className="text-sm font-semibold text-white/80">{creating ? 'Nuevo evento' : 'Editar evento'}</span>
+    <div className="flex flex-col h-full bg-white dark:bg-[#141414] border-l border-black/[0.06] dark:border-white/[0.08] w-80 min-w-[300px]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <span className="text-sm font-semibold text-black/80 dark:text-white/80">{creating ? 'Nuevo evento' : 'Editar evento'}</span>
         <div className="flex gap-1">
           {!creating && event && (
-            <button onClick={() => onDelete(event.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+            <button onClick={() => onDelete(event.id)} className="p-1.5 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 transition-colors">
               <Trash2 size={15} />
             </button>
           )}
-          <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
             <X size={15} />
           </button>
         </div>
@@ -117,7 +117,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
           onChange={e => setTitle(e.target.value)}
           placeholder="Nombre del evento"
           autoFocus={creating}
-          className="w-full bg-transparent text-white placeholder-white/30 text-base font-medium outline-none border-b border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
+          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-base font-medium outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
           onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
         />
 
@@ -131,7 +131,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
                 onClick={() => setLabel(label === l ? null : l)}
                 className={cn(
                   'text-xs px-2.5 py-1 rounded-full border transition-all',
-                  label === l ? LABEL_COLORS[l] : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
+                  label === l ? LABEL_COLORS[l] : 'border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:border-black/20 dark:hover:border-white/20 hover:text-black/60 dark:hover:text-white/60'
                 )}
               >
                 {l}
@@ -153,11 +153,11 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
             <label className="flex items-center gap-2 cursor-pointer">
               <div
                 onClick={() => setAllDay(v => !v)}
-                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', allDay ? 'bg-[#6B46E5]' : 'bg-white/10')}
+                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', allDay ? 'bg-[#6B46E5]' : 'bg-black/10 dark:bg-white/10')}
               >
                 <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', allDay ? 'left-4' : 'left-0.5')} />
               </div>
-              <span className="text-xs text-white/50">Todo el día</span>
+              <span className="text-xs text-black/50 dark:text-white/50">Todo el día</span>
             </label>
           </div>
           {!allDay && (
@@ -169,12 +169,12 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
         <div>
           <p className={panelLabel}>Ubicación</p>
           <div className="relative">
-            <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+            <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" />
             <input
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder="Agregar ubicación..."
-              className="w-full pl-8 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-lg text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors"
+              className="w-full pl-8 pr-3 py-2 text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors"
             />
           </div>
         </div>
@@ -202,7 +202,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
         </div>
       </div>
 
-      <div className="p-4 border-t border-white/[0.08]">
+      <div className="p-4 border-t border-black/[0.06] dark:border-white/[0.08]">
         <button
           onClick={handleSave}
           disabled={!title.trim() || saving}

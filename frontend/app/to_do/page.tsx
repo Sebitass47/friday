@@ -155,22 +155,21 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
     setNewSubtask('')
   }
 
-  // panel always dark — it's a drawer overlay
-  const panelLabel = 'text-[10px] text-white/30 uppercase tracking-widest mb-2'
-  const panelInput = 'w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
+  const panelLabel = 'text-[10px] text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
+  const panelInput = 'w-full text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
 
   return (
-    <div className="flex flex-col h-full bg-[#111] border-l border-white/[0.08] w-80 min-w-[300px]">
+    <div className="flex flex-col h-full bg-white dark:bg-[#141414] border-l border-black/[0.06] dark:border-white/[0.08] w-80 min-w-[300px]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
-        <span className="text-sm font-semibold text-white/80">{creating ? 'Nueva tarea' : 'Editar tarea'}</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <span className="text-sm font-semibold text-black/80 dark:text-white/80">{creating ? 'Nueva tarea' : 'Editar tarea'}</span>
         <div className="flex gap-1">
           {!creating && task && (
-            <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+            <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 transition-colors">
               <Trash2 size={15} />
             </button>
           )}
-          <button onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
             <X size={15} />
           </button>
         </div>
@@ -183,7 +182,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Nombre de la tarea"
-          className="w-full bg-transparent text-white placeholder-white/30 text-base font-medium outline-none border-b border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
+          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-base font-medium outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
           onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
         />
 
@@ -197,7 +196,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
                 onClick={() => setLabel(label === l ? null : l)}
                 className={cn(
                   'text-xs px-2.5 py-1 rounded-full border transition-all',
-                  label === l ? LABEL_COLORS[l] : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
+                  label === l ? LABEL_COLORS[l] : 'border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:border-black/20 dark:hover:border-white/20 hover:text-black/60 dark:hover:text-white/60'
                 )}
               >
                 {l}
@@ -218,7 +217,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
                   'text-xs px-3 py-1.5 rounded-lg border transition-all',
                   dueDateType === t
                     ? 'bg-[#6B46E5]/20 border-[#6B46E5]/40 text-[#AF9BFF]'
-                    : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
+                    : 'border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:border-black/20 dark:hover:border-white/20 hover:text-black/60 dark:hover:text-white/60'
                 )}
               >
                 {t === 'hoy' ? 'Hoy' : t === 'manana' ? 'Mañana' : 'Sin fecha'}
@@ -229,8 +228,8 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
               className={cn(
                 'text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center',
                 dueDateType === 'custom'
-                  ? 'bg-[#6B46E5]/20 border-[#6B46E5]/40 text-[#AF9BFF]'
-                  : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white/60'
+                  ? 'bg-[#6B46E5]/20 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF]'
+                  : 'border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:border-black/20 dark:hover:border-white/20 hover:text-black/60 dark:hover:text-white/60'
               )}
             >
               <Calendar size={12} />
@@ -246,30 +245,30 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
           <p className={panelLabel}>Recordatorio</p>
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <AlarmClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+              <AlarmClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" />
               <input
                 type="date"
                 value={reminderDate}
                 onChange={e => setReminderDate(e.target.value)}
-                className="w-full text-xs bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
+                className="w-full text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg pl-8 pr-3 py-2 text-black/80 dark:text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
               />
             </div>
             <input
               type="time"
               value={reminderTime}
               onChange={e => setReminderTime(e.target.value)}
-              className="w-24 text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
+              className="w-24 text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
             />
           </div>
           {reminderTime && (
             <label className="flex items-center gap-2 mt-2 cursor-pointer">
               <div
                 onClick={() => setDayBefore(b => !b)}
-                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', dayBefore ? 'bg-[#6B46E5]' : 'bg-white/10')}
+                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', dayBefore ? 'bg-[#6B46E5]' : 'bg-black/10 dark:bg-white/10')}
               >
                 <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', dayBefore ? 'left-4' : 'left-0.5')} />
               </div>
-              <span className="text-xs text-white/50">Avisar un día antes</span>
+              <span className="text-xs text-black/50 dark:text-white/50">Avisar un día antes</span>
             </label>
           )}
         </div>
@@ -309,17 +308,17 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
                     onClick={() => onToggleSubtask(task.id, sub.id, !sub.is_completed)}
                     className={cn(
                       'w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all',
-                      sub.is_completed ? 'bg-[#6B46E5] border-[#6B46E5]' : 'border-white/20 hover:border-[#6B46E5]/60'
+                      sub.is_completed ? 'bg-[#6B46E5] border-[#6B46E5]' : 'border-black/20 dark:border-white/20 hover:border-[#6B46E5]/60'
                     )}
                   >
                     {sub.is_completed && <Check size={10} className="text-white" />}
                   </button>
-                  <span className={cn('text-xs flex-1', sub.is_completed ? 'line-through text-white/30' : 'text-white/70')}>
+                  <span className={cn('text-xs flex-1', sub.is_completed ? 'line-through text-black/30 dark:text-white/30' : 'text-black/70 dark:text-white/70')}>
                     {sub.title}
                   </span>
                   <button
                     onClick={() => onDeleteSubtask(task.id, sub.id)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-white/30 hover:text-red-400 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-black/30 dark:text-white/30 hover:text-red-500 dark:hover:text-red-400 transition-all"
                   >
                     <X size={11} />
                   </button>
@@ -331,14 +330,14 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
               onChange={e => setNewSubtask(e.target.value)}
               onKeyDown={handleAddSubtask}
               placeholder="Agregar una tarea..."
-              className="w-full text-xs bg-transparent text-white/60 placeholder-white/20 outline-none border-b border-white/10 pb-1 focus:border-[#6B46E5]/40"
+              className="w-full text-xs bg-transparent text-black/60 dark:text-white/60 placeholder-black/20 dark:placeholder-white/20 outline-none border-b border-black/10 dark:border-white/10 pb-1 focus:border-[#6B46E5]/40"
             />
           </div>
         )}
       </div>
 
       {/* Save */}
-      <div className="p-4 border-t border-white/[0.08]">
+      <div className="p-4 border-t border-black/[0.06] dark:border-white/[0.08]">
         <button
           onClick={handleSave}
           disabled={!title.trim() || saving}

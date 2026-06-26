@@ -418,7 +418,7 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
 
       <button
         onClick={e => { e.stopPropagation(); onStar() }}
-        className={cn('flex-shrink-0 transition-colors', task.is_starred ? 'text-amber-400' : 'text-black/20 dark:text-white/20 hover:text-amber-400/60 opacity-0 group-hover:opacity-100')}
+        className={cn('flex-shrink-0 transition-colors', task.is_starred ? 'text-amber-400' : 'text-black/20 dark:text-white/25 hover:text-amber-400')}
       >
         <Star size={14} fill={task.is_starred ? 'currentColor' : 'none'} />
       </button>

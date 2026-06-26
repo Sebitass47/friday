@@ -36,7 +36,7 @@ const ACCENT_BG_SOFT = 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10'
 const ACCENT_BORDER = 'border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
 const CORAL = '#FF6B6B'
 
-type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | null
+type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | 'edit-income' | null
 
 const MSI_EMPTY = { name: '', total_amount: 0, monthly_amount: 0, total_installments: 12, remaining_installments: 12, start_date: today(), account_id: null as string | null, is_new_charge: true }
 const GOAL_EMPTY = { name: '', target_amount: 0, current_amount: 0, monthly_contribution: 0 }
@@ -201,6 +201,12 @@ export default function DashboardPage() {
   const [regSaving, setRegSaving] = useState(false)
   const [regError, setRegError] = useState('')
 
+  // Edit monthly income modal
+  const [editIncomeAmount, setEditIncomeAmount] = useState('')
+  const [editIncomeStartDay, setEditIncomeStartDay] = useState(1)
+  const [editIncomeSaving, setEditIncomeSaving] = useState(false)
+  const [editIncomeError, setEditIncomeError] = useState('')
+
   async function loadAll() {
     const [u, p, m, g, r, a, ex, inc] = await Promise.all([
       getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses(), getAccounts(), getExpenses(),
@@ -244,6 +250,27 @@ export default function DashboardPage() {
       setProjection(p); setAccounts(a); setExpenses(ex)
     } catch { setRegError('Error al guardar') }
     finally { setRegSaving(false) }
+  }
+
+  // Edit monthly income
+  function openEditIncome() {
+    setEditIncomeAmount(String(monthlyIncomeData?.amount ?? ''))
+    setEditIncomeStartDay(monthlyIncomeData?.income_start_day ?? 1)
+    setEditIncomeError('')
+    setActiveModal('edit-income')
+  }
+  async function handleEditIncome() {
+    const amount = parseFloat(editIncomeAmount)
+    if (!editIncomeAmount || isNaN(amount) || amount <= 0) { setEditIncomeError('Ingresa un monto válido'); return }
+    setEditIncomeSaving(true); setEditIncomeError('')
+    try {
+      const updated = await setMonthlyIncome(amount, editIncomeStartDay)
+      setMonthlyIncomeData(updated)
+      setActiveModal(null)
+      const p = await getProjection(12)
+      setProjection(p)
+    } catch { setEditIncomeError('Error al guardar') }
+    finally { setEditIncomeSaving(false) }
   }
 
   // MSI CRUD
@@ -526,11 +553,19 @@ export default function DashboardPage() {
 
           <div className="flex flex-col gap-4">
             <div className={`${cardCls} p-5 flex-1`}>
-              <div className="flex items-center gap-2 mb-1">
-                <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" />
-                <p className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Ingreso mensual</p>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" />
+                  <p className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Ingreso mensual</p>
+                </div>
+                <button onClick={openEditIncome} className="p-1 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                  <Pencil size={13} />
+                </button>
               </div>
-              <p className="text-2xl font-semibold text-black dark:text-white tabular-nums">{fmt(thisMonth?.income ?? 0)}</p>
+              <p className="text-2xl font-semibold text-black dark:text-white tabular-nums">{fmt(monthlyIncomeData?.amount ?? thisMonth?.income ?? 0)}</p>
+              {monthlyIncomeData && (
+                <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">Llega el día {monthlyIncomeData.income_start_day}</p>
+              )}
             </div>
             <div className={`${cardCls} p-5 flex-1`}>
               <div className="flex items-center gap-2 mb-1">
@@ -1076,6 +1111,33 @@ export default function DashboardPage() {
             </FormField>
           )}
           <FormActions onCancel={() => setActiveModal(null)} onSave={saveRec} saving={recSaving} error={recError} />
+        </Modal>
+      )}
+
+      {/* Edit monthly income */}
+      {activeModal === 'edit-income' && (
+        <Modal title="Editar ingreso mensual" onClose={() => setActiveModal(null)}>
+          <FormField label="Monto mensual">
+            <input
+              type="number" min={0} placeholder="30000"
+              value={editIncomeAmount}
+              onChange={e => setEditIncomeAmount(e.target.value)}
+              className={inputCls()}
+              autoFocus
+            />
+          </FormField>
+          <FormField label="Día en que recibes el ingreso (1–28)">
+            <input
+              type="number" min={1} max={28}
+              value={editIncomeStartDay}
+              onChange={e => setEditIncomeStartDay(Math.min(28, Math.max(1, parseInt(e.target.value) || 1)))}
+              className={inputCls()}
+            />
+            <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">
+              Antes de este día, el ingreso no se suma al disponible del mes actual
+            </p>
+          </FormField>
+          <FormActions onCancel={() => setActiveModal(null)} onSave={handleEditIncome} saving={editIncomeSaving} saveLabel="Guardar" error={editIncomeError} />
         </Modal>
       )}
 

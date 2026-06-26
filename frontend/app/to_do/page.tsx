@@ -19,12 +19,12 @@ const LABEL_COLORS: Record<string, string> = {
   Finanzas: 'bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/30',
   Salud: 'bg-pink-500/20 text-pink-500 dark:text-pink-400 border-pink-500/30',
 }
-const LABEL_LEFT_BORDER: Record<string, string> = {
-  Trabajo: 'border-l-blue-500',
-  Personal: 'border-l-purple-500',
-  Hogar: 'border-l-green-500',
-  Finanzas: 'border-l-amber-500',
-  Salud: 'border-l-pink-500',
+const LABEL_HEX: Record<string, string> = {
+  Trabajo: '#3b82f6',
+  Personal: '#a855f7',
+  Hogar: '#22c55e',
+  Finanzas: '#f59e0b',
+  Salud: '#ec4899',
 }
 const RECURRENCE_MAP: Record<string, string | null> = {
   'No se repite': null, 'Diario': 'daily', 'Semanal': 'weekly', 'Mensual': 'monthly',
@@ -362,17 +362,17 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
 function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: () => void; onStar: () => void; onClick: () => void }) {
   const subtasksDone = task.subtasks.filter(s => s.is_completed).length
   const subtasksTotal = task.subtasks.length
-  const leftBorder = task.label ? LABEL_LEFT_BORDER[task.label] : null
+  const accentColor = task.label ? LABEL_HEX[task.label] : undefined
 
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-xl border border-l-4 cursor-pointer group transition-all overflow-hidden',
-        leftBorder ?? 'border-l-transparent',
+        'flex items-center gap-3 px-4 py-3 rounded-xl border-y border-r border-l-4 cursor-pointer group transition-all duration-200',
         task.is_completed
-          ? 'bg-black/[0.01] dark:bg-white/[0.01] border-black/[0.05] dark:border-white/5 opacity-60'
-          : 'bg-black/[0.03] dark:bg-white/[0.03] border-black/[0.07] dark:border-white/[0.07] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:border-black/10 dark:hover:border-white/10'
+          ? 'bg-black/[0.02] dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] opacity-55 shadow-none'
+          : 'bg-white dark:bg-white/[0.04] dark:backdrop-blur-sm border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.45)] hover:-translate-y-px'
       )}
+      style={{ borderLeftColor: accentColor ?? 'transparent' }}
       onClick={onClick}
     >
       <button
@@ -512,10 +512,10 @@ export default function ToDoPage() {
     <AppLayout>
       <div className="flex h-full">
         {/* Main */}
-        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8">
+        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8 bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(107,70,229,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(107,70,229,0.12),transparent)]">
           {/* Hero */}
           <div className="flex gap-4 mb-6">
-            <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between">
+            <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between shadow-[0_8px_32px_rgba(107,70,229,0.35)]">
               <div>
                 <p className="text-[12px] font-bold text-purple-200/80 uppercase tracking-widest mb-1">{dateLabel}</p>
                 <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, Sebastián! 👍</h1>

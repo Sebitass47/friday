@@ -15,12 +15,12 @@ const LABEL_COLORS: Record<string, string> = {
   Finanzas: 'bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/30',
   Salud: 'bg-pink-500/20 text-pink-500 dark:text-pink-400 border-pink-500/30',
 }
-const LABEL_LEFT_BORDER: Record<string, string> = {
-  Trabajo: 'border-l-blue-500',
-  Personal: 'border-l-purple-500',
-  Hogar: 'border-l-green-500',
-  Finanzas: 'border-l-amber-500',
-  Salud: 'border-l-pink-500',
+const LABEL_HEX: Record<string, string> = {
+  Trabajo: '#3b82f6',
+  Personal: '#a855f7',
+  Hogar: '#22c55e',
+  Finanzas: '#f59e0b',
+  Salud: '#ec4899',
 }
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
 
@@ -229,18 +229,18 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
   const day = d?.getDate()
   const month = d ? MONTHS_ES[d.getMonth()] : null
   const isPast = event.due_date ? event.due_date < today() : false
-  const leftBorder = event.label ? LABEL_LEFT_BORDER[event.label] : null
+  const accentColor = event.label ? LABEL_HEX[event.label] : undefined
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        'flex items-center gap-4 px-4 py-3.5 rounded-xl border border-l-4 cursor-pointer group transition-all overflow-hidden',
-        leftBorder ?? 'border-l-transparent',
+        'flex items-center gap-4 px-4 py-3.5 rounded-xl border-y border-r border-l-4 cursor-pointer group transition-all duration-200',
         isPast
-          ? 'bg-black/[0.01] dark:bg-white/[0.01] border-black/[0.05] dark:border-white/[0.05] opacity-50'
-          : 'bg-black/[0.03] dark:bg-white/[0.03] border-black/[0.07] dark:border-white/[0.07] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:border-black/10 dark:hover:border-white/10'
+          ? 'bg-black/[0.02] dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] opacity-50 shadow-none'
+          : 'bg-white dark:bg-white/[0.04] dark:backdrop-blur-sm border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.45)] hover:-translate-y-px'
       )}
+      style={{ borderLeftColor: accentColor ?? 'transparent' }}
     >
       {/* Date badge */}
       {d ? (
@@ -332,10 +332,10 @@ export default function EventsPage() {
   return (
     <AppLayout>
       <div className="flex h-full">
-        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8">
+        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8 bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(107,70,229,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(107,70,229,0.12),transparent)]">
           {/* Hero */}
           <div className="flex gap-4 mb-6">
-            <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between">
+            <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between shadow-[0_8px_32px_rgba(107,70,229,0.35)]">
               <div>
                 <p className="text-[12px] font-bold text-purple-200/80 uppercase tracking-widest mb-1">{dateLabel}</p>
                 <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, Sebastián! 👍</h1>

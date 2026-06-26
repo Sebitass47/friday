@@ -23,6 +23,7 @@ import {
   Wallet, PiggyBank, Banknote, Zap, Bell, BellOff,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { DateInput } from '@/components/ui/date-input'
 import { pushSupported, getRegistration, getCurrentSubscription, subscribePush, unsubscribePush } from '@/lib/push'
 
 const fmt = (n: number) =>
@@ -1025,7 +1026,11 @@ export default function DashboardPage() {
             </FormField>
           </div>
           <FormField label="Fecha de inicio">
-            <input type="date" value={msiForm.start_date} onChange={e => setMsiForm(f => ({ ...f, start_date: e.target.value }))} className={inputCls()} />
+            <DateInput
+              value={msiForm.start_date}
+              onChange={v => setMsiForm(f => ({ ...f, start_date: v }))}
+              inputClassName="bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 rounded-xl py-2 text-sm text-black dark:text-white focus:border-[#6B46E5] dark:focus:border-[#AF9BFF]"
+            />
           </FormField>
 
           {creditCards.length > 0 && (

@@ -5,6 +5,7 @@ import AppLayout from '@/components/layout/AppLayout'
 import { getTasks, createTask, updateTask, deleteTask } from '@/lib/api'
 import type { Task } from '@/lib/types'
 import { Search, Plus, X, Trash2, MapPin, Clock, Calendar, AlarmClock, CalendarDays, History, ChevronDown, ChevronUp } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 import { cn } from '@/lib/utils'
 
 const LABELS = ['Trabajo', 'Personal', 'Hogar', 'Finanzas', 'Salud']
@@ -150,7 +151,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
         {/* Date */}
         <div>
           <p className={panelLabel}>Fecha</p>
-          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={panelInput} />
+          <DateInput value={dueDate} onChange={setDueDate} />
         </div>
 
         {/* Time */}
@@ -389,28 +390,17 @@ export default function EventsPage() {
               />
             </div>
             {/* Date picker */}
-            <div className="relative">
-              <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30 pointer-events-none" />
-              <input
-                type="date"
-                value={filterDate}
-                onChange={e => setFilterDate(e.target.value)}
-                className={cn(
-                  'pl-9 pr-3 py-2.5 rounded-xl border text-sm outline-none transition-colors cursor-pointer',
-                  filterDate
-                    ? 'bg-[#6B46E5]/10 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF] font-semibold'
-                    : 'bg-black/[0.04] dark:bg-white/[0.04] border-black/10 dark:border-white/10 text-black/60 dark:text-white/60 focus:border-[#6B46E5]/40'
-                )}
-              />
-              {filterDate && (
-                <button
-                  onClick={() => setFilterDate('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"
-                >
-                  <X size={13} />
-                </button>
+            <DateInput
+              value={filterDate}
+              onChange={setFilterDate}
+              clearable
+              inputClassName={cn(
+                'py-2.5 rounded-xl text-sm',
+                filterDate
+                  ? 'bg-[#6B46E5]/10 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF] font-semibold'
+                  : 'bg-black/[0.04] dark:bg-white/[0.04] border-black/10 dark:border-white/10 text-black/60 dark:text-white/60'
               )}
-            </div>
+            />
           </div>
 
           {/* Label filters + past toggle */}

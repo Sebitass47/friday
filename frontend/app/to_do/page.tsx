@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { CustomSelect } from '@/components/ui/custom-select'
+import { DateInput } from '@/components/ui/date-input'
 import {
   getTasks, createTask, updateTask, deleteTask, toggleTaskComplete,
   createSubtask, updateSubtask, deleteSubtask,
@@ -243,7 +244,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
             </button>
           </div>
           {dueDateType === 'custom' && (
-            <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)} className={panelInput} />
+            <DateInput value={customDate} onChange={setCustomDate} />
           )}
         </div>
 
@@ -251,15 +252,12 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
         <div>
           <p className={panelLabel}>Recordatorio</p>
           <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <AlarmClock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" />
-              <input
-                type="date"
-                value={reminderDate}
-                onChange={e => setReminderDate(e.target.value)}
-                className="w-full text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg pl-8 pr-3 py-2 text-black/80 dark:text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
-              />
-            </div>
+            <DateInput
+              value={reminderDate}
+              onChange={setReminderDate}
+              className="flex-1"
+              inputClassName="text-xs py-2"
+            />
             <input
               type="time"
               value={reminderTime}

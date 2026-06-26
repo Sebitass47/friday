@@ -6,6 +6,7 @@ import ProjectionChart from '@/components/charts/ProjectionChart'
 import { getProjection, simulateProjection } from '@/lib/api'
 import type { ProjectionResponse, SimulationResponse } from '@/lib/types'
 import { Sparkles, AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react'
+import { DateInput } from '@/components/ui/date-input'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
@@ -84,8 +85,11 @@ export default function SimuladorPage() {
             </div>
             <div>
               <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Inicio</label>
-              <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} onFocus={reset}
-                className="w-full bg-white dark:bg-[#0A0A0A] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#4F8EF7]" />
+              <DateInput
+                value={form.start_date}
+                onChange={v => { setForm(f => ({ ...f, start_date: v })); reset() }}
+                inputClassName="bg-white dark:bg-[#0A0A0A] border-black/10 dark:border-white/10 rounded-lg py-2 text-sm text-black dark:text-white focus:border-[#4F8EF7]"
+              />
             </div>
           </div>
 

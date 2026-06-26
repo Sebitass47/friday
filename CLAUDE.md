@@ -1,6 +1,9 @@
 # FRIDAY — Contexto para agentes
 
-> **Instrucción para el agente:** Al terminar cualquier tarea, actualiza este archivo. Si agregaste un módulo, endpoint, modelo, página o componente nuevo — añádelo en la sección correspondiente. Si completaste algo de la lista "Lo que viene", muévelo a la sección que le corresponda. Mantén este archivo como fuente de verdad del estado actual del proyecto.
+> **Instrucción para el agente:** Al terminar cualquier tarea:
+> 1. **Actualiza este archivo** — si agregaste módulo, endpoint, modelo, página o componente, añádelo en la sección correspondiente. Si completaste algo de "Lo que viene", muévelo a donde corresponda.
+> 2. **Haz un commit** con un mensaje descriptivo de lo que se hizo (en inglés, estilo convencional: `feat:`, `fix:`, `docs:`, etc.). Siempre incluye `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`.
+> 3. **Reconstruye y reinicia los contenedores afectados** si están corriendo: `docker compose build <servicio> && docker compose up -d --no-deps <servicio>`. Si cambiaron backend y frontend, reconstruye ambos.
 
 
 

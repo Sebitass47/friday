@@ -1,76 +1,210 @@
-# FRIDAY 💰
+# FRIDAY
 
-**Personal Financial Projection App** — Proyección financiera personal con estilo glassmorphism
+Proyección financiera personal con glassmorphism.
 
-## ✨ Features
+## Stack
 
-- 📊 **Proyección mensual** — Ve tu dinero disponible los próximos 12 meses
-- 💳 **Gestión de gastos** — Registra gastos diarios (efectivo, débito, crédito)
-- 💰 **Ingresos puntuales** — Registra ingresos extras del día a día
-- 🔄 **Gastos recurrentes** — Netflix, Spotify, renta, etc.
-- 🛍️ **MSI tracking** — Seguimiento de compras a meses sin intereses
-- 🎯 **Metas de ahorro** — Con fecha estimada de cumplimiento
-- 🎲 **Simulador** — Prueba "qué pasaría si..." antes de comprometerte
-- 📱 **PWA** — Instálala en tu móvil como app nativa
-- 🌙 **Dark mode exclusivo** — Tema oscuro con glassmorphism estilo Apple
+**Backend:** FastAPI · PostgreSQL · SQLAlchemy 2.x · Alembic · Celery + Redis · pywebpush
+**Frontend:** Next.js 14 · TypeScript · Tailwind CSS · PWA (Service Worker)
+**Infra:** Docker Compose · Nginx · Let's Encrypt (producción)
 
-## 🎨 Design System
+---
 
-- **Glassmorphism** — Efecto liquid glass con backdrop blur
-- **Paleta minimalista**
-  - Fondo: `#0A0A0A`
-  - Cards: `bg-white/[0.03]` con `backdrop-blur-xl`
-  - Bordes: `border-white/10`
-  - Texto: `white` / `white/60` / `white/40`
-  - Acento positivo: `#A8FF3E`
-  - Acento negativo: `#FF4444`
-- **Tipografía** — Geist Sans con números tabulares
-- **Animaciones** — Transiciones suaves, hover effects, scale on click
-- **Responsive** — Mobile-first, optimizado para todas las pantallas
+## Desarrollo local
 
-## 🚀 Stack
-
-### Backend
-- **FastAPI** — API REST moderna
-- **PostgreSQL** — Base de datos relacional
-- **SQLAlchemy 2.x** — ORM con modelos tipados
-- **Alembic** — Migraciones de base de datos
-- **Celery + Redis** — Tareas asíncronas (futuro)
-
-### Frontend
-- **Next.js 14** — App Router con Turbopack
-- **TypeScript** — Type safety en todo el código
-- **Tailwind CSS 4** — Utility-first CSS
-- **shadcn/ui** — Componentes con Radix UI
-- **next-pwa** — Progressive Web App
-
-### Infraestructura
-- **Docker Compose** — Orquestación de servicios
-- **Nginx** — Reverse proxy (producción)
-
-## 📦 Instalación
+### Primera vez
 
 ```bash
-# Clonar repo
 git clone <repo-url>
 cd FRIDAY
-
-# Configurar variables de entorno
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-
-# Levantar servicios
 docker compose up -d
-
-# Aplicar migraciones
 docker compose exec backend alembic upgrade head
-
-# Acceder
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8000/docs
 ```
 
-## 🏗️ Estructura
+- Frontend: http://localhost:3000
+- Backend (docs): http://localhost:8000/docs
+
+### Comandos del día a día
+
+```bash
+# Levantar
+docker compose up -d
+
+# Ver logs en tiempo real
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f celery-worker
+
+# Apagar
+docker compose down
+
+# Rebuild después de cambiar dependencias (requirements.txt o package.json)
+docker compose build backend
+docker compose build frontend
+docker compose up -d
+
+# Rebuild completo (todo desde cero)
+docker compose build --no-cache
+docker compose up -d
+```
+
+### Migraciones
+
+```bash
+# Aplicar todas las migraciones pendientes
+docker compose exec backend alembic upgrade head
+
+# Crear una nueva migración (autogenerar desde los modelos)
+docker compose exec backend alembic revision --autogenerate -m "descripcion_corta"
+
+# Ver en qué migración está la DB ahora
+docker compose exec backend alembic current
+
+# Rollback una migración
+docker compose exec backend alembic downgrade -1
+
+# Rollback a una versión específica (usar el ID de la migración)
+docker compose exec backend alembic downgrade 0010
+```
+
+---
+
+## Producción (EC2 + dominio propio)
+
+### 0. Requisitos previos en el servidor
+
+```bash
+# Instalar Docker + Docker Compose en Ubuntu/Debian
+sudo apt update && sudo apt install -y docker.io docker-compose-plugin
+sudo usermod -aG docker $USER
+# Cierra sesión y vuelve a entrar para que aplique el grupo
+```
+
+### 1. Generar llaves VAPID (notificaciones push)
+
+Las llaves VAPID se generan **una sola vez** y se guardan como variables de entorno. Puedes generarlas en cualquier máquina que tenga Python:
+
+```bash
+pip install py-vapid
+python3 -c "
+from py_vapid import Vapid
+v = Vapid()
+v.generate_keys()
+print('VAPID_PRIVATE_KEY:', v.private_pem().decode())
+print('VAPID_PUBLIC_KEY:', v.public_key.public_bytes(
+    __import__('cryptography.hazmat.primitives.serialization', fromlist=['Encoding', 'PublicFormat']).Encoding.X962,
+    __import__('cryptography.hazmat.primitives.serialization', fromlist=['Encoding', 'PublicFormat']).PublicFormat.UncompressedPoint
+).hex())
+"
+```
+
+O con Node.js (más simple):
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Guarda los valores que te devuelva — los usarás en el `.env` del servidor.
+
+### 2. Crear el archivo .env en el servidor
+
+```bash
+# En el servidor, dentro del directorio del proyecto
+cat > .env <<'EOF'
+DB_PASSWORD=cambia_esto_por_una_contraseña_segura
+VAPID_PRIVATE_KEY=<pega aquí la private key generada arriba>
+VAPID_PUBLIC_KEY=<pega aquí la public key generada arriba>
+VAPID_CONTACT_EMAIL=tu@email.com
+NEXT_PUBLIC_API_BASE_URL=https://tudominio.com/api/v1
+EOF
+```
+
+### 3. Configurar el dominio en nginx
+
+Reemplaza el placeholder `TUDOMINIO.COM` en el archivo de configuración de nginx:
+
+```bash
+sed -i 's/TUDOMINIO.COM/tudominio.com/g' nginx/nginx.conf nginx/nginx-init.conf
+```
+
+### 4. Obtener el certificado SSL (primera vez)
+
+El certificado se obtiene con certbot antes de levantar nginx con HTTPS. Sigue estos pasos en orden:
+
+```bash
+# Paso 1: crea el directorio que certbot necesita para el challenge
+mkdir -p certbot/www certbot/conf
+
+# Paso 2: levanta solo nginx con la config temporal HTTP (sin HTTPS)
+# Reemplaza temporalmente nginx.conf con la versión init
+cp nginx/nginx.conf nginx/nginx.conf.bak
+cp nginx/nginx-init.conf nginx/nginx.conf
+
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx
+
+# Paso 3: solicita el certificado
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot certonly \
+  --webroot \
+  --webroot-path=/var/www/certbot \
+  --email tu@email.com \
+  --agree-tos \
+  --no-eff-email \
+  -d tudominio.com \
+  -d www.tudominio.com
+
+# Paso 4: restaura la config HTTPS completa
+cp nginx/nginx.conf.bak nginx/nginx.conf
+
+# Paso 5: reinicia nginx con la config definitiva
+docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx
+```
+
+### 5. Levantar todos los servicios en producción
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend alembic upgrade head
+```
+
+### 6. Renovación automática del certificado
+
+El servicio `certbot` ya está configurado en `docker-compose.prod.yml` para intentar renovar cada 12 horas. Let's Encrypt solo renueva cuando quedan menos de 30 días, así que es completamente automático.
+
+Si quieres forzar una renovación manual:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot renew
+docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx
+```
+
+### Comandos de producción recurrentes
+
+```bash
+# Alias útil para no escribir tanto (puedes añadirlo a ~/.bashrc)
+alias dcp='docker compose -f docker-compose.yml -f docker-compose.prod.yml'
+
+# Levantar
+dcp up -d
+
+# Ver estado
+dcp ps
+
+# Logs
+dcp logs -f backend
+dcp logs -f nginx
+
+# Rebuild y redeploy después de un git pull
+git pull
+dcp build backend frontend
+dcp up -d --no-deps backend frontend
+
+# Apagar todo
+dcp down
+```
+
+---
+
+## Estructura del proyecto
 
 ```
 FRIDAY/
@@ -80,116 +214,35 @@ FRIDAY/
 │   │   ├── models/              # Modelos SQLAlchemy
 │   │   ├── schemas/             # Schemas Pydantic
 │   │   ├── services/            # Lógica de negocio
+│   │   ├── celery_app.py        # Celery + Beat schedule
+│   │   ├── tasks.py             # Tareas programadas
 │   │   └── core/                # Config, auth, database
-│   ├── alembic/                 # Migraciones
-│   └── requirements.txt
+│   └── alembic/versions/        # Migraciones (0001–0013)
 ├── frontend/
 │   ├── app/                     # Next.js App Router
 │   ├── components/
 │   │   ├── layout/              # Sidebar, AppLayout
-│   │   ├── ui/                  # shadcn/ui components
-│   │   └── charts/              # Gráficas
-│   ├── lib/                     # API client, utils, types
-│   └── public/                  # Assets, manifest, icons
-└── docker-compose.yml
+│   │   ├── ui/                  # Componentes base
+│   │   └── charts/              # ProjectionChart, SpendingTimelineChart
+│   ├── lib/                     # API client, types, push helpers
+│   └── public/                  # Icons, manifest, sw.js
+├── nginx/
+│   ├── nginx.conf               # Config HTTPS (producción)
+│   └── nginx-init.conf          # Config HTTP temporal (solo para obtener el cert)
+├── docker-compose.yml           # Local: backend:8000, frontend:3000
+└── docker-compose.prod.yml      # Producción: agrega nginx + certbot
 ```
-
-## 🎯 Componentes principales
-
-### QuickTransactionFAB
-Botón flotante con burbuja glassmorphism para:
-- ✅ Registrar gasto (efectivo/débito/crédito)
-- ✅ Registrar ingreso puntual
-
-### Sidebar responsive
-- Desktop: Fijo a la izquierda con glassmorphism
-- Mobile: Menú hamburguesa con backdrop blur
-
-### Cards glassmorphism
-```tsx
-<Card glass>
-  <CardHeader>
-    <CardTitle>Título</CardTitle>
-  </CardHeader>
-  <CardContent>Contenido</CardContent>
-</Card>
-```
-
-## 🔐 Autenticación
-
-- **JWT** con Bearer token
-- Almacenado en `localStorage`
-- Auto-redirect a `/login` si token inválido
-- Protected routes con `AppLayout`
-
-## 📱 PWA
-
-Instalable en:
-- ✅ iOS (Safari → Share → Add to Home Screen)
-- ✅ Android (Chrome → Menu → Install app)
-- ✅ Desktop (Chrome → Install icon)
-
-Features:
-- Offline-ready (service worker)
-- App icon con glassmorphism
-- Splash screen
-- Standalone mode (sin barra del navegador)
-
-## 🎨 Convenciones de código
-
-- **TypeScript estricto** — No `any`
-- **Componentes pequeños** — Single responsibility
-- **Responsive-first** — Siempre mobile → desktop
-- **Glassmorphism** — `bg-white/[0.03] backdrop-blur-xl border-white/10`
-- **Animaciones suaves** — `transition-all duration-200`
-- **Código en inglés** — Comentarios en español si necesario
-
-## 🐛 Debugging
-
-```bash
-# Ver logs backend
-docker compose logs -f backend
-
-# Ver logs frontend
-docker compose logs -f frontend
-
-# Reiniciar servicios
-docker compose restart backend frontend
-
-# Rebuild después de cambios en dependencias
-docker compose build backend
-docker compose up -d backend
-```
-
-## 📝 Migraciones
-
-```bash
-# Crear nueva migración
-docker compose exec backend alembic revision --autogenerate -m "descripción"
-
-# Aplicar migraciones
-docker compose exec backend alembic upgrade head
-
-# Ver estado
-docker compose exec backend alembic current
-
-# Rollback
-docker compose exec backend alembic downgrade -1
-```
-
-## 🚧 Roadmap
-
-- [ ] Página de gastos diarios con filtros
-- [ ] Gráfica de gastos por categoría
-- [ ] Exportar a CSV/Excel
-- [ ] Notificaciones push (PWA)
-- [ ] Multi-moneda
-- [ ] Compartir proyecciones
-
-## 👨‍💻 Desarrollo
-
-Desarrollado con ☕ por el equipo FRIDAY
 
 ---
 
-**Tech stack:** FastAPI · PostgreSQL · Next.js 14 · TypeScript · Tailwind CSS · Docker
+## Variables de entorno
+
+| Variable | Dónde | Descripción |
+|---|---|---|
+| `DB_PASSWORD` | backend | Contraseña de PostgreSQL |
+| `VAPID_PRIVATE_KEY` | backend / celery-worker | Llave privada para push notifications |
+| `VAPID_PUBLIC_KEY` | backend | Llave pública para push notifications |
+| `VAPID_CONTACT_EMAIL` | backend / celery-worker | Email de contacto VAPID |
+| `NEXT_PUBLIC_API_BASE_URL` | frontend | URL del backend (ej: `https://tudominio.com/api/v1`) |
+
+En local no necesitas crear `.env` — los valores por defecto del `docker-compose.yml` son suficientes.

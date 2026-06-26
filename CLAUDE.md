@@ -1,5 +1,9 @@
 # FRIDAY — Contexto para agentes
 
+> **Instrucción para el agente:** Al terminar cualquier tarea, actualiza este archivo. Si agregaste un módulo, endpoint, modelo, página o componente nuevo — añádelo en la sección correspondiente. Si completaste algo de la lista "Lo que viene", muévelo a la sección que le corresponda. Mantén este archivo como fuente de verdad del estado actual del proyecto.
+
+
+
 FRIDAY es una app personal de Sebastian. Empezó como tracker de finanzas personales, pero la visión es que sea su app personal completa: finanzas, to-dos, notas, ambiente lofi, etc. Cada módulo nuevo vive en una ruta nueva del mismo frontend Next.js y puede tener sus propios endpoints en el backend FastAPI. Todo corre en Docker Compose.
 
 ---

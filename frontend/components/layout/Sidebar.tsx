@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu, X, CheckSquare, CalendarDays } from 'lucide-react'
+import { LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu, X, CheckSquare, CalendarDays, Timer } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -12,6 +12,7 @@ const NAV = [
   { href: '/simulador', icon: Sparkles, label: 'Simulador' },
   { href: '/to_do', icon: CheckSquare, label: 'Tareas' },
   { href: '/events', icon: CalendarDays, label: 'Eventos' },
+  { href: '/focus', icon: Timer, label: 'Focus' },
 ]
 
 export default function Sidebar() {

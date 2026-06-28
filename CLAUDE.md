@@ -65,6 +65,39 @@ Lista de recordatorios/tareas personales. Diseño minimalista dark con panel lat
 - Lista agrupada por: Hoy, Mañana, Esta semana, Sin fecha
 - Push notifications via Celery Beat cada 5 minutos
 
+### Espacio Focus (`/focus`)
+
+Página full-screen de productividad tipo "focus space". Sin sidebar, layout propio con auth check inline.
+
+**Fondos animados (canvas 2D):**
+- Lluvia: gotas animadas con ángulo, glow morado en el suelo
+- Estrellas: estrellas con brillo pulsante + nebulosas de colores
+- Brasas: partículas de brasa flotando hacia arriba con glow
+- Aurora: 10 blobs de colores vivos moviéndose rápido (sin efecto cristal)
+- Cosmos: campo de estrellas 3D con proyección de perspectiva (warp-speed), nebulosas y trails
+
+**Sonidos ambientales (Web Audio API sintetizado):**
+- 9 sonidos: Lluvia, Cafetería, Tráfico, Olas, Bosque, Pájaros, Viento, Cascada, Fuego
+- Mezcla de volúmenes independiente, mezclador en barra inferior
+
+**Pomodoro:**
+- 3 estilos de reloj: Anillo (SVG con arc de progreso), Minimal (texto grande + barra), Tarjeta (card oscura con ±)
+- Fases: Concentración / Descanso Corto / Descanso Largo
+- Ajustes: duración de sesión, descansos, sesiones por ciclo, objetivo de horas
+- Campanita al cambiar de fase (Web Audio)
+
+**Panel de tareas:**
+- Tareas del día (due_date = hoy, sin recurrencia, sin eventos)
+- Toggle completar, estrella, etiqueta con color
+- Input para agregar tarea rápida con etiqueta
+- Panel ocultable
+
+**UI:**
+- Modo zen (oculta header y controles, solo fondo + timer)
+- Botones Tareas / Sonidos en header para ocultar/mostrar paneles
+- Color acento: #6B46E5 (morado FRIDAY)
+- Sin modo claro/oscuro — siempre dark full-screen
+
 ### Eventos (`/events`)
 
 Lista de eventos tipo calendario. Mismo diseño que `/to_do` pero para cosas con fecha fija (citas, reuniones, etc.).

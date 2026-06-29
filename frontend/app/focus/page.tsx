@@ -11,7 +11,7 @@ import { useSidebar } from '@/components/layout/SidebarContext'
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BgName = 'lluvia' | 'brasas' | 'aurora' | 'cosmos' | 'mar' | 'planeta' | 'tunel'
 type TimerStyle = 'anillo' | 'minimal' | 'tarjeta'
-type SoundKey = 'lluvia' | 'cafeteria' | 'trafico' | 'olas' | 'bosque' | 'pajaros' | 'viento' | 'cascada' | 'fuego'
+type SoundKey = 'lluvia' | 'olas' | 'viento' | 'cascada' | 'aves' | 'fuego'
 type Phase = 'work' | 'short' | 'long'
 
 interface PomSettings { session: number; shortBreak: number; longBreak: number; cycle: number; goalHours: number }
@@ -28,11 +28,12 @@ const BG_LIST: { key: BgName; label: string }[] = [
   { key: 'tunel', label: 'Túnel' },
 ]
 const SOUND_LIST: { key: SoundKey; label: string }[] = [
-  { key: 'lluvia', label: 'Lluvia' }, { key: 'cafeteria', label: 'Cafetería' },
-  { key: 'trafico', label: 'Tráfico' }, { key: 'olas', label: 'Olas' },
-  { key: 'bosque', label: 'Bosque' }, { key: 'pajaros', label: 'Pájaros' },
-  { key: 'viento', label: 'Viento' }, { key: 'cascada', label: 'Cascada' },
-  { key: 'fuego', label: 'Fuego' },
+  { key: 'lluvia', label: 'Lluvia' },
+  { key: 'olas',   label: 'Olas' },
+  { key: 'viento', label: 'Viento' },
+  { key: 'cascada',label: 'Cascada' },
+  { key: 'aves',   label: 'Aves' },
+  { key: 'fuego',  label: 'Fuego' },
 ]
 const LABEL_COLORS: Record<string, string> = {
   Trabajo: '#6B46E5', Personal: '#22c55e', Finanzas: '#f59e0b', Estudio: '#3b82f6',
@@ -42,97 +43,6 @@ const PHASE_LABEL: Record<Phase, string> = {
 }
 const ACCENT = '#6B46E5'
 const FOCUS_KEY = 'friday_focus_session'
-
-// ─── Audio Engine ─────────────────────────────────────────────────────────────
-function makeNoiseBuf(ctx: AudioContext): AudioBuffer {
-  const sz = ctx.sampleRate * 2
-  const b = ctx.createBuffer(1, sz, ctx.sampleRate)
-  const d = b.getChannelData(0)
-  for (let i = 0; i < sz; i++) d[i] = Math.random() * 2 - 1
-  return b
-}
-
-interface SoundHandle { gain: GainNode; stop: () => void }
-
-function startAmbient(ctx: AudioContext, key: SoundKey): SoundHandle {
-  const master = ctx.createGain()
-  master.connect(ctx.destination)
-  const stops: Array<() => void> = []
-
-  function noise(lp?: number, hp?: number): AudioNode {
-    const src = ctx.createBufferSource()
-    src.buffer = makeNoiseBuf(ctx); src.loop = true
-    let n: AudioNode = src
-    if (hp) { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; n.connect(f); n = f }
-    if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; n.connect(f); n = f }
-    src.start(); stops.push(() => { try { src.stop() } catch {} }); return n
-  }
-
-  function addLFO(freq: number, amp: number, target: AudioParam) {
-    const o = ctx.createOscillator(); const g = ctx.createGain()
-    o.frequency.value = freq; g.gain.value = amp
-    o.connect(g); g.connect(target); o.start()
-    stops.push(() => { try { o.stop() } catch {} })
-  }
-
-  function layer(n: AudioNode, vol: number, lf?: number, la?: number) {
-    const g = ctx.createGain(); g.gain.value = vol
-    n.connect(g); g.connect(master)
-    if (lf !== undefined && la !== undefined) addLFO(lf, la, g.gain)
-  }
-
-  switch (key) {
-    case 'lluvia':
-      layer(noise(1400), 0.55)
-      layer(noise(7000, 2500), 0.18)
-      break
-    case 'cafeteria':
-      for (let i = 0; i < 4; i++) layer(noise(650 + i * 80, 70 + i * 30), 0.17, 0.15 + i * 0.1, 0.06)
-      break
-    case 'trafico':
-      layer(noise(180), 0.48)
-      layer(noise(650, 130), 0.16, 0.1, 0.12)
-      break
-    case 'olas':
-      layer(noise(380), 0.44, 0.07, 0.34)
-      break
-    case 'bosque':
-      layer(noise(7000, 1200), 0.16, 0.04, 0.07)
-      layer(noise(400, 80), 0.11, 0.03, 0.06)
-      break
-    case 'pajaros': {
-      let alive = true
-      const chirp = () => {
-        if (!alive) return
-        const freq = 2800 + Math.random() * 2200, dur = 0.07 + Math.random() * 0.11
-        const osc = ctx.createOscillator(); const g = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, ctx.currentTime)
-        osc.frequency.linearRampToValueAtTime(freq * (0.85 + Math.random() * 0.3), ctx.currentTime + dur)
-        g.gain.setValueAtTime(0, ctx.currentTime)
-        g.gain.linearRampToValueAtTime(0.13, ctx.currentTime + 0.01)
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
-        osc.connect(g); g.connect(master); osc.start(); osc.stop(ctx.currentTime + dur + 0.05)
-        setTimeout(chirp, 500 + Math.random() * 2800)
-      }
-      chirp()
-      stops.push(() => { alive = false })
-      break
-    }
-    case 'viento':
-      layer(noise(750, 80), 0.3, 0.05, 0.22)
-      break
-    case 'cascada':
-      layer(noise(5000, 280), 0.62)
-      break
-    case 'fuego':
-      layer(noise(320), 0.4)
-      layer(noise(2500, 700), 0.06, 4.2, 0.07)
-      break
-  }
-
-  return { gain: master, stop: () => stops.forEach(f => f()) }
-}
 
 // ─── Canvas Backgrounds ────────────────────────────────────────────────────────
 function bgLluvia(canvas: HTMLCanvasElement): () => void {
@@ -926,8 +836,7 @@ export default function FocusPage() {
   const canvas2DRef = useRef<HTMLCanvasElement | null>(null)
   const canvas3DRef = useRef<HTMLCanvasElement | null>(null)
   const cleanupBgRef = useRef<(() => void) | null>(null)
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const handlesRef = useRef<Partial<Record<SoundKey, SoundHandle>>>({})
+  const audiosRef = useRef<Partial<Record<SoundKey, HTMLAudioElement>>>({})
   const justRanOutRef = useRef(false)
 
   // Sync mutable refs so timer callbacks always read fresh values
@@ -1046,37 +955,27 @@ export default function FocusPage() {
   function skipPhase() { advanceRef.current() }
 
   // ── Sounds ──────────────────────────────────────────────────────────────────
-  function ensureCtx(): AudioContext {
-    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
-    if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume()
-    return audioCtxRef.current
+  function getAudio(key: SoundKey): HTMLAudioElement {
+    if (!audiosRef.current[key]) {
+      const a = new Audio(`/sounds/${key}.mp3`)
+      a.loop = true; a.volume = 0
+      audiosRef.current[key] = a
+    }
+    return audiosRef.current[key]!
   }
 
   function setVolume(key: SoundKey, vol: number) {
     setVolumes(v => ({ ...v, [key]: vol }))
-    const ctx = ensureCtx()
-    const handle = handlesRef.current[key]
-    if (vol > 0) {
-      if (!handle) {
-        const h = startAmbient(ctx, key)
-        h.gain.gain.value = vol
-        handlesRef.current[key] = h
-      } else {
-        handle.gain.gain.value = vol
-      }
-    } else if (handle) {
-      handle.stop()
-      try { handle.gain.disconnect() } catch { /* ignore */ }
-      delete handlesRef.current[key]
-    }
+    const a = getAudio(key)
+    a.volume = vol
+    if (vol > 0) { a.play().catch(() => {}) }
+    else { a.pause() }
   }
 
   useEffect(() => {
     return () => {
-      Object.values(handlesRef.current).forEach(h => {
-        try { h?.stop(); h?.gain.disconnect() } catch { /* ignore */ }
-      })
-      try { audioCtxRef.current?.close() } catch { /* ignore */ }
+      Object.values(audiosRef.current).forEach(a => { a?.pause(); if (a) a.src = '' })
+      audiosRef.current = {}
     }
   }, [])
 

@@ -604,15 +604,15 @@ function bgCosmos(canvas: HTMLCanvasElement): () => void {
 }
 
 // ── Cyberpunk City — rain-soaked city viewed from window height ───────────────
-// ── Black Pearl — pirate ship on a stormy night sea ──────────────────────────
+// ── Black Pearl — two pirate ships flanking the screen center ────────────────
 function bgPerla(canvas: HTMLCanvasElement): () => void {
   const W = canvas.width, H = canvas.height
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x020810)
-  scene.fog = new THREE.Fog(0x040c18, 70, 230)
+  scene.fog = new THREE.Fog(0x040c18, 80, 260)
 
   const camera = new THREE.PerspectiveCamera(72, W/H, 0.1, 400)
-  camera.position.set(32, 8, 18); camera.lookAt(0, 20, 0)
+  camera.position.set(52, 10, 0); camera.lookAt(0, 18, 0)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
   renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -621,181 +621,159 @@ function bgPerla(canvas: HTMLCanvasElement): () => void {
   const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
   const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
 
-  // Ship group — so it can rock independently from ocean/sky
-  const ship = new THREE.Group(); scene.add(ship)
-
   const hullMat = trackM(new THREE.MeshPhongMaterial({ color: 0x080608, emissive: 0x030204, shininess: 40, specular: 0x222233 }))
   const sailMat = trackM(new THREE.MeshPhongMaterial({ color: 0x0c0c0f, emissive: 0x040407, shininess: 2, side: THREE.DoubleSide }))
   const woodMat = trackM(new THREE.MeshPhongMaterial({ color: 0x180d06, emissive: 0x060401, shininess: 10 }))
   const winMat  = trackM(new THREE.MeshBasicMaterial({ color: 0x44556a, transparent: true, opacity: 0.85 }))
   const lanMat  = trackM(new THREE.MeshBasicMaterial({ color: 0xff9944 }))
 
-  const add = (g: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx=0, ry=0, rz=0) => {
-    const mesh = new THREE.Mesh(g, m); mesh.position.set(x,y,z); mesh.rotation.set(rx,ry,rz); ship.add(mesh); return mesh
-  }
-
-  // ── HULL ──────────────────────────────────────────────────────────────────
-  add(track(new THREE.BoxGeometry(12, 5.5, 9)),  hullMat, -2, 2.75, 0)  // mid hull
-  add(track(new THREE.BoxGeometry(8,  5,   7.5)),hullMat, -9, 2.5,  0)  // stern lower
-  add(track(new THREE.BoxGeometry(8,  4.5, 8)),  hullMat,  4, 2.25, 0)  // fore lower
-  add(track(new THREE.BoxGeometry(4,  4,   6)),  hullMat,  9, 2,    0)  // bow
-  add(track(new THREE.BoxGeometry(2,  3,   4)),  hullMat, 12, 1.5,  0)  // bowsprit base
-  // Upper gun deck
-  add(track(new THREE.BoxGeometry(24, 3, 7.5)),  hullMat, -1, 6.5, 0)
-  // Bulwark rails
-  add(track(new THREE.BoxGeometry(24, 0.55, 0.4)), hullMat, -1, 8.25,  3.9)
-  add(track(new THREE.BoxGeometry(24, 0.55, 0.4)), hullMat, -1, 8.25, -3.9)
-  // Stern castle
-  add(track(new THREE.BoxGeometry(8,   9,  7.5)), hullMat, -9.5,  9.5, 0)
-  add(track(new THREE.BoxGeometry(6,   4.5,6.5)), hullMat, -11,  15.2, 0)
-  // Stern gallery back wall
-  add(track(new THREE.BoxGeometry(0.5, 5,  7.5)), hullMat, -13.6, 13.5, 0)
-  // Stern windows
-  for (let wy = 9.5; wy <= 15; wy += 2.8)
-    for (const wz of [-1.5, 0, 1.5])
-      add(track(new THREE.BoxGeometry(0.06, 1.1, 0.85)), winMat, -13.7, wy, wz)
-  // Cannon ports + barrels (both sides)
-  for (let cx = -6; cx <= 4; cx += 3) {
-    add(track(new THREE.BoxGeometry(0.75, 0.65, 0.3)), hullMat, cx, 6.5,  4.15)
-    add(track(new THREE.BoxGeometry(0.75, 0.65, 0.3)), hullMat, cx, 6.5, -4.15)
-    add(track(new THREE.CylinderGeometry(0.2, 0.27, 1.4, 6)), hullMat, cx, 6.5,  4.6, Math.PI/2, 0, 0)
-    add(track(new THREE.CylinderGeometry(0.2, 0.27, 1.4, 6)), hullMat, cx, 6.5, -4.6,-Math.PI/2, 0, 0)
-  }
-  // Keel
-  add(track(new THREE.BoxGeometry(22, 0.6, 2)), hullMat, -1, 0.3, 0)
-  // Anchor chains
-  add(track(new THREE.BoxGeometry(0.35, 3, 0.35)), woodMat, 11.5, 0, 2)
-  add(track(new THREE.BoxGeometry(0.35, 3, 0.35)), woodMat, 11.5, 0,-2)
-
-  // ── MASTS ─────────────────────────────────────────────────────────────────
-  const mast = (x: number, y0: number, h: number) => {
-    add(track(new THREE.CylinderGeometry(0.2, 0.34, h, 7)), woodMat, x, y0+h/2, 0)
-    return y0 + h
-  }
-  const mainTop = mast(0,   8, 40)  // mainmast (tallest)
-  const foreTop = mast(8,   8, 32)  // foremast
-  const mizTop  = mast(-9, 12, 28)  // mizzenmast (on stern castle)
-
-  // Crow's nest
-  add(track(new THREE.CylinderGeometry(1.5, 1.2, 0.9, 8)), woodMat, 0, 29.5, 0)
-
-  // Bowsprit (Box along X, angled upward ~16°)
-  const bsL = 15, bsA = 0.28
-  add(track(new THREE.BoxGeometry(bsL, 0.45, 0.45)), woodMat,
-    10 + bsL/2*Math.cos(bsA), 9 + bsL/2*Math.sin(bsA), 0, 0, 0, bsA)
-
-  // Spars (horizontal beams, CylinderGeometry rotated to lie along Z)
-  const spar = (x: number, y: number, len: number) =>
-    add(track(new THREE.CylinderGeometry(0.14, 0.18, len, 6)), woodMat, x, y, 0, Math.PI/2, 0, 0)
-  spar(0, 12, 21); spar(0, 21, 16); spar(0, 30, 12); spar(0, 38, 8)  // main
-  spar(8, 12, 18); spar(8, 20, 13); spar(8, 28,  9)                  // fore
-  spar(-9, 18, 14); spar(-9, 25, 9.5)                                 // mizzen
-
-  // ── SAILS ─────────────────────────────────────────────────────────────────
-  const addSail = (x: number, y: number, sw: number, sh: number, billow: number) => {
-    const g = track(new THREE.PlaneGeometry(sw, sh, 1, 6))
-    const pos = g.attributes.position as THREE.BufferAttribute
-    for (let i = 0; i < pos.count; i++) {
-      const fy = (pos.getY(i) + sh/2) / sh
-      pos.setX(i, pos.getX(i) + Math.sin(fy * Math.PI) * billow)
+  // Build all ship geometry into a group (called twice for two ships)
+  const buildShip = (grp: THREE.Group) => {
+    const a = (g: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx=0, ry=0, rz=0) => {
+      const mesh = new THREE.Mesh(g, m); mesh.position.set(x,y,z); mesh.rotation.set(rx,ry,rz); grp.add(mesh)
     }
-    g.computeVertexNormals()
-    const m = new THREE.Mesh(g, sailMat); m.position.set(x, y, 0); m.rotation.y = Math.PI/2; ship.add(m)
-  }
-  // Main mast (4 sails)
-  addSail(0, 16,  20, 7.5, 2.2); addSail(0, 25, 15.5, 6.5, 1.8)
-  addSail(0, 34,  11, 5.5, 1.2); addSail(0, 41,   7,  4,   0.8)
-  // Fore mast (3 sails)
-  addSail(8, 16,  17,   7, 2.0); addSail(8, 24,  13,   6, 1.5); addSail(8, 31, 9, 5, 1.0)
-  // Mizzen mast (2 sails)
-  addSail(-9, 21, 13, 6.5, 1.5); addSail(-9, 28, 8.5, 5, 1.0)
 
-  // ── RIGGING ───────────────────────────────────────────────────────────────
-  const rig = (x1:number,y1:number,z1:number,x2:number,y2:number,z2:number) => {
-    const g = track(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x1,y1,z1),new THREE.Vector3(x2,y2,z2)]))
-    ship.add(new THREE.Line(g, trackM(new THREE.LineBasicMaterial({color:0x1a1008,transparent:true,opacity:0.7}))))
-  }
-  rig(0,mainTop,0,  14, 8, 0);  rig(8,foreTop,0, 14,8,0)
-  rig(8,foreTop,0,   0,mainTop,0); rig(-9,mizTop,0, 0,mainTop,0)
-  for (const z of [-3.5, 3.5]) {
-    rig(0,mainTop,0,  0, 8, z); rig(8,foreTop,0, 8, 8, z); rig(-9,mizTop,0,-9,12,z)
-  }
-  rig(0,21,0, 8,12,0); rig(-9,18,0, 0,12,0); rig(0,30,0, 8,20,0)
+    // ── HULL ──────────────────────────────────────────────────────────────
+    a(track(new THREE.BoxGeometry(12, 5.5, 9)),   hullMat, -2,  2.75, 0)
+    a(track(new THREE.BoxGeometry(8,  5,   7.5)), hullMat, -9,  2.5,  0)
+    a(track(new THREE.BoxGeometry(8,  4.5, 8)),   hullMat,  4,  2.25, 0)
+    a(track(new THREE.BoxGeometry(4,  4,   6)),   hullMat,  9,  2,    0)
+    a(track(new THREE.BoxGeometry(2,  3,   4)),   hullMat, 12,  1.5,  0)
+    a(track(new THREE.BoxGeometry(24, 3,   7.5)), hullMat, -1,  6.5,  0)
+    a(track(new THREE.BoxGeometry(24, 0.55, 0.4)),hullMat, -1,  8.25,  3.9)
+    a(track(new THREE.BoxGeometry(24, 0.55, 0.4)),hullMat, -1,  8.25, -3.9)
+    a(track(new THREE.BoxGeometry(8,  9,   7.5)), hullMat, -9.5, 9.5, 0)
+    a(track(new THREE.BoxGeometry(6,  4.5, 6.5)), hullMat,-11,  15.2, 0)
+    a(track(new THREE.BoxGeometry(0.5,5,   7.5)), hullMat,-13.6,13.5, 0)
+    for (let wy = 9.5; wy <= 15; wy += 2.8)
+      for (const wz of [-1.5, 0, 1.5])
+        a(track(new THREE.BoxGeometry(0.06,1.1,0.85)), winMat,-13.7,wy,wz)
+    for (let cx = -6; cx <= 4; cx += 3) {
+      a(track(new THREE.BoxGeometry(0.75,0.65,0.3)),  hullMat, cx,6.5, 4.15)
+      a(track(new THREE.BoxGeometry(0.75,0.65,0.3)),  hullMat, cx,6.5,-4.15)
+      a(track(new THREE.CylinderGeometry(0.2,0.27,1.4,6)), hullMat, cx,6.5, 4.6, Math.PI/2,0,0)
+      a(track(new THREE.CylinderGeometry(0.2,0.27,1.4,6)), hullMat, cx,6.5,-4.6,-Math.PI/2,0,0)
+    }
+    a(track(new THREE.BoxGeometry(22,0.6,2)), hullMat,-1,0.3,0)
+    a(track(new THREE.BoxGeometry(0.35,3,0.35)),woodMat,11.5,0, 2)
+    a(track(new THREE.BoxGeometry(0.35,3,0.35)),woodMat,11.5,0,-2)
 
-  // Stern lantern spheres
-  for (const lz of [-2.5, 0, 2.5])
-    add(track(new THREE.SphereGeometry(0.32, 8, 8)), lanMat, -14, 17, lz)
+    // ── MASTS ─────────────────────────────────────────────────────────────
+    const mast = (x: number, y0: number, h: number) => {
+      a(track(new THREE.CylinderGeometry(0.2,0.34,h,7)), woodMat, x,y0+h/2,0)
+      return y0+h
+    }
+    const mainTop = mast(0,  8, 40)
+    const foreTop = mast(8,  8, 32)
+    const mizTop  = mast(-9,12, 28)
+    a(track(new THREE.CylinderGeometry(1.5,1.2,0.9,8)), woodMat, 0,29.5,0)
+    const bsL=15, bsA=0.28
+    a(track(new THREE.BoxGeometry(bsL,0.45,0.45)), woodMat,
+      10+bsL/2*Math.cos(bsA), 9+bsL/2*Math.sin(bsA), 0, 0,0,bsA)
+
+    // ── SPARS ─────────────────────────────────────────────────────────────
+    const spar=(x:number,y:number,len:number)=>
+      a(track(new THREE.CylinderGeometry(0.14,0.18,len,6)),woodMat,x,y,0,Math.PI/2,0,0)
+    spar(0,12,21);spar(0,21,16);spar(0,30,12);spar(0,38,8)
+    spar(8,12,18);spar(8,20,13);spar(8,28,9)
+    spar(-9,18,14);spar(-9,25,9.5)
+
+    // ── SAILS ─────────────────────────────────────────────────────────────
+    const addSail=(x:number,y:number,sw:number,sh:number,billow:number)=>{
+      const g=track(new THREE.PlaneGeometry(sw,sh,1,6))
+      const pos=g.attributes.position as THREE.BufferAttribute
+      for(let i=0;i<pos.count;i++){const fy=(pos.getY(i)+sh/2)/sh;pos.setX(i,pos.getX(i)+Math.sin(fy*Math.PI)*billow)}
+      g.computeVertexNormals()
+      const m=new THREE.Mesh(g,sailMat);m.position.set(x,y,0);m.rotation.y=Math.PI/2;grp.add(m)
+    }
+    addSail(0,16,20,7.5,2.2);addSail(0,25,15.5,6.5,1.8);addSail(0,34,11,5.5,1.2);addSail(0,41,7,4,0.8)
+    addSail(8,16,17,7,2.0);addSail(8,24,13,6,1.5);addSail(8,31,9,5,1.0)
+    addSail(-9,21,13,6.5,1.5);addSail(-9,28,8.5,5,1.0)
+
+    // ── RIGGING ───────────────────────────────────────────────────────────
+    const rig=(x1:number,y1:number,z1:number,x2:number,y2:number,z2:number)=>{
+      const g=track(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x1,y1,z1),new THREE.Vector3(x2,y2,z2)]))
+      grp.add(new THREE.Line(g,trackM(new THREE.LineBasicMaterial({color:0x1a1008,transparent:true,opacity:0.7}))))
+    }
+    rig(0,mainTop,0,14,8,0);rig(8,foreTop,0,14,8,0)
+    rig(8,foreTop,0,0,mainTop,0);rig(-9,mizTop,0,0,mainTop,0)
+    for(const z of [-3.5,3.5]){
+      rig(0,mainTop,0,0,8,z);rig(8,foreTop,0,8,8,z);rig(-9,mizTop,0,-9,12,z)
+    }
+    rig(0,21,0,8,12,0);rig(-9,18,0,0,12,0);rig(0,30,0,8,20,0)
+
+    // Stern lanterns
+    for(const lz of [-2.5,0,2.5])
+      a(track(new THREE.SphereGeometry(0.32,8,8)),lanMat,-14,17,lz)
+  }
+
+  // Two ships: one on each side, both visible, center of screen free for UI
+  const ship1=new THREE.Group(); ship1.position.z=-27; scene.add(ship1); buildShip(ship1)
+  const ship2=new THREE.Group(); ship2.position.z= 27; scene.add(ship2); buildShip(ship2)
 
   // ── OCEAN ─────────────────────────────────────────────────────────────────
-  const OW = 48
-  const oceanGeo = track(new THREE.PlaneGeometry(300, 220, OW, OW))
-  const oceanMat = trackM(new THREE.MeshPhongMaterial({ color: 0x040c1a, shininess: 90, specular: 0x0d2244 }))
-  const ocean = new THREE.Mesh(oceanGeo, oceanMat); ocean.rotation.x = -Math.PI/2; ocean.position.y = -0.5; scene.add(ocean)
+  const OW=48
+  const oceanGeo=track(new THREE.PlaneGeometry(300,220,OW,OW))
+  const oceanMat=trackM(new THREE.MeshPhongMaterial({color:0x040c1a,shininess:90,specular:0x0d2244}))
+  const ocean=new THREE.Mesh(oceanGeo,oceanMat);ocean.rotation.x=-Math.PI/2;ocean.position.y=-0.5;scene.add(ocean)
 
   // ── SKY ───────────────────────────────────────────────────────────────────
-  const sPos = new Float32Array(2500*3)
-  for (let i = 0; i < 2500; i++) {
-    const th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*0.65), r=180+Math.random()*120
-    sPos[i*3]=r*Math.sin(ph)*Math.cos(th); sPos[i*3+1]=Math.abs(r*Math.cos(ph))+15; sPos[i*3+2]=r*Math.sin(ph)*Math.sin(th)
+  const sPos=new Float32Array(2500*3)
+  for(let i=0;i<2500;i++){
+    const th=Math.random()*Math.PI*2,ph=Math.acos(Math.random()*0.65),r=180+Math.random()*120
+    sPos[i*3]=r*Math.sin(ph)*Math.cos(th);sPos[i*3+1]=Math.abs(r*Math.cos(ph))+15;sPos[i*3+2]=r*Math.sin(ph)*Math.sin(th)
   }
-  const sGeo=track(new THREE.BufferGeometry()); sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3))
+  const sGeo=track(new THREE.BufferGeometry());sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3))
   scene.add(new THREE.Points(sGeo,trackM(new THREE.PointsMaterial({color:0xeeeeff,size:0.55,transparent:true,opacity:0.72}))))
 
-  // Moon
   const moonMesh=new THREE.Mesh(track(new THREE.SphereGeometry(7,16,16)),trackM(new THREE.MeshBasicMaterial({color:0xddeeff})))
-  moonMesh.position.set(-65,72,-85); scene.add(moonMesh)
+  moonMesh.position.set(-65,72,0);scene.add(moonMesh)
 
-  // Storm clouds (dark semi-transparent planes)
-  for (let i=0;i<7;i++){
+  for(let i=0;i<8;i++){
     const cg=track(new THREE.PlaneGeometry(50+Math.random()*70,10+Math.random()*18))
     const cm=trackM(new THREE.MeshBasicMaterial({color:0x030710,transparent:true,opacity:0.62+Math.random()*0.28,side:THREE.DoubleSide}))
     const cloud=new THREE.Mesh(cg,cm)
-    cloud.position.set((Math.random()-.5)*130, 36+Math.random()*30, -30-Math.random()*90)
-    cloud.rotation.z=(Math.random()-.5)*0.35; scene.add(cloud)
+    cloud.position.set((Math.random()-.5)*160,36+Math.random()*30,(Math.random()-.5)*60-60)
+    cloud.rotation.z=(Math.random()-.5)*0.35;scene.add(cloud)
   }
 
   // ── LIGHTING ──────────────────────────────────────────────────────────────
-  scene.add(new THREE.AmbientLight(0x040810, 2.5))
-  const moonLight=new THREE.PointLight(0xaaccee,6,250); moonLight.position.set(-65,72,-85); scene.add(moonLight)
-  const fillLight=new THREE.DirectionalLight(0x334466,1.5); fillLight.position.set(-2,1,0.5); scene.add(fillLight)
-  const lantern1=new THREE.PointLight(0xff8833,3,22); lantern1.position.set(-14,17, 2.5); scene.add(lantern1)
-  const lantern2=new THREE.PointLight(0xff8833,3,22); lantern2.position.set(-14,17,-2.5); scene.add(lantern2)
-  const lantern3=new THREE.PointLight(0xff8833,2,18); lantern3.position.set(-14,17,  0); scene.add(lantern3)
-  // Supernatural ghost glow (Black Pearl has a curse)
-  const ghostGlow=new THREE.PointLight(0x00dd66,1.2,40); ghostGlow.position.set(0,5,0); scene.add(ghostGlow)
+  scene.add(new THREE.AmbientLight(0x040810,2.5))
+  const moonLight=new THREE.PointLight(0xaaccee,6,260);moonLight.position.set(-65,72,0);scene.add(moonLight)
+  const fillLight=new THREE.DirectionalLight(0x334466,1.5);fillLight.position.set(-2,1,0.5);scene.add(fillLight)
+  const lantern1=new THREE.PointLight(0xff8833,3,28);lantern1.position.set(-14,17,-27);scene.add(lantern1)
+  const lantern2=new THREE.PointLight(0xff8833,3,28);lantern2.position.set(-14,17, 27);scene.add(lantern2)
+  const ghostGlow=new THREE.PointLight(0x00dd66,1.5,70);ghostGlow.position.set(0,5,0);scene.add(ghostGlow)
 
   // ── ANIMATION ─────────────────────────────────────────────────────────────
-  let t=0, raf=0
+  let t=0,raf=0
   const animate=()=>{
-    raf=requestAnimationFrame(animate); t+=0.01
+    raf=requestAnimationFrame(animate);t+=0.01
 
-    // Ocean waves
     const pos=oceanGeo.attributes.position.array as Float32Array
     for(let i=0;i<pos.length;i+=3){
       const x=pos[i],z=pos[i+2]
       pos[i+1]=Math.sin(x*0.09+t)*1.5+Math.sin(z*0.07+t*1.4)*1.0+Math.sin(x*0.14+z*0.11+t*0.8)*0.5
     }
-    oceanGeo.attributes.position.needsUpdate=true; oceanGeo.computeVertexNormals()
+    oceanGeo.attributes.position.needsUpdate=true;oceanGeo.computeVertexNormals()
 
-    // Lantern flicker
-    lantern1.intensity=2.5+Math.sin(t*9)*0.7
-    lantern2.intensity=2.5+Math.sin(t*7.5+1)*0.7
-    lantern3.intensity=2+Math.sin(t*11+2)*0.5
-    ghostGlow.intensity=0.8+Math.sin(t*1.5)*0.8
+    lantern1.intensity=2.5+Math.sin(t*9)*0.8
+    lantern2.intensity=2.5+Math.sin(t*7+0.6)*0.8
+    ghostGlow.intensity=0.8+Math.sin(t*1.5)*0.9
 
-    // Ship rocking (only ship group, ocean stays level)
-    ship.rotation.z=Math.sin(t*0.45)*0.022
-    ship.rotation.x=Math.sin(t*0.33)*0.012
-    ship.position.y=Math.sin(t*0.55)*0.6
+    // Ships rock with slight phase offset between them
+    ship1.rotation.z=Math.sin(t*0.45)*0.022;ship1.rotation.x=Math.sin(t*0.33)*0.012
+    ship1.position.y=Math.sin(t*0.55)*0.6
+    ship2.rotation.z=Math.sin(t*0.45+1.3)*0.022;ship2.rotation.x=Math.sin(t*0.33+0.7)*0.012
+    ship2.position.y=Math.sin(t*0.55+0.9)*0.6
 
-    // Camera slow drift
-    camera.position.x=32+Math.sin(t*0.04)*4
-    camera.position.y=8+Math.sin(t*0.06)*1.5
-    camera.lookAt(0,20,0)
+    camera.position.x=52+Math.sin(t*0.04)*4
+    camera.position.y=10+Math.sin(t*0.06)*1.5
+    camera.lookAt(0,18,0)
     renderer.render(scene,camera)
   }
   animate()
-  return ()=>{ cancelAnimationFrame(raf); geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); renderer.dispose() }
+  return ()=>{ cancelAnimationFrame(raf);geos.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());renderer.dispose() }
 }
 
 const BG_RUNNERS: Record<BgName, (c: HTMLCanvasElement) => () => void> = {

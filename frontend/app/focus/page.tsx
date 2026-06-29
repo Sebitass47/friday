@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as THREE from 'three'
-import { getTasks, getTask, toggleTaskComplete, createTask, updateTask } from '@/lib/api'
+import { getTasks, getTask, toggleTaskComplete, createTask, updateTask, updateSubtask, createSubtask } from '@/lib/api'
 import { Task } from '@/lib/types'
 import Sidebar from '@/components/layout/Sidebar'
 import { useSidebar } from '@/components/layout/SidebarContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type BgName = 'lluvia' | 'brasas' | 'aurora' | 'cosmos' | 'mar' | 'planeta' | 'tunel'
+type BgName = 'lluvia' | 'brasas' | 'aurora' | 'cosmos' | 'mar' | 'planeta' | 'tunel' | 'cyberpunk' | 'gamer' | 'agujero'
 type TimerStyle = 'anillo' | 'minimal' | 'tarjeta'
 type SoundKey = 'lluvia' | 'cafeteria' | 'trafico' | 'olas' | 'bosque' | 'pajaros' | 'viento' | 'cascada' | 'fuego'
 type Phase = 'work' | 'short' | 'long'
@@ -26,6 +26,9 @@ const BG_LIST: { key: BgName; label: string }[] = [
   { key: 'mar', label: 'Mar' },
   { key: 'planeta', label: 'Sistema' },
   { key: 'tunel', label: 'Túnel' },
+  { key: 'cyberpunk', label: 'Ciudad' },
+  { key: 'gamer', label: 'Gamer' },
+  { key: 'agujero', label: 'Agujero' },
 ]
 const SOUND_LIST: { key: SoundKey; label: string }[] = [
   { key: 'lluvia', label: 'Lluvia' }, { key: 'cafeteria', label: 'Cafetería' },
@@ -41,6 +44,7 @@ const PHASE_LABEL: Record<Phase, string> = {
   work: 'CONCENTRACIÓN', short: 'DESCANSO CORTO', long: 'DESCANSO LARGO',
 }
 const ACCENT = '#6B46E5'
+const FOCUS_KEY = 'friday_focus_session'
 
 // ─── Audio Engine ─────────────────────────────────────────────────────────────
 function makeNoiseBuf(ctx: AudioContext): AudioBuffer {
@@ -279,18 +283,18 @@ function bgPlaneta(canvas: HTMLCanvasElement): () => void {
   const coronaGeo = track(new THREE.SphereGeometry(6.5, 24, 24))
   const coronaMat = trackM(new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.12 }))
   scene.add(new THREE.Mesh(coronaGeo, coronaMat))
-  const sunLight = new THREE.PointLight(0xfff5d0, 4, 600); scene.add(sunLight)
-  scene.add(new THREE.AmbientLight(0x060810, 1.2))
+  const sunLight = new THREE.PointLight(0xfff5d0, 8, 600); scene.add(sunLight)
+  scene.add(new THREE.AmbientLight(0x101828, 2.5))
 
-  // Planet definitions: [radius, orbitDist, speed, color, tilt?, rings?, moons?]
-  type PlanetDef = { r: number; dist: number; spd: number; color: number; tilt?: number; rings?: boolean; moon?: boolean; stripes?: boolean }
+  // Planet definitions
+  type PlanetDef = { r: number; dist: number; spd: number; color: number; emissive: number; tilt?: number; rings?: boolean; moon?: boolean; stripes?: boolean }
   const defs: PlanetDef[] = [
-    { r: 0.55, dist: 10,  spd: 4.7,  color: 0xaaaaaa },                              // Mercury
-    { r: 0.95, dist: 16,  spd: 1.85, color: 0xddaa66, tilt: 0.05 },                   // Venus
-    { r: 1.0,  dist: 22,  spd: 1.0,  color: 0x3366ee, tilt: 0.41, moon: true },       // Earth
-    { r: 0.65, dist: 30,  spd: 0.53, color: 0xcc4422, tilt: 0.44 },                   // Mars
-    { r: 2.8,  dist: 46,  spd: 0.08, color: 0xccaa77, tilt: 0.05, stripes: true },    // Jupiter
-    { r: 2.2,  dist: 63,  spd: 0.03, color: 0xddcc88, tilt: 0.47, rings: true },      // Saturn
+    { r: 0.55, dist: 10,  spd: 4.7,  color: 0xccccdd, emissive: 0x222233 },                            // Mercury
+    { r: 0.95, dist: 16,  spd: 1.85, color: 0xffcc33, emissive: 0x331a00, tilt: 0.05 },                // Venus
+    { r: 1.0,  dist: 22,  spd: 1.0,  color: 0x1a88ff, emissive: 0x001133, tilt: 0.41, moon: true },    // Earth
+    { r: 0.65, dist: 30,  spd: 0.53, color: 0xff4422, emissive: 0x330800, tilt: 0.44 },                 // Mars
+    { r: 2.8,  dist: 46,  spd: 0.08, color: 0xffaa44, emissive: 0x221100, tilt: 0.05, stripes: true },  // Jupiter
+    { r: 2.2,  dist: 63,  spd: 0.03, color: 0xffdd66, emissive: 0x221100, tilt: 0.47, rings: true },    // Saturn
   ]
 
   type PlanetObj = { pivot: THREE.Object3D; mesh: THREE.Mesh; spd: number; moon?: { pivot: THREE.Object3D } }
@@ -314,21 +318,21 @@ function bgPlaneta(canvas: HTMLCanvasElement): () => void {
     // Planet mesh
     let mat: THREE.MeshPhongMaterial
     if (d.stripes) {
-      // Jupiter-like canvas texture
+      // Jupiter-like canvas texture — vivid orange/cream bands
       const tc = document.createElement('canvas'); tc.width = 256; tc.height = 128
       const tx = tc.getContext('2d')!
       const bgs = tx.createLinearGradient(0, 0, 0, 128)
-      bgs.addColorStop(0, '#ccaa66'); bgs.addColorStop(.5, '#ddbb88'); bgs.addColorStop(1, '#ccaa66')
+      bgs.addColorStop(0, '#ff8833'); bgs.addColorStop(.5, '#ffcc77'); bgs.addColorStop(1, '#ff8833')
       tx.fillStyle = bgs; tx.fillRect(0, 0, 256, 128)
-      for (let b = 0; b < 10; b++) {
-        tx.fillStyle = `rgba(${b%2===0?'100,60,20':'180,140,80'},0.25)`
-        tx.fillRect(0, (b/10)*128, 256, 128/10)
+      for (let b = 0; b < 12; b++) {
+        tx.fillStyle = `rgba(${b%2===0?'120,40,0':'255,200,100'},0.35)`
+        tx.fillRect(0, (b/12)*128, 256, 128/12)
       }
       const tex = new THREE.CanvasTexture(tc); tex.wrapS = THREE.RepeatWrapping
       mats.push(tex as unknown as THREE.Material)
-      mat = trackM(new THREE.MeshPhongMaterial({ map: tex, shininess: 15 }))
+      mat = trackM(new THREE.MeshPhongMaterial({ map: tex, emissive: new THREE.Color(d.emissive), emissiveIntensity: 0.4, shininess: 20 }))
     } else {
-      mat = trackM(new THREE.MeshPhongMaterial({ color: d.color, shininess: d.moon ? 8 : 20 }))
+      mat = trackM(new THREE.MeshPhongMaterial({ color: d.color, emissive: new THREE.Color(d.emissive), emissiveIntensity: 0.5, shininess: 35 }))
     }
     const pg = track(new THREE.SphereGeometry(d.r, 24, 24))
     const mesh = new THREE.Mesh(pg, mat)
@@ -341,8 +345,8 @@ function bgPlaneta(canvas: HTMLCanvasElement): () => void {
     // Saturn rings
     if (d.rings) {
       const rg = track(new THREE.RingGeometry(d.r * 1.55, d.r * 2.7, 80))
-      const rm = trackM(new THREE.MeshBasicMaterial({ color: 0xbbaa77, transparent: true, opacity: 0.38, side: THREE.DoubleSide }))
-      const rm2 = trackM(new THREE.MeshBasicMaterial({ color: 0x998855, transparent: true, opacity: 0.18, side: THREE.DoubleSide }))
+      const rm = trackM(new THREE.MeshBasicMaterial({ color: 0xffdd88, transparent: true, opacity: 0.55, side: THREE.DoubleSide }))
+      const rm2 = trackM(new THREE.MeshBasicMaterial({ color: 0xddaa44, transparent: true, opacity: 0.28, side: THREE.DoubleSide }))
       const rg2 = track(new THREE.RingGeometry(d.r * 2.8, d.r * 3.4, 80))
       const rMesh = new THREE.Mesh(rg, rm); rMesh.rotation.x = Math.PI * 0.43
       const rMesh2 = new THREE.Mesh(rg2, rm2); rMesh2.rotation.x = Math.PI * 0.43
@@ -601,11 +605,352 @@ function bgCosmos(canvas: HTMLCanvasElement): () => void {
   return () => cancelAnimationFrame(raf)
 }
 
+// ── Cyberpunk City — rain-soaked city viewed from window height ───────────────
+function bgCyberpunk(canvas: HTMLCanvasElement): () => void {
+  const W = canvas.width, H = canvas.height
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x010508)
+  scene.fog = new THREE.FogExp2(0x010508, 0.009)
+  const camera = new THREE.PerspectiveCamera(72, W / H, 0.1, 500)
+  camera.position.set(0, 14, 12); camera.lookAt(0, 20, -40)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+  renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.85
+
+  const geos: THREE.BufferGeometry[] = [], mats: THREE.Material[] = []
+  const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
+  const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
+  const NEON = [0xff00bb, 0x00eeff, 0xff3300, 0x8800ff, 0x00ffaa, 0xffcc00]
+
+  function winTex(cols: number, rows: number) {
+    const tc = document.createElement('canvas'); tc.width = cols * 10; tc.height = rows * 12
+    const tx = tc.getContext('2d')!
+    tx.fillStyle = '#030c18'; tx.fillRect(0, 0, tc.width, tc.height)
+    const wc = ['#ffcc88','#88ccff','#ffaacc','#aaffdd','#ffff88','#cc88ff']
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (Math.random() > 0.4) {
+        tx.fillStyle = wc[Math.floor(Math.random() * wc.length)]
+        tx.globalAlpha = 0.5 + Math.random() * 0.5
+        tx.fillRect(c * 10 + 1, r * 12 + 1, 8, 9)
+      }
+    }
+    const tex = new THREE.CanvasTexture(tc); mats.push(tex as unknown as THREE.Material); return tex
+  }
+
+  // Wet ground
+  const gMat = trackM(new THREE.MeshPhongMaterial({ color: 0x040a14, shininess: 180, specular: 0x223355 }))
+  const gnd = new THREE.Mesh(track(new THREE.PlaneGeometry(400, 400)), gMat)
+  gnd.rotation.x = -Math.PI / 2; scene.add(gnd)
+
+  // Buildings
+  const bdefs: [number,number,number,number,number][] = [
+    [-30,-20,8,8,28],[-20,-15,6,6,44],[-38,-30,10,8,22],[-14,-38,7,7,52],
+    [25,-18,7,7,34],[18,-28,9,8,26],[32,-32,6,6,50],[38,-22,10,9,20],
+    [0,-42,12,10,68],[-9,-52,8,7,44],[10,-50,7,6,58],[5,-30,5,5,38],[-5,-25,6,6,30],
+    [-25,-72,15,12,82],[20,-65,12,10,64],[0,-82,18,14,92],[-45,-60,10,8,55],[45,-55,9,8,70],
+  ]
+  for (const [x,z,w,d,h] of bdefs) {
+    const tex = winTex(Math.ceil(w*1.5), Math.ceil(h*0.8))
+    const mat = trackM(new THREE.MeshPhongMaterial({ color: 0x060e1c, emissive: 0x010306, map: tex, shininess: 25 }))
+    const mesh = new THREE.Mesh(track(new THREE.BoxGeometry(w,h,d)), mat)
+    mesh.position.set(x, h/2, z); scene.add(mesh)
+    if (Math.random() > 0.45) {
+      const nc = NEON[Math.floor(Math.random() * NEON.length)]
+      const sign = new THREE.Mesh(track(new THREE.PlaneGeometry(w*0.65, 1.4)),
+        trackM(new THREE.MeshBasicMaterial({ color: nc, transparent: true, opacity: 0.92 })))
+      sign.position.set(x, h*0.88, z - d/2 - 0.05); scene.add(sign)
+      const sl = new THREE.PointLight(nc, 2, 30); sl.position.copy(sign.position); scene.add(sl)
+    }
+  }
+
+  // Rain
+  const RC = 1400, rp = new Float32Array(RC*3), rv = new Float32Array(RC)
+  for (let i = 0; i < RC; i++) {
+    rp[i*3]=(Math.random()-.5)*130; rp[i*3+1]=Math.random()*90; rp[i*3+2]=-Math.random()*110; rv[i]=0.9+Math.random()*1.1
+  }
+  const rGeo = track(new THREE.BufferGeometry()); rGeo.setAttribute('position', new THREE.BufferAttribute(rp, 3))
+  scene.add(new THREE.Points(rGeo, trackM(new THREE.PointsMaterial({ color: 0x6688aa, size: 0.13, transparent: true, opacity: 0.5 }))))
+
+  // Flying car lights
+  const cars = Array.from({ length: 5 }, () => {
+    const c = Math.random() > 0.5 ? 0xffffff : 0xff2200
+    const l = new THREE.PointLight(c, 2.5, 35)
+    l.position.set(-70+Math.random()*30, 14+Math.random()*18, -15-Math.random()*45)
+    scene.add(l); return { l, spd: 0.12+Math.random()*0.18 }
+  })
+
+  scene.add(new THREE.AmbientLight(0x040810, 3))
+  const pl1 = new THREE.PointLight(0xff00cc, 5, 90); pl1.position.set(-18, 3, 8); scene.add(pl1)
+  const pl2 = new THREE.PointLight(0x00ccff, 5, 90); pl2.position.set(18, 3, 8); scene.add(pl2)
+
+  let t = 0, raf = 0
+  const animate = () => {
+    raf = requestAnimationFrame(animate); t += 0.01
+    const arr = rGeo.attributes.position.array as Float32Array
+    for (let i = 0; i < RC; i++) {
+      arr[i*3+1] -= rv[i]
+      if (arr[i*3+1] < -2) { arr[i*3+1]=80; arr[i*3]=(Math.random()-.5)*130; arr[i*3+2]=-Math.random()*110 }
+    }
+    rGeo.attributes.position.needsUpdate = true
+    for (const c of cars) { c.l.position.x += c.spd; if (c.l.position.x > 70) c.l.position.x = -70 }
+    camera.position.x = Math.sin(t*0.025)*2.5
+    camera.lookAt(Math.sin(t*0.018)*4, 20, -40)
+    renderer.render(scene, camera)
+  }
+  animate()
+  return () => { cancelAnimationFrame(raf); geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); renderer.dispose() }
+}
+
+// ── Gamer Room — 80s neon bedroom with CRT, grid floor, synthwave vibes ───────
+function bgGamer(canvas: HTMLCanvasElement): () => void {
+  const W = canvas.width, H = canvas.height
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x050108)
+  const camera = new THREE.PerspectiveCamera(68, W/H, 0.1, 80)
+  camera.position.set(0, 3.2, 9); camera.lookAt(0, 3.5, -5)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+  renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.7
+
+  const geos: THREE.BufferGeometry[] = [], mats: THREE.Material[] = []
+  const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
+  const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
+  const box = (w: number,h: number,d: number,col: number,emi=0x000000) => {
+    const m = new THREE.Mesh(track(new THREE.BoxGeometry(w,h,d)), trackM(new THREE.MeshPhongMaterial({ color:col, emissive:emi, shininess:30 })))
+    scene.add(m); return m
+  }
+
+  // Grid floor texture
+  const ftc = document.createElement('canvas'); ftc.width = 512; ftc.height = 512
+  const ftx = ftc.getContext('2d')!
+  ftx.fillStyle = '#08020e'; ftx.fillRect(0, 0, 512, 512)
+  for (let i = 0; i <= 16; i++) {
+    const v = i * 32
+    ftx.strokeStyle = `rgba(255,0,180,${i%4===0?0.55:0.18})`; ftx.lineWidth = i%4===0 ? 2 : 1
+    ftx.beginPath(); ftx.moveTo(v,0); ftx.lineTo(v,512); ftx.stroke()
+    ftx.strokeStyle = `rgba(0,160,255,${i%4===0?0.55:0.18})`
+    ftx.beginPath(); ftx.moveTo(0,v); ftx.lineTo(512,v); ftx.stroke()
+  }
+  const ftex = new THREE.CanvasTexture(ftc); ftex.wrapS = ftex.wrapT = THREE.RepeatWrapping; ftex.repeat.set(3,3)
+  mats.push(ftex as unknown as THREE.Material)
+  const floor = new THREE.Mesh(track(new THREE.PlaneGeometry(20,18)),
+    trackM(new THREE.MeshPhongMaterial({ map:ftex, color:0x110820, shininess:80, specular:0x220044 })))
+  floor.rotation.x = -Math.PI/2; scene.add(floor)
+
+  // Walls & ceiling
+  const bwMat = trackM(new THREE.MeshPhongMaterial({ color:0x0a0614, emissive:0x040008 }))
+  const bw = new THREE.Mesh(track(new THREE.PlaneGeometry(20,10)), bwMat); bw.position.set(0,5,-9); scene.add(bw)
+  const swGeo = track(new THREE.PlaneGeometry(18,10)); const swMat = trackM(new THREE.MeshPhongMaterial({ color:0x09051a }))
+  const lw = new THREE.Mesh(swGeo, swMat); lw.rotation.y=Math.PI/2; lw.position.set(-10,5,0); scene.add(lw)
+  const rw = new THREE.Mesh(swGeo, swMat); rw.rotation.y=-Math.PI/2; rw.position.set(10,5,0); scene.add(rw)
+  const ceil = new THREE.Mesh(track(new THREE.PlaneGeometry(20,18)), trackM(new THREE.MeshPhongMaterial({ color:0x06021a })))
+  ceil.rotation.x=Math.PI/2; ceil.position.set(0,8,0); scene.add(ceil)
+
+  // Neon trim lines
+  const nLine = (x1:number,y1:number,z1:number,x2:number,y2:number,z2:number,col:number,li=1.5) => {
+    const g = track(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x1,y1,z1),new THREE.Vector3(x2,y2,z2)]))
+    scene.add(new THREE.Line(g, trackM(new THREE.LineBasicMaterial({ color:col }))))
+    const l = new THREE.PointLight(col,li,12); l.position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2); scene.add(l)
+  }
+  nLine(-10,9.9,-8.9,10,9.9,-8.9,0x00eeff,2)   // back top
+  nLine(-10,0.05,-8.9,10,0.05,-8.9,0xff00bb,2)  // back bottom
+  nLine(-9.9,0,-8.9,-9.9,9.9,-8.9,0xff00bb)      // back left
+  nLine(9.9,0,-8.9,9.9,9.9,-8.9,0x00eeff)        // back right
+  nLine(-9.9,9.9,-9,-9.9,9.9,9,0xff8800,1)       // side top left
+  nLine(9.9,9.9,-9,9.9,9.9,9,0x8800ff,1)         // side top right
+  nLine(-10,0.05,-9,10,0.05,9,0xff00bb,1)         // floor edge back
+
+  // Desk
+  const desk = box(6,0.15,2.5,0x1a0d2e); desk.position.set(0,2.5,-6)
+  ;[[-2.9,1.25,-7.1],[2.9,1.25,-7.1],[-2.9,1.25,-4.9],[2.9,1.25,-4.9]].forEach(([x,y,z])=>{
+    const leg=box(0.15,2.5,0.15,0x150a22); leg.position.set(x,y,z)
+  })
+
+  // CRT Monitor
+  const mon = box(2.2,1.8,0.9,0x18102a); mon.position.set(0,3.58,-7)
+  // Screen texture
+  const stc = document.createElement('canvas'); stc.width=256; stc.height=200
+  const sctx = stc.getContext('2d')!
+  sctx.fillStyle='#000020'; sctx.fillRect(0,0,256,200)
+  for(let i=0;i<200;i+=4){sctx.fillStyle='rgba(0,0,0,0.35)';sctx.fillRect(0,i,256,2)}
+  sctx.font='bold 13px monospace'
+  sctx.fillStyle='#00ff88'; sctx.fillText('> FRIDAY OS v2.0',8,28); sctx.fillText('READY_',8,168)
+  sctx.fillStyle='#00cc55'; sctx.fillText('Loading modules...',8,52); sctx.fillText('████████░░ 80%',8,76)
+  sctx.fillStyle='#ff00aa'; sctx.fillText('HIGH SCORE: 999999',8,110)
+  sctx.fillStyle='#00eeff'; sctx.fillText('PLAYER 1  READY',8,140)
+  const stex=new THREE.CanvasTexture(stc); mats.push(stex as unknown as THREE.Material)
+  const screen=new THREE.Mesh(track(new THREE.PlaneGeometry(1.9,1.5)),trackM(new THREE.MeshBasicMaterial({map:stex})))
+  screen.position.set(0,3.58,-6.54); scene.add(screen)
+  const scLight=new THREE.PointLight(0x00ff88,3.5,14); scLight.position.set(0,3.5,-5.5); scene.add(scLight)
+
+  // Keyboard
+  const kb=box(1.8,0.08,0.65,0x201040); kb.position.set(0,2.6,-5.8)
+  // Keycaps canvas
+  const ktc=document.createElement('canvas'); ktc.width=180; ktc.height=65
+  const kctx=ktc.getContext('2d')!
+  kctx.fillStyle='#180a30'; kctx.fillRect(0,0,180,65)
+  for(let row=0;row<4;row++) for(let col=0;col<12;col++){
+    const lit=Math.random()>0.7
+    kctx.fillStyle=lit?`hsl(${Math.random()*60+270},100%,60%)`:'#2a1858'
+    kctx.fillRect(col*15+1,row*16+1,13,14)
+  }
+  const ktex=new THREE.CanvasTexture(ktc); mats.push(ktex as unknown as THREE.Material)
+  const kbFace=new THREE.Mesh(track(new THREE.PlaneGeometry(1.8,0.65)),trackM(new THREE.MeshBasicMaterial({map:ktex})))
+  kbFace.rotation.x=-Math.PI/2; kbFace.position.set(0,2.65,-5.8); scene.add(kbFace)
+
+  // Speakers
+  const spk1=box(0.5,0.8,0.4,0x150a28,0x050015); spk1.position.set(-1.5,2.95,-7)
+  const spk2=box(0.5,0.8,0.4,0x150a28,0x050015); spk2.position.set(1.5,2.95,-7)
+  new THREE.PointLight(0xff00bb,1,6)
+
+  // Neon wall signs
+  ;[{x:-5,y:6.5,w:2.8,h:0.75,c:0xff00bb},{x:4.8,y:7.2,w:3.2,h:0.75,c:0x00eeff},{x:0,y:8.1,w:5,h:0.55,c:0xffcc00}]
+  .forEach(({x,y,w,h,c})=>{
+    const s=new THREE.Mesh(track(new THREE.PlaneGeometry(w,h)),trackM(new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.95})))
+    s.position.set(x,y,-8.85); scene.add(s)
+    const sl=new THREE.PointLight(c,3,22); sl.position.set(x,y,-7.5); scene.add(sl)
+  })
+
+  // Posters
+  ;[{x:-3.5,c:0x3300aa},{x:3.5,c:0xaa0055}].forEach(({x,c})=>{
+    const p=new THREE.Mesh(track(new THREE.PlaneGeometry(1.6,2.2)),trackM(new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.85})))
+    p.position.set(x,5.5,-8.85); scene.add(p)
+    const pl=new THREE.PointLight(c,1,10); pl.position.set(x,5.5,-7.5); scene.add(pl)
+  })
+
+  // PC Tower
+  const tower=box(0.7,2.2,0.7,0x12082a,0x040012); tower.position.set(3.5,1.1,-7.2)
+  const pwrL=new THREE.PointLight(0x00ff33,1.2,3); pwrL.position.set(3.5,2,-6.86); scene.add(pwrL)
+
+  // Floating dust particles
+  const DP=180, dp=new Float32Array(DP*3)
+  for(let i=0;i<DP;i++){dp[i*3]=(Math.random()-.5)*18;dp[i*3+1]=Math.random()*7;dp[i*3+2]=(Math.random()-.5)*16}
+  const dustGeo=track(new THREE.BufferGeometry()); dustGeo.setAttribute('position',new THREE.BufferAttribute(dp,3))
+  scene.add(new THREE.Points(dustGeo,trackM(new THREE.PointsMaterial({color:0xaa88ff,size:0.04,transparent:true,opacity:0.65}))))
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0x080214,2.5))
+  const purp=new THREE.PointLight(0x8800ff,3.5,28); purp.position.set(0,7.5,-2); scene.add(purp)
+  const pink=new THREE.PointLight(0xff0088,3,22); pink.position.set(-8,4,-2); scene.add(pink)
+  const cyan=new THREE.PointLight(0x00ccff,3,22); cyan.position.set(8,4,-2); scene.add(cyan)
+
+  let t=0, raf=0
+  const animate=()=>{
+    raf=requestAnimationFrame(animate); t+=0.01
+    scLight.intensity=3+Math.sin(t*8)*0.5+(Math.random()>0.98?-2:0)
+    pwrL.intensity=1+Math.sin(t*2)*0.5
+    camera.position.x=Math.sin(t*0.04)*0.7
+    camera.position.y=3.2+Math.sin(t*0.06)*0.12
+    camera.lookAt(Math.sin(t*0.03)*0.8,3.5,-5)
+    renderer.render(scene,camera)
+  }
+  animate()
+  return ()=>{ cancelAnimationFrame(raf); geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); renderer.dispose() }
+}
+
+// ── Agujero Negro — black hole with accretion disk, jets & orbiting matter ────
+function bgAgujero(canvas: HTMLCanvasElement): () => void {
+  const W = canvas.width, H = canvas.height
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x000002)
+  const camera = new THREE.PerspectiveCamera(60, W/H, 0.1, 2000)
+  camera.position.set(0,25,60); camera.lookAt(0,0,0)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+  renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
+
+  const geos: THREE.BufferGeometry[] = [], mats: THREE.Material[] = []
+  const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
+  const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
+
+  // Stars
+  const sPos=new Float32Array(5000*3)
+  for(let i=0;i<5000;i++){
+    const th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=250+Math.random()*750
+    sPos[i*3]=r*Math.sin(ph)*Math.cos(th); sPos[i*3+1]=r*Math.sin(ph)*Math.sin(th); sPos[i*3+2]=r*Math.cos(ph)
+  }
+  const sGeo=track(new THREE.BufferGeometry()); sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3))
+  scene.add(new THREE.Points(sGeo,trackM(new THREE.PointsMaterial({color:0xeeddff,size:0.45}))))
+
+  // Black hole
+  scene.add(new THREE.Mesh(track(new THREE.SphereGeometry(8,32,32)),trackM(new THREE.MeshBasicMaterial({color:0x000000}))))
+
+  // Photon ring
+  const photon=new THREE.Mesh(track(new THREE.RingGeometry(8.05,8.8,128)),
+    trackM(new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.75,side:THREE.DoubleSide})))
+  photon.rotation.x=Math.PI*0.15; scene.add(photon)
+
+  // Accretion disk layers
+  const TILT=Math.PI*0.12
+  ;[
+    [8.8,13,0xffffff,0.9],[13,18,0xffdd44,0.75],[18,25,0xff7700,0.6],
+    [25,34,0xff2200,0.45],[34,45,0x660022,0.28],[45,58,0x220044,0.14],
+  ].forEach(([inner,outer,col,op])=>{
+    const m=new THREE.Mesh(track(new THREE.RingGeometry(inner as number,outer as number,128)),
+      trackM(new THREE.MeshBasicMaterial({color:col as number,transparent:true,opacity:op as number,side:THREE.DoubleSide})))
+    m.rotation.x=TILT; scene.add(m)
+  })
+
+  // Einstein ring / lensing glow (opposite tilt)
+  const lensGeo=track(new THREE.RingGeometry(7.5,10.5,128))
+  const lensMat=trackM(new THREE.MeshBasicMaterial({color:0xff8800,transparent:true,opacity:0.35,side:THREE.DoubleSide}))
+  const lens=new THREE.Mesh(lensGeo,lensMat); lens.rotation.x=-TILT+Math.PI*0.5; scene.add(lens)
+
+  // Orbiting particles (matter spiraling in)
+  const ORBS=350, orbPos=new Float32Array(ORBS*3)
+  const orbData=Array.from({length:ORBS},()=>{
+    const r=9+Math.random()*48, theta=Math.random()*Math.PI*2
+    return { r, theta, spd:0.009/Math.sqrt(r/10), spread:(Math.random()-.5)*0.4 }
+  })
+  const orbGeo=track(new THREE.BufferGeometry()); orbGeo.setAttribute('position',new THREE.BufferAttribute(orbPos,3))
+  scene.add(new THREE.Points(orbGeo,trackM(new THREE.PointsMaterial({color:0xffaa44,size:0.35,transparent:true,opacity:0.85}))))
+
+  // Polar jets (relativistic plasma beams)
+  const makeJet=(dir:number,col:number)=>{
+    const pts=new Float32Array(80*3)
+    for(let i=0;i<80;i++){
+      const frac=i/79, spread=frac*frac*5
+      pts[i*3]=(Math.random()-.5)*spread; pts[i*3+1]=dir*(8+frac*90); pts[i*3+2]=(Math.random()-.5)*spread
+    }
+    const g=track(new THREE.BufferGeometry()); g.setAttribute('position',new THREE.BufferAttribute(pts,3))
+    scene.add(new THREE.Points(g,trackM(new THREE.PointsMaterial({color:col,size:0.55,transparent:true,opacity:0.65}))))
+    const jl=new THREE.PointLight(col,3,40); jl.position.set(0,dir*30,0); scene.add(jl)
+  }
+  makeJet(1,0x4499ff); makeJet(-1,0x4499ff)
+
+  // Core glow
+  const coreL=new THREE.PointLight(0xff6600,10,90); scene.add(coreL)
+  const rimL=new THREE.PointLight(0xff4400,4,50); rimL.position.set(0,8,0); scene.add(rimL)
+  scene.add(new THREE.AmbientLight(0x020006,2))
+
+  let t=0, raf=0
+  const animate=()=>{
+    raf=requestAnimationFrame(animate); t+=0.005
+    const op=orbGeo.attributes.position.array as Float32Array
+    for(let i=0;i<ORBS;i++){
+      orbData[i].theta+=orbData[i].spd
+      const {r,theta,spread}=orbData[i]
+      op[i*3]=r*Math.cos(theta); op[i*3+1]=Math.sin(theta*2)*spread; op[i*3+2]=r*Math.sin(theta)
+    }
+    orbGeo.attributes.position.needsUpdate=true
+    photon.rotation.z=t*0.4
+    lens.rotation.z=-t*0.2
+    coreL.intensity=9+Math.sin(t*15)*1.5
+    camera.position.x=Math.sin(t*0.08)*70
+    camera.position.y=20+Math.sin(t*0.05)*14
+    camera.position.z=Math.cos(t*0.08)*70
+    camera.lookAt(0,0,0)
+    renderer.render(scene,camera)
+  }
+  animate()
+  return ()=>{ cancelAnimationFrame(raf); geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); renderer.dispose() }
+}
+
 const BG_RUNNERS: Record<BgName, (c: HTMLCanvasElement) => () => void> = {
   lluvia: bgLluvia, brasas: bgBrasas, aurora: bgAurora, cosmos: bgCosmos,
   mar: bgMar, planeta: bgPlaneta, tunel: bgTunel,
+  cyberpunk: bgCyberpunk, gamer: bgGamer, agujero: bgAgujero,
 }
-const IS_3D_SET = new Set<BgName>(['mar', 'planeta', 'tunel'])
+const IS_3D_SET = new Set<BgName>(['mar', 'planeta', 'tunel', 'cyberpunk', 'gamer', 'agujero'])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(s: number) {
@@ -616,6 +961,55 @@ function fmtFocus(s: number) {
 }
 function todayStr() {
   return new Date().toISOString().split('T')[0]
+}
+
+// ─── Focus Select ─────────────────────────────────────────────────────────────
+function FocusSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative flex-1 min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-xs text-white/70 border border-white/[0.09] transition-colors hover:border-white/20"
+        style={{ background: 'rgba(255,255,255,0.06)' }}
+      >
+        <span>{value}</span>
+        <span className="text-white/30 text-[10px] ml-1" style={{ transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block', transition: 'transform .2s' }}>▾</span>
+      </button>
+      {open && (
+        <div className="absolute bottom-full mb-1 left-0 right-0 rounded-xl overflow-hidden z-50"
+          style={{ background: 'rgba(18,12,38,0.97)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+          {options.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => { onChange(opt); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-xs transition-colors"
+              style={opt === value
+                ? { background: `${ACCENT}22`, color: ACCENT, fontWeight: 600 }
+                : { color: 'rgba(255,255,255,0.65)' }
+              }
+              onMouseEnter={e => { if (opt !== value) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)' }}
+              onMouseLeave={e => { if (opt !== value) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Controls sub-component ───────────────────────────────────────────────────
@@ -811,10 +1205,23 @@ export default function FocusPage() {
   const [ready, setReady] = useState(false)
   const { open: navOpen, toggle: toggleNav } = useSidebar()
 
-  // Auth
+  // Auth + restore session
   useEffect(() => {
-    if (!localStorage.getItem('token')) router.push('/login')
-    else setReady(true)
+    if (!localStorage.getItem('token')) { router.push('/login'); return }
+    try {
+      const raw = localStorage.getItem(FOCUS_KEY)
+      if (raw) {
+        const s = JSON.parse(raw)
+        if (s.phase) setPhase(s.phase)
+        if (s.secs != null) setSecs(s.secs)
+        if (s.sessionsDone != null) setSessionsDone(s.sessionsDone)
+        if (s.totalFocused != null) setTotalFocused(s.totalFocused)
+        if (s.settings) setSettings(s.settings)
+        if (s.bg) setBg(s.bg)
+        if (s.timerStyle) setTimerStyle(s.timerStyle)
+      }
+    } catch { /* ignore */ }
+    setReady(true)
   }, [router])
 
   // Background & style
@@ -838,6 +1245,7 @@ export default function FocusPage() {
   const [showSounds, setShowSounds] = useState(true)
   const [showMusic, setShowMusic] = useState(false)
   const [zen, setZen] = useState(false)
+  const [bgPickerOpen, setBgPickerOpen] = useState(false)
 
   useEffect(() => {
     if (window.innerWidth >= 1024) setShowTasks(true)
@@ -853,6 +1261,9 @@ export default function FocusPage() {
   const [newTitle, setNewTitle] = useState('')
   const [newLabel, setNewLabel] = useState('Trabajo')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [editNotes, setEditNotes] = useState('')
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Refs
   const canvas2DRef = useRef<HTMLCanvasElement | null>(null)
@@ -867,10 +1278,20 @@ export default function FocusPage() {
   const sessionsDoneRef = useRef(sessionsDone)
   const settingsRef = useRef(settings)
   const totalFocusedRef = useRef(totalFocused)
+  const bgRef = useRef(bg)
   phaseRef.current = phase
   sessionsDoneRef.current = sessionsDone
   settingsRef.current = settings
   totalFocusedRef.current = totalFocused
+  bgRef.current = bg
+
+  // ── Persist session to localStorage ────────────────────────────────────────
+  useEffect(() => {
+    if (!ready) return
+    try {
+      localStorage.setItem(FOCUS_KEY, JSON.stringify({ phase, secs, sessionsDone, totalFocused, settings, bg, timerStyle }))
+    } catch { /* ignore */ }
+  }, [phase, secs, sessionsDone, totalFocused, settings, bg, timerStyle, ready])
 
   // ── Load tasks ──────────────────────────────────────────────────────────────
   const loadTasks = useCallback(async (): Promise<Task[] | null> => {
@@ -914,6 +1335,11 @@ export default function FocusPage() {
     const nextSecs = nextPhase === 'work' ? s.session * 60
       : nextPhase === 'short' ? s.shortBreak * 60
       : s.longBreak * 60
+    // Change background randomly when a break ends (full cycle complete)
+    if (nextPhase === 'work') {
+      const others = BG_LIST.map(b => b.key).filter(k => k !== bgRef.current)
+      setBg(others[Math.floor(Math.random() * others.length)])
+    }
     setPhase(nextPhase)
     setSessionsDone(nextDone)
     setSecs(nextSecs)
@@ -958,6 +1384,7 @@ export default function FocusPage() {
   function resetTimer() {
     setRunning(false); setPhase('work')
     setSecs(settings.session * 60); setSessionsDone(0); setTotalFocused(0)
+    try { localStorage.removeItem(FOCUS_KEY) } catch { /* ignore */ }
   }
   function skipPhase() { advanceRef.current() }
 
@@ -998,11 +1425,49 @@ export default function FocusPage() {
 
   // ── Tasks ───────────────────────────────────────────────────────────────────
   async function openDetail(task: Task) {
-    setSelectedTask(task)  // show immediately with what we have
+    setShowTasks(true)
+    setSelectedTask(task)
     try {
-      const full = await getTask(task.id)  // fetch full version with notes + subtasks
+      const full = await getTask(task.id)
       setSelectedTask(full)
     } catch { /* keep the task we already set */ }
+  }
+
+  // Sync editNotes when selected task changes
+  useEffect(() => {
+    setEditNotes(selectedTask?.notes ?? '')
+    setNewSubtaskTitle('')
+  }, [selectedTask?.id])
+
+  async function doToggleSubtask(taskId: string, subtaskId: string, completed: boolean) {
+    try {
+      await updateSubtask(taskId, subtaskId, { is_completed: completed })
+      const updater = (s: import('@/lib/types').Subtask) => s.id === subtaskId ? { ...s, is_completed: completed } : s
+      setSelectedTask(prev => prev ? { ...prev, subtasks: prev.subtasks.map(updater) } : null)
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: t.subtasks.map(updater) } : t))
+    } catch { /* ignore */ }
+  }
+
+  function handleNotesChange(val: string) {
+    setEditNotes(val)
+    if (!selectedTask) return
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current)
+    notesDebounceRef.current = setTimeout(async () => {
+      try {
+        await updateTask(selectedTask.id, { notes: val.trim() || null })
+        setSelectedTask(prev => prev ? { ...prev, notes: val.trim() || null } : null)
+      } catch { /* ignore */ }
+    }, 600)
+  }
+
+  async function doAddSubtask(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter' || !newSubtaskTitle.trim() || !selectedTask) return
+    const title = newSubtaskTitle.trim()
+    setNewSubtaskTitle('')
+    try {
+      const sub = await createSubtask(selectedTask.id, title)
+      setSelectedTask(prev => prev ? { ...prev, subtasks: [...prev.subtasks, sub] } : null)
+    } catch { /* ignore */ }
   }
 
   async function doToggle(id: string) {
@@ -1080,9 +1545,36 @@ export default function FocusPage() {
               </button>
             )}
           </div>
-          {/* BG tabs — scrollable on small screens */}
-          <div className="overflow-x-auto flex-1 mr-3" style={{ scrollbarWidth: 'none' }}>
-            <div className="flex items-center gap-1 min-w-max">
+          {/* BG picker — dropdown on mobile, tabs on desktop */}
+          <div className="flex-1 mr-3">
+            {/* Mobile: dropdown */}
+            <div className="relative lg:hidden">
+              <button
+                onClick={() => setBgPickerOpen(o => !o)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+              >
+                {BG_LIST.find(b => b.key === bg)?.label}
+                <span style={{ display: 'inline-block', transition: 'transform .2s', transform: bgPickerOpen ? 'rotate(180deg)' : 'none', fontSize: '9px' }}>▾</span>
+              </button>
+              {bgPickerOpen && (
+                <div className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-[60]"
+                  style={{ background: 'rgba(12,8,26,0.97)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 32px rgba(0,0,0,0.7)', minWidth: '130px' }}>
+                  {BG_LIST.map(b => (
+                    <button key={b.key}
+                      onClick={() => { setBg(b.key); setBgPickerOpen(false) }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors"
+                      style={bg === b.key
+                        ? { background: `${ACCENT}33`, color: '#fff' }
+                        : { color: 'rgba(255,255,255,0.55)' }
+                      }
+                    >{b.label}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Desktop: pill tabs */}
+            <div className="hidden lg:flex items-center gap-1 min-w-max">
               {BG_LIST.map(b => (
                 <button key={b.key} onClick={() => setBg(b.key)}
                   className="px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap"
@@ -1208,64 +1700,217 @@ export default function FocusPage() {
               style={{
                 right: '16px',
                 top: '56px',
-                width: '300px',
+                width: '320px',
                 maxHeight: 'calc(100vh - 56px - 88px)',
-                background: 'rgba(7,5,18,0.78)',
+                background: 'rgba(7,5,18,0.82)',
                 backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(255,255,255,0.09)',
                 boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
               }}
             >
-              {/* Panel header */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0">
-                <span className="text-white text-sm font-semibold">Tareas</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-white/30 text-[10px]">{doneTasks}/{tasks.length}</span>
-                  <button onClick={() => setShowTasks(false)}
-                    className="text-white/30 hover:text-white/65 transition-all text-lg leading-none w-5 h-5 flex items-center justify-center"
-                  >×</button>
-                </div>
-              </div>
+              {selectedTask ? (
+                /* ── Detail view ── */
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.06] flex-shrink-0">
+                    <button
+                      onClick={() => setSelectedTask(null)}
+                      className="flex items-center gap-1.5 text-white/45 hover:text-white/75 transition-colors text-xs font-medium"
+                    >
+                      <span className="text-base leading-none">←</span> Tareas
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleStar(selectedTask.id, !selectedTask.is_starred)}
+                        className="text-[16px] transition-transform hover:scale-110"
+                        style={{ color: selectedTask.is_starred ? '#facc15' : 'rgba(255,255,255,0.2)' }}
+                      >{selectedTask.is_starred ? '★' : '☆'}</button>
+                      <button onClick={() => setShowTasks(false)}
+                        className="text-white/25 hover:text-white/60 transition-colors text-lg leading-none w-5 h-5 flex items-center justify-center"
+                      >×</button>
+                    </div>
+                  </div>
 
-              {/* Task list */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
-                {tasks.length === 0 && (
-                  <p className="text-white/25 text-xs text-center pt-6 pb-4">Sin tareas para hoy</p>
-                )}
-                {pendingTasks.length > 0 && (
-                  <>
-                    <p className="text-[10px] font-bold text-white/28 uppercase tracking-widest px-3 pt-2.5 pb-1">Hoy</p>
-                    {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={openDetail} />)}
-                  </>
-                )}
-                {completedTasks.length > 0 && (
-                  <>
-                    <p className="text-[10px] font-bold text-white/18 uppercase tracking-widest px-3 pt-3 pb-1">Completadas</p>
-                    {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={openDetail} />)}
-                  </>
-                )}
-              </div>
+                  {/* Content */}
+                  <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" style={{ scrollbarWidth: 'none' }}>
+                    {/* Title + toggle */}
+                    <div className="flex items-start gap-3">
+                      <button
+                        onClick={() => doToggle(selectedTask.id)}
+                        className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                        style={selectedTask.is_completed
+                          ? { background: LABEL_COLORS[selectedTask.label ?? ''] ?? ACCENT, borderColor: LABEL_COLORS[selectedTask.label ?? ''] ?? ACCENT }
+                          : { borderColor: 'rgba(255,255,255,0.3)', background: 'transparent' }
+                        }
+                      >
+                        {selectedTask.is_completed && <span className="text-white text-[9px]">✓</span>}
+                      </button>
+                      <h3
+                        className="text-[15px] font-semibold leading-snug flex-1"
+                        style={selectedTask.is_completed
+                          ? { textDecoration: 'line-through', color: 'rgba(255,255,255,0.35)' }
+                          : { color: 'rgba(255,255,255,0.92)' }
+                        }
+                      >{selectedTask.title}</h3>
+                    </div>
 
-              {/* Add task */}
-              <div className="border-t border-white/[0.05] p-2.5 space-y-2 flex-shrink-0">
-                <input value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addTask()}
-                  placeholder="Nueva tarea..."
-                  className="w-full bg-white/[0.06] border border-white/[0.09] rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-white/22 outline-none focus:border-white/20 transition-all"
-                  style={{ userSelect: 'text' }}
-                />
-                <div className="flex gap-1.5">
-                  <select value={newLabel} onChange={e => setNewLabel(e.target.value)}
-                    className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs text-white/70 outline-none cursor-pointer border border-white/[0.09]"
-                    style={{ background: 'rgba(255,255,255,0.06)', colorScheme: 'dark' }}
-                  >
-                    {Object.keys(LABEL_COLORS).map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                  <button onClick={addTask}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-base hover:opacity-85 transition-all flex-shrink-0 active:scale-95"
-                    style={{ background: ACCENT }}>+</button>
-                </div>
-              </div>
+                    {/* Meta badges */}
+                    {(selectedTask.label || selectedTask.due_date || selectedTask.reminder_at) && (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedTask.label && (() => {
+                          const c = LABEL_COLORS[selectedTask.label] ?? ACCENT
+                          return (
+                            <span className="text-[10px] font-bold px-2 py-1 rounded-lg"
+                              style={{ background: `${c}22`, color: c }}>
+                              {selectedTask.label}
+                            </span>
+                          )
+                        })()}
+                        {selectedTask.due_date && (
+                          <span className="text-[10px] px-2 py-1 rounded-lg text-white/45"
+                            style={{ background: 'rgba(255,255,255,0.05)' }}>
+                            📅 {selectedTask.due_date}{selectedTask.due_time ? ` · ${selectedTask.due_time.slice(0, 5)}` : ''}
+                          </span>
+                        )}
+                        {selectedTask.reminder_at && (
+                          <span className="text-[10px] px-2 py-1 rounded-lg text-white/45"
+                            style={{ background: 'rgba(255,255,255,0.05)' }}>
+                            🔔 {selectedTask.reminder_at.slice(11, 16)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Notes — editable, auto-save */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Notas</p>
+                      <textarea
+                        value={editNotes}
+                        onChange={e => handleNotesChange(e.target.value)}
+                        placeholder="Agregar nota..."
+                        rows={3}
+                        className="w-full rounded-xl px-3 py-2.5 text-[12px] leading-relaxed resize-none outline-none transition-colors"
+                        style={{
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          color: 'rgba(255,255,255,0.7)',
+                          userSelect: 'text',
+                        }}
+                        onFocus={e => (e.target.style.borderColor = 'rgba(107,70,229,0.5)')}
+                        onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
+                      />
+                    </div>
+
+                    {/* Subtasks */}
+                    <div>
+                      {selectedTask.subtasks?.length > 0 && (
+                        <>
+                          <p className="text-[10px] font-semibold text-white/28 uppercase tracking-wider mb-2">
+                            Subtareas · {selectedTask.subtasks.filter(s => s.is_completed).length}/{selectedTask.subtasks.length}
+                          </p>
+                          <div className="space-y-1 mb-2">
+                            {selectedTask.subtasks.map(sub => {
+                              const c = LABEL_COLORS[selectedTask.label ?? ''] ?? ACCENT
+                              return (
+                                <button
+                                  key={sub.id}
+                                  onClick={() => doToggleSubtask(selectedTask.id, sub.id, !sub.is_completed)}
+                                  className="flex items-center gap-2.5 w-full text-left px-2 py-2 rounded-lg transition-all hover:bg-white/[0.04] active:scale-[0.98]"
+                                >
+                                  <div
+                                    className="w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-all"
+                                    style={sub.is_completed
+                                      ? { background: c, borderColor: c }
+                                      : { borderColor: 'rgba(255,255,255,0.22)', background: 'transparent' }
+                                    }
+                                  >
+                                    {sub.is_completed && <span className="text-[7px] text-white">✓</span>}
+                                  </div>
+                                  <span className="text-[12px] leading-snug"
+                                    style={sub.is_completed
+                                      ? { textDecoration: 'line-through', color: 'rgba(255,255,255,0.28)' }
+                                      : { color: 'rgba(255,255,255,0.72)' }
+                                    }>{sub.title}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+                      {/* Add subtask input */}
+                      <input
+                        value={newSubtaskTitle}
+                        onChange={e => setNewSubtaskTitle(e.target.value)}
+                        onKeyDown={doAddSubtask}
+                        placeholder="+ Agregar subtarea..."
+                        className="w-full bg-transparent text-[12px] outline-none border-b pb-1 transition-colors"
+                        style={{
+                          color: 'rgba(255,255,255,0.55)',
+                          borderColor: 'rgba(255,255,255,0.1)',
+                          userSelect: 'text',
+                        }}
+                        onFocus={e => (e.target.style.borderColor = 'rgba(107,70,229,0.5)')}
+                        onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* ── List view ── */
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0">
+                    <span className="text-white text-sm font-semibold">Tareas</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/30 text-[10px]">{doneTasks}/{tasks.length}</span>
+                      <button onClick={() => setShowTasks(false)}
+                        className="text-white/30 hover:text-white/65 transition-all text-lg leading-none w-5 h-5 flex items-center justify-center"
+                      >×</button>
+                    </div>
+                  </div>
+
+                  {/* Task list */}
+                  <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
+                    {tasks.length === 0 && (
+                      <p className="text-white/25 text-xs text-center pt-6 pb-4">Sin tareas para hoy</p>
+                    )}
+                    {pendingTasks.length > 0 && (
+                      <>
+                        <p className="text-[10px] font-bold text-white/28 uppercase tracking-widest px-3 pt-2.5 pb-1">Hoy</p>
+                        {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={openDetail} />)}
+                      </>
+                    )}
+                    {completedTasks.length > 0 && (
+                      <>
+                        <p className="text-[10px] font-bold text-white/18 uppercase tracking-widest px-3 pt-3 pb-1">Completadas</p>
+                        {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={openDetail} />)}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Add task */}
+                  <div className="border-t border-white/[0.05] p-2.5 space-y-2 flex-shrink-0">
+                    <input value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addTask()}
+                      placeholder="Nueva tarea..."
+                      className="w-full bg-white/[0.06] border border-white/[0.09] rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-white/22 outline-none focus:border-white/20 transition-all"
+                      style={{ userSelect: 'text' }}
+                    />
+                    <div className="flex gap-1.5">
+                      <FocusSelect
+                        value={newLabel}
+                        onChange={setNewLabel}
+                        options={Object.keys(LABEL_COLORS)}
+                      />
+                      <button onClick={addTask}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold leading-none hover:opacity-85 transition-all flex-shrink-0 active:scale-95"
+                        style={{ background: ACCENT, fontSize: '20px' }}>
+                        <span style={{ display: 'inline-block', transform: 'translateY(-1.5px)' }}>+</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </>
@@ -1307,7 +1952,8 @@ export default function FocusPage() {
           <div className="rounded-2xl px-4 py-3 w-full"
             style={{ background: 'rgba(8,6,20,0.88)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)' }}
           >
-            <div className="flex items-center" style={{ gap: '0' }}>
+            {/* Desktop: single row */}
+            <div className="hidden lg:flex items-center" style={{ gap: '0' }}>
               {SOUND_LIST.map((s, i) => (
                 <div key={s.key} className="flex flex-col items-center gap-1"
                   style={{ flex: 1, minWidth: 0, padding: '0 6px', borderRight: i < SOUND_LIST.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
@@ -1321,6 +1967,24 @@ export default function FocusPage() {
                     onChange={e => setVolume(s.key, parseFloat(e.target.value))}
                     className="w-full cursor-pointer"
                     style={{ accentColor: ACCENT, height: '3px' }}
+                  />
+                </div>
+              ))}
+            </div>
+            {/* Mobile: 3-col grid */}
+            <div className="grid grid-cols-3 gap-x-4 gap-y-3 lg:hidden">
+              {SOUND_LIST.map(s => (
+                <div key={s.key} className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-200"
+                      style={{ background: volumes[s.key] > 0 ? ACCENT : 'rgba(255,255,255,0.2)', boxShadow: volumes[s.key] > 0 ? `0 0 5px ${ACCENT}` : 'none' }} />
+                    <span className="text-[10px] text-white/55 truncate">{s.label}</span>
+                  </div>
+                  <input type="range" min="0" max="1" step="0.01"
+                    value={volumes[s.key]}
+                    onChange={e => setVolume(s.key, parseFloat(e.target.value))}
+                    className="w-full cursor-pointer"
+                    style={{ accentColor: ACCENT, height: '4px' }}
                   />
                 </div>
               ))}
@@ -1409,15 +2073,6 @@ export default function FocusPage() {
         </div>
       )}
 
-      {/* ── Task detail modal — z-[60] so it's above everything ────────────── */}
-      {selectedTask && (
-        <TaskDetail
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onToggle={doToggle}
-          onToggleStar={toggleStar}
-        />
-      )}
     </div>
   )
 }

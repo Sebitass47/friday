@@ -611,8 +611,8 @@ function bgPerla(canvas: HTMLCanvasElement): () => void {
   scene.background = new THREE.Color(0x020810)
   scene.fog = new THREE.Fog(0x040c18, 70, 230)
 
-  const camera = new THREE.PerspectiveCamera(65, W/H, 0.1, 400)
-  camera.position.set(55, 14, 30); camera.lookAt(0, 12, 0)
+  const camera = new THREE.PerspectiveCamera(72, W/H, 0.1, 400)
+  camera.position.set(32, 8, 18); camera.lookAt(0, 20, 0)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
   renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -789,9 +789,9 @@ function bgPerla(canvas: HTMLCanvasElement): () => void {
     ship.position.y=Math.sin(t*0.55)*0.6
 
     // Camera slow drift
-    camera.position.x=55+Math.sin(t*0.04)*6
-    camera.position.y=14+Math.sin(t*0.06)*2
-    camera.lookAt(0,12,0)
+    camera.position.x=32+Math.sin(t*0.04)*4
+    camera.position.y=8+Math.sin(t*0.06)*1.5
+    camera.lookAt(0,20,0)
     renderer.render(scene,camera)
   }
   animate()

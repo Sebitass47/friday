@@ -9,7 +9,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import { useSidebar } from '@/components/layout/SidebarContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type BgName = 'lluvia' | 'brasas' | 'aurora' | 'cosmos' | 'mar' | 'planeta' | 'tunel' | 'cyberpunk' | 'gamer' | 'agujero'
+type BgName = 'lluvia' | 'brasas' | 'aurora' | 'cosmos' | 'mar' | 'planeta' | 'tunel' | 'perla'
 type TimerStyle = 'anillo' | 'minimal' | 'tarjeta'
 type SoundKey = 'lluvia' | 'cafeteria' | 'trafico' | 'olas' | 'bosque' | 'pajaros' | 'viento' | 'cascada' | 'fuego'
 type Phase = 'work' | 'short' | 'long'
@@ -26,9 +26,7 @@ const BG_LIST: { key: BgName; label: string }[] = [
   { key: 'mar', label: 'Mar' },
   { key: 'planeta', label: 'Sistema' },
   { key: 'tunel', label: 'Túnel' },
-  { key: 'cyberpunk', label: 'Ciudad' },
-  { key: 'gamer', label: 'Gamer' },
-  { key: 'agujero', label: 'Agujero' },
+  { key: 'perla', label: 'Perla' },
 ]
 const SOUND_LIST: { key: SoundKey; label: string }[] = [
   { key: 'lluvia', label: 'Lluvia' }, { key: 'cafeteria', label: 'Cafetería' },
@@ -606,16 +604,15 @@ function bgCosmos(canvas: HTMLCanvasElement): () => void {
 }
 
 // ── Cyberpunk City — rain-soaked city viewed from window height ───────────────
-// ── Synthwave City — neon-edged city from above, purple grid sky ──────────────
-function bgCyberpunk(canvas: HTMLCanvasElement): () => void {
+// ── Black Pearl — pirate ship on a stormy night sea ──────────────────────────
+function bgPerla(canvas: HTMLCanvasElement): () => void {
   const W = canvas.width, H = canvas.height
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x030012)
-  scene.fog = new THREE.Fog(0x06001a, 100, 280)
+  scene.background = new THREE.Color(0x020810)
+  scene.fog = new THREE.Fog(0x040c18, 70, 230)
 
-  // Camera elevated, looking down-forward at city (bird's-eye synthwave angle)
-  const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 400)
-  camera.position.set(0, 48, 58); camera.lookAt(0, 2, -65)
+  const camera = new THREE.PerspectiveCamera(65, W/H, 0.1, 400)
+  camera.position.set(55, 14, 30); camera.lookAt(0, 12, 0)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
   renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -624,489 +621,177 @@ function bgCyberpunk(canvas: HTMLCanvasElement): () => void {
   const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
   const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
 
-  const PINK = 0xff22cc, CYAN = 0x00ddff, PURPLE = 0x9922ee
+  // Ship group — so it can rock independently from ocean/sky
+  const ship = new THREE.Group(); scene.add(ship)
 
-  // Sky background gradient (purple → deep indigo)
-  const skyTc = document.createElement('canvas'); skyTc.width = 2; skyTc.height = 256
-  const skx = skyTc.getContext('2d')!
-  const skyGrad = skx.createLinearGradient(0,0,0,256)
-  skyGrad.addColorStop(0,'#050020'); skyGrad.addColorStop(0.5,'#120048'); skyGrad.addColorStop(1,'#0a0032')
-  skx.fillStyle=skyGrad; skx.fillRect(0,0,2,256)
-  const skyTex=new THREE.CanvasTexture(skyTc); mats.push(skyTex as unknown as THREE.Material)
-  const skyBg=new THREE.Mesh(track(new THREE.PlaneGeometry(800,400)),trackM(new THREE.MeshBasicMaterial({map:skyTex})))
-  skyBg.position.set(0,85,-200); scene.add(skyBg)
+  const hullMat = trackM(new THREE.MeshPhongMaterial({ color: 0x080608, emissive: 0x030204, shininess: 40, specular: 0x222233 }))
+  const sailMat = trackM(new THREE.MeshPhongMaterial({ color: 0x0c0c0f, emissive: 0x040407, shininess: 2, side: THREE.DoubleSide }))
+  const woodMat = trackM(new THREE.MeshPhongMaterial({ color: 0x180d06, emissive: 0x060401, shininess: 10 }))
+  const winMat  = trackM(new THREE.MeshBasicMaterial({ color: 0x44556a, transparent: true, opacity: 0.85 }))
+  const lanMat  = trackM(new THREE.MeshBasicMaterial({ color: 0xff9944 }))
 
-  // Ground grid
-  const gGrid=new THREE.GridHelper(700,56,0x6622dd,0x3a0099)
-  geos.push(gGrid.geometry)
-  const gGridMats=Array.isArray(gGrid.material)?gGrid.material:[gGrid.material]
-  gGridMats.forEach(m=>{(m as THREE.LineBasicMaterial).transparent=true;(m as THREE.LineBasicMaterial).opacity=0.5;mats.push(m)})
-  scene.add(gGrid)
-
-  // Sky ceiling grid
-  const sGrid=new THREE.GridHelper(700,56,0x8844ff,0x5522bb)
-  geos.push(sGrid.geometry)
-  const sGridMats=Array.isArray(sGrid.material)?sGrid.material:[sGrid.material]
-  sGridMats.forEach(m=>{(m as THREE.LineBasicMaterial).transparent=true;(m as THREE.LineBasicMaterial).opacity=0.6;mats.push(m)})
-  sGrid.position.y=95; sGrid.rotation.x=Math.PI; scene.add(sGrid)
-
-  // Red + magenta accent lines in sky grid
-  ;[[new THREE.Vector3(-55,95.1,65),new THREE.Vector3(-18,95.1,-300),0xff0000],
-    [new THREE.Vector3(30,95.1,65),new THREE.Vector3(8,95.1,-300),0xff00cc]].forEach(([a,b,c])=>{
-    const g=track(new THREE.BufferGeometry().setFromPoints([a as THREE.Vector3,b as THREE.Vector3]))
-    scene.add(new THREE.LineSegments(g,trackM(new THREE.LineBasicMaterial({color:c as number,transparent:true,opacity:0.85}))))
-  })
-
-  const NEON_COLS=[PINK,CYAN,PURPLE,0xff00aa,0x00ffcc,0xaa44ff,0xff66ff,0x44ffcc]
-  const animEdges:{mat:THREE.LineBasicMaterial;phase:number}[]=[]
-  const avLights:{light:THREE.PointLight;phase:number}[]=[]
-  const bBodyMat=trackM(new THREE.MeshPhongMaterial({color:0x03000c,emissive:0x010006,shininess:4}))
-
-  // Holographic billboard canvas texture
-  const billboardTexts=['CYBER','NEON','SYNTH','FRIDAY','DATA','NOVA','GRID','PULSE']
-  const billColors=[CYAN,PINK,PURPLE,0x00ffcc,0xff88ff]
-  function makeHoloBillboard(text:string,col:number):THREE.CanvasTexture{
-    const tc=document.createElement('canvas'); tc.width=512; tc.height=256
-    const tx=tc.getContext('2d')!
-    tx.fillStyle='#000000'; tx.fillRect(0,0,512,256)
-    const hexCol='#'+col.toString(16).padStart(6,'0')
-    // Border
-    tx.strokeStyle=hexCol; tx.lineWidth=6; tx.globalAlpha=0.9; tx.strokeRect(4,4,504,248)
-    // Scanlines
-    tx.globalAlpha=0.12; tx.fillStyle='#000000'
-    for(let y=0;y<256;y+=4) tx.fillRect(0,y,512,2)
-    tx.globalAlpha=1
-    // Main text
-    tx.font='bold 80px monospace'; tx.textAlign='center'; tx.textBaseline='middle'
-    tx.shadowColor=hexCol; tx.shadowBlur=35
-    tx.fillStyle=hexCol
-    for(let i=0;i<4;i++) tx.fillText(text,256,140)
-    // Sub text
-    tx.font='20px monospace'; tx.shadowBlur=10; tx.fillStyle='rgba(255,255,255,0.5)'
-    tx.fillText('[ NETWORK ONLINE ]',256,215)
-    const tex=new THREE.CanvasTexture(tc); mats.push(tex as unknown as THREE.Material); return tex
+  const add = (g: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx=0, ry=0, rz=0) => {
+    const mesh = new THREE.Mesh(g, m); mesh.position.set(x,y,z); mesh.rotation.set(rx,ry,rz); ship.add(mesh); return mesh
   }
 
-  // Build city: main block + narrow spires for visual complexity
-  type BD={x:number;z:number;w:number;d:number;h:number}
-  const blocks:BD[]=[
-    // Foreground
-    {x:-26,z:14,w:13,d:11,h:9},{x:-10,z:16,w:9,d:9,h:16},{x:5,z:12,w:15,d:12,h:11},{x:22,z:15,w:11,d:9,h:13},
-    {x:38,z:10,w:8,d:7,h:7},{x:-40,z:8,w:9,d:8,h:10},{x:0,z:18,w:7,d:6,h:6},
-    // Near-mid
-    {x:-32,z:-7,w:11,d:9,h:24},{x:-18,z:-5,w:9,d:8,h:38},{x:-5,z:-9,w:10,d:9,h:20},
-    {x:9,z:-6,w:12,d:10,h:30},{x:24,z:-8,w:10,d:9,h:22},{x:38,z:-5,w:8,d:7,h:16},
-    {x:-44,z:-10,w:7,d:6,h:28},{x:46,z:-6,w:6,d:6,h:18},
-    // Narrow spires (thin + very tall)
-    {x:-13,z:-12,w:4,d:3,h:58},{x:16,z:-14,w:3,d:3,h:64},{x:-28,z:-15,w:3,d:3,h:42},
-    {x:32,z:-12,w:4,d:3,h:50},{x:2,z:-16,w:3,d:4,h:46},
-    // Mid
-    {x:-38,z:-25,w:13,d:11,h:42},{x:-24,z:-23,w:10,d:9,h:58},{x:-9,z:-27,w:11,d:10,h:34},
-    {x:5,z:-23,w:9,d:8,h:50},{x:18,z:-27,w:12,d:10,h:40},{x:32,z:-21,w:11,d:9,h:32},{x:46,z:-24,w:8,d:7,h:26},
-    // Far
-    {x:-42,z:-45,w:15,d:12,h:62},{x:-24,z:-43,w:12,d:10,h:78},{x:-7,z:-47,w:13,d:11,h:90},
-    {x:10,z:-43,w:11,d:9,h:68},{x:26,z:-45,w:14,d:11,h:75},{x:42,z:-40,w:10,d:9,h:55},
-    {x:-54,z:-40,w:9,d:8,h:44},{x:55,z:-38,w:8,d:8,h:48},
-    // Very far + extreme spires
-    {x:-16,z:-68,w:17,d:13,h:96},{x:4,z:-72,w:15,d:12,h:100},{x:22,z:-66,w:13,d:11,h:88},
-    {x:-32,z:-63,w:11,d:9,h:60},{x:36,z:-60,w:12,d:10,h:70},{x:0,z:-80,w:5,d:4,h:110},
-    {x:-10,z:-76,w:4,d:3,h:85},{x:14,z:-74,w:3,d:3,h:90},
-  ]
-
-  for(const b of blocks){
-    const bGeo=track(new THREE.BoxGeometry(b.w,b.h,b.d))
-    const bMesh=new THREE.Mesh(bGeo,bBodyMat); bMesh.position.set(b.x,b.h/2,b.z); scene.add(bMesh)
-
-    const nc=NEON_COLS[Math.floor(Math.random()*NEON_COLS.length)]
-    const eGeo=track(new THREE.EdgesGeometry(bGeo))
-    const eMat=trackM(new THREE.LineBasicMaterial({color:nc,transparent:true,opacity:0.92}))
-    const edges=new THREE.LineSegments(eGeo,eMat); edges.position.copy(bMesh.position); scene.add(edges)
-    animEdges.push({mat:eMat,phase:Math.random()*Math.PI*2})
-
-    const gl=new THREE.PointLight(nc,1.5,26); gl.position.set(b.x,b.h*0.5,b.z); scene.add(gl)
-
-    // Stepped upper tier (gives the iconic skyscraper setback look)
-    if(b.h>35&&b.w>5&&Math.random()>0.4){
-      const tw=b.w*0.6,td=b.d*0.6,th=b.h*(0.3+Math.random()*0.25)
-      const tGeo=track(new THREE.BoxGeometry(tw,th,td))
-      const tMesh=new THREE.Mesh(tGeo,bBodyMat); tMesh.position.set(b.x,b.h+th/2,b.z); scene.add(tMesh)
-      const teGeo=track(new THREE.EdgesGeometry(tGeo))
-      const tEdge=new THREE.LineSegments(teGeo,eMat); tEdge.position.copy(tMesh.position); scene.add(tEdge)
-      // Second tier setback
-      if(th>15&&Math.random()>0.5){
-        const tw2=tw*0.55,td2=td*0.55,th2=th*0.4
-        const tGeo2=track(new THREE.BoxGeometry(tw2,th2,td2))
-        const tMesh2=new THREE.Mesh(tGeo2,bBodyMat); tMesh2.position.set(b.x,b.h+th+th2/2,b.z); scene.add(tMesh2)
-        const teGeo2=track(new THREE.EdgesGeometry(tGeo2))
-        const tEdge2=new THREE.LineSegments(teGeo2,eMat); tEdge2.position.copy(tMesh2.position); scene.add(tEdge2)
-      }
-    }
-
-    // Vertical LED strips
-    if(Math.random()>0.35){
-      const vc=Math.random()>0.5?CYAN:PINK; const ns=1+Math.floor(Math.random()*3)
-      for(let s=0;s<ns;s++){
-        const sx=b.x-b.w/2+(s+1)*b.w/(ns+1)
-        const sg=track(new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(sx,0.05,b.z-b.d/2-0.1),new THREE.Vector3(sx,b.h,b.z-b.d/2-0.1)]))
-        scene.add(new THREE.Line(sg,trackM(new THREE.LineBasicMaterial({color:vc,transparent:true,opacity:0.85}))))
-      }
-    }
-
-    // Horizontal neon band
-    if(b.h>28&&Math.random()>0.42){
-      const ry=b.h*(0.3+Math.random()*0.35),rc=Math.random()>0.5?PINK:CYAN
-      const hw=b.w/2+0.15,hd=b.d/2+0.15
-      const bp=[new THREE.Vector3(b.x-hw,ry,b.z-hd),new THREE.Vector3(b.x+hw,ry,b.z-hd),
-        new THREE.Vector3(b.x+hw,ry,b.z+hd),new THREE.Vector3(b.x-hw,ry,b.z+hd),new THREE.Vector3(b.x-hw,ry,b.z-hd)]
-      scene.add(new THREE.Line(track(new THREE.BufferGeometry().setFromPoints(bp)),
-        trackM(new THREE.LineBasicMaterial({color:rc,transparent:true,opacity:0.95}))))
-    }
-
-    // Antenna on rooftop
-    if(b.h>30&&Math.random()>0.45){
-      const ah=5+Math.random()*12
-      const aGeo=track(new THREE.BoxGeometry(0.35,ah,0.35))
-      const aMesh=new THREE.Mesh(aGeo,trackM(new THREE.MeshBasicMaterial({color:0x334455})))
-      aMesh.position.set(b.x+(Math.random()-.5)*b.w*0.4,b.h+ah/2,b.z+(Math.random()-.5)*b.d*0.4); scene.add(aMesh)
-    }
-
-    // Holographic billboard on tall buildings
-    if(b.h>45&&b.w>7&&Math.random()>0.55){
-      const bc=billColors[Math.floor(Math.random()*billColors.length)]
-      const btx=makeHoloBillboard(billboardTexts[Math.floor(Math.random()*billboardTexts.length)],bc)
-      const bw=b.w*0.75,bh=b.w*0.38
-      const billMat=trackM(new THREE.MeshBasicMaterial({map:btx,transparent:true,opacity:0.92}))
-      const bill=new THREE.Mesh(track(new THREE.PlaneGeometry(bw,bh)),billMat)
-      bill.position.set(b.x,b.h*(0.55+Math.random()*0.25),b.z-b.d/2-0.15); scene.add(bill)
-      const bl=new THREE.PointLight(bc,3.5,32); bl.position.set(b.x,bill.position.y,b.z-b.d/2-2); scene.add(bl)
-      animEdges.push({mat:billMat as unknown as THREE.LineBasicMaterial,phase:Math.random()*Math.PI*2})
-    }
-
-    // Vertical searchlight beam from top of tallest buildings
-    if(b.h>70&&Math.random()>0.55){
-      const bc=Math.random()>0.5?CYAN:PINK
-      const beamPts=[new THREE.Vector3(b.x,b.h,b.z),new THREE.Vector3(b.x,b.h+90,b.z)]
-      scene.add(new THREE.Line(track(new THREE.BufferGeometry().setFromPoints(beamPts)),
-        trackM(new THREE.LineBasicMaterial({color:bc,transparent:true,opacity:0.22}))))
-      const bLight=new THREE.PointLight(bc,2.5,60); bLight.position.set(b.x,b.h+20,b.z); scene.add(bLight)
-    }
-
-    // Window dots
-    if(b.h>12){
-      const wc=Math.floor(b.w*b.h*0.09),wp=new Float32Array(wc*3)
-      for(let i=0;i<wc;i++){
-        wp[i*3]=b.x+(Math.random()-.5)*b.w*0.82
-        wp[i*3+1]=Math.random()*b.h*0.9+b.h*0.04
-        wp[i*3+2]=b.z-b.d/2-0.1
-      }
-      const wGeo=track(new THREE.BufferGeometry()); wGeo.setAttribute('position',new THREE.BufferAttribute(wp,3))
-      scene.add(new THREE.Points(wGeo,trackM(new THREE.PointsMaterial({color:0xddccff,size:0.28,transparent:true,opacity:0.65}))))
-    }
-
-    // Aviation blink
-    if(b.h>55){
-      const al=new THREE.PointLight(0xff2200,3,18); al.position.set(b.x,b.h+0.5,b.z); scene.add(al)
-      avLights.push({light:al,phase:Math.random()*Math.PI*2})
-    }
+  // ── HULL ──────────────────────────────────────────────────────────────────
+  add(track(new THREE.BoxGeometry(12, 5.5, 9)),  hullMat, -2, 2.75, 0)  // mid hull
+  add(track(new THREE.BoxGeometry(8,  5,   7.5)),hullMat, -9, 2.5,  0)  // stern lower
+  add(track(new THREE.BoxGeometry(8,  4.5, 8)),  hullMat,  4, 2.25, 0)  // fore lower
+  add(track(new THREE.BoxGeometry(4,  4,   6)),  hullMat,  9, 2,    0)  // bow
+  add(track(new THREE.BoxGeometry(2,  3,   4)),  hullMat, 12, 1.5,  0)  // bowsprit base
+  // Upper gun deck
+  add(track(new THREE.BoxGeometry(24, 3, 7.5)),  hullMat, -1, 6.5, 0)
+  // Bulwark rails
+  add(track(new THREE.BoxGeometry(24, 0.55, 0.4)), hullMat, -1, 8.25,  3.9)
+  add(track(new THREE.BoxGeometry(24, 0.55, 0.4)), hullMat, -1, 8.25, -3.9)
+  // Stern castle
+  add(track(new THREE.BoxGeometry(8,   9,  7.5)), hullMat, -9.5,  9.5, 0)
+  add(track(new THREE.BoxGeometry(6,   4.5,6.5)), hullMat, -11,  15.2, 0)
+  // Stern gallery back wall
+  add(track(new THREE.BoxGeometry(0.5, 5,  7.5)), hullMat, -13.6, 13.5, 0)
+  // Stern windows
+  for (let wy = 9.5; wy <= 15; wy += 2.8)
+    for (const wz of [-1.5, 0, 1.5])
+      add(track(new THREE.BoxGeometry(0.06, 1.1, 0.85)), winMat, -13.7, wy, wz)
+  // Cannon ports + barrels (both sides)
+  for (let cx = -6; cx <= 4; cx += 3) {
+    add(track(new THREE.BoxGeometry(0.75, 0.65, 0.3)), hullMat, cx, 6.5,  4.15)
+    add(track(new THREE.BoxGeometry(0.75, 0.65, 0.3)), hullMat, cx, 6.5, -4.15)
+    add(track(new THREE.CylinderGeometry(0.2, 0.27, 1.4, 6)), hullMat, cx, 6.5,  4.6, Math.PI/2, 0, 0)
+    add(track(new THREE.CylinderGeometry(0.2, 0.27, 1.4, 6)), hullMat, cx, 6.5, -4.6,-Math.PI/2, 0, 0)
   }
+  // Keel
+  add(track(new THREE.BoxGeometry(22, 0.6, 2)), hullMat, -1, 0.3, 0)
+  // Anchor chains
+  add(track(new THREE.BoxGeometry(0.35, 3, 0.35)), woodMat, 11.5, 0, 2)
+  add(track(new THREE.BoxGeometry(0.35, 3, 0.35)), woodMat, 11.5, 0,-2)
 
-  // Bridge connectors between nearby buildings (adds visual complexity)
-  ;[[-22,-23,-9,-23,-8,-27],[5,-23,18,-27,8,-27],[32,-21,-9,-27,18,-27]]
-  .slice(0,2)  // just a couple
-  .forEach(([x1,z1,x2,z2,bx,bz])=>{
-    const bPts=[new THREE.Vector3(x1,12,z1),new THREE.Vector3(bx,10,bz),new THREE.Vector3(x2,11,z2)]
-    const bGeo3=track(new THREE.BufferGeometry().setFromPoints(bPts))
-    scene.add(new THREE.Line(bGeo3,trackM(new THREE.LineBasicMaterial({color:CYAN,transparent:true,opacity:0.6}))))
-  })
+  // ── MASTS ─────────────────────────────────────────────────────────────────
+  const mast = (x: number, y0: number, h: number) => {
+    add(track(new THREE.CylinderGeometry(0.2, 0.34, h, 7)), woodMat, x, y0+h/2, 0)
+    return y0 + h
+  }
+  const mainTop = mast(0,   8, 40)  // mainmast (tallest)
+  const foreTop = mast(8,   8, 32)  // foremast
+  const mizTop  = mast(-9, 12, 28)  // mizzenmast (on stern castle)
 
-  // Atmosphere particles (city smog/dust floating between buildings)
-  const DUST=500,dp=new Float32Array(DUST*3)
-  for(let i=0;i<DUST;i++){dp[i*3]=(Math.random()-.5)*180;dp[i*3+1]=Math.random()*85;dp[i*3+2]=-Math.random()*160}
-  const dustGeo=track(new THREE.BufferGeometry()); dustGeo.setAttribute('position',new THREE.BufferAttribute(dp,3))
-  scene.add(new THREE.Points(dustGeo,trackM(new THREE.PointsMaterial({color:0x8844cc,size:0.28,transparent:true,opacity:0.28}))))
+  // Crow's nest
+  add(track(new THREE.CylinderGeometry(1.5, 1.2, 0.9, 8)), woodMat, 0, 29.5, 0)
 
-  // Scene lighting
-  scene.add(new THREE.AmbientLight(0x080022,3))
-  const lp=new THREE.PointLight(PINK,5,160); lp.position.set(-40,22,0); scene.add(lp)
-  const lc=new THREE.PointLight(CYAN,5,160); lc.position.set(40,22,0); scene.add(lc)
-  const lpu=new THREE.PointLight(PURPLE,3,120); lpu.position.set(0,35,-50); scene.add(lpu)
+  // Bowsprit (Box along X, angled upward ~16°)
+  const bsL = 15, bsA = 0.28
+  add(track(new THREE.BoxGeometry(bsL, 0.45, 0.45)), woodMat,
+    10 + bsL/2*Math.cos(bsA), 9 + bsL/2*Math.sin(bsA), 0, 0, 0, bsA)
 
-  // Flying crafts (pairs: headlight + taillight)
-  const crafts=Array.from({length:8},()=>{
-    const y=12+Math.random()*32,z=-5-Math.random()*80
-    const head=new THREE.PointLight(0xffffff,2,16); head.position.set(-95,y,z)
-    const tail=new THREE.PointLight(0xff3300,1.2,8); tail.position.set(-97,y,z)
-    scene.add(head,tail)
-    return {lights:[head,tail],spd:0.12+Math.random()*0.2}
-  })
+  // Spars (horizontal beams, CylinderGeometry rotated to lie along Z)
+  const spar = (x: number, y: number, len: number) =>
+    add(track(new THREE.CylinderGeometry(0.14, 0.18, len, 6)), woodMat, x, y, 0, Math.PI/2, 0, 0)
+  spar(0, 12, 21); spar(0, 21, 16); spar(0, 30, 12); spar(0, 38, 8)  // main
+  spar(8, 12, 18); spar(8, 20, 13); spar(8, 28,  9)                  // fore
+  spar(-9, 18, 14); spar(-9, 25, 9.5)                                 // mizzen
 
-  let t=0,raf=0
-  const animate=()=>{
-    raf=requestAnimationFrame(animate); t+=0.008
-
-    // Scroll ground grid
-    gGrid.position.z=(gGrid.position.z+0.065)%(700/56)
-
-    // Crafts
-    for(const c of crafts){
-      c.lights.forEach(l=>l.position.x+=c.spd)
-      if(c.lights[0].position.x>95) c.lights.forEach(l=>l.position.x=-95)
+  // ── SAILS ─────────────────────────────────────────────────────────────────
+  const addSail = (x: number, y: number, sw: number, sh: number, billow: number) => {
+    const g = track(new THREE.PlaneGeometry(sw, sh, 1, 6))
+    const pos = g.attributes.position as THREE.BufferAttribute
+    for (let i = 0; i < pos.count; i++) {
+      const fy = (pos.getY(i) + sh/2) / sh
+      pos.setX(i, pos.getX(i) + Math.sin(fy * Math.PI) * billow)
     }
-
-    // Aviation blinks
-    avLights.forEach(a=>{a.light.intensity=Math.sin(t*3+a.phase)>0.4?4:0})
-
-    // Neon edge breathing
-    animEdges.forEach(e=>{e.mat.opacity=0.75+Math.sin(t*1.1+e.phase)*0.2})
-
-    // Slow camera drift
-    camera.position.x=Math.sin(t*0.01)*6
-    camera.lookAt(Math.sin(t*0.008)*5,2,-65)
-    renderer.render(scene,camera)
+    g.computeVertexNormals()
+    const m = new THREE.Mesh(g, sailMat); m.position.set(x, y, 0); m.rotation.y = Math.PI/2; ship.add(m)
   }
-  animate()
-  return ()=>{cancelAnimationFrame(raf);geos.forEach(g=>g.dispose());mats.forEach(m=>m.dispose());renderer.dispose()}
-}
+  // Main mast (4 sails)
+  addSail(0, 16,  20, 7.5, 2.2); addSail(0, 25, 15.5, 6.5, 1.8)
+  addSail(0, 34,  11, 5.5, 1.2); addSail(0, 41,   7,  4,   0.8)
+  // Fore mast (3 sails)
+  addSail(8, 16,  17,   7, 2.0); addSail(8, 24,  13,   6, 1.5); addSail(8, 31, 9, 5, 1.0)
+  // Mizzen mast (2 sails)
+  addSail(-9, 21, 13, 6.5, 1.5); addSail(-9, 28, 8.5, 5, 1.0)
 
-// ── Gamer Room — 80s neon bedroom with CRT, grid floor, synthwave vibes ───────
-function bgGamer(canvas: HTMLCanvasElement): () => void {
-  const W = canvas.width, H = canvas.height
-  const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x050108)
-  const camera = new THREE.PerspectiveCamera(68, W/H, 0.1, 80)
-  camera.position.set(0, 3.2, 9); camera.lookAt(0, 3.5, -5)
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
-  renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.7
-
-  const geos: THREE.BufferGeometry[] = [], mats: THREE.Material[] = []
-  const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
-  const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
-  const box = (w: number,h: number,d: number,col: number,emi=0x000000) => {
-    const m = new THREE.Mesh(track(new THREE.BoxGeometry(w,h,d)), trackM(new THREE.MeshPhongMaterial({ color:col, emissive:emi, shininess:30 })))
-    scene.add(m); return m
-  }
-
-  // Grid floor texture
-  const ftc = document.createElement('canvas'); ftc.width = 512; ftc.height = 512
-  const ftx = ftc.getContext('2d')!
-  ftx.fillStyle = '#08020e'; ftx.fillRect(0, 0, 512, 512)
-  for (let i = 0; i <= 16; i++) {
-    const v = i * 32
-    ftx.strokeStyle = `rgba(255,0,180,${i%4===0?0.55:0.18})`; ftx.lineWidth = i%4===0 ? 2 : 1
-    ftx.beginPath(); ftx.moveTo(v,0); ftx.lineTo(v,512); ftx.stroke()
-    ftx.strokeStyle = `rgba(0,160,255,${i%4===0?0.55:0.18})`
-    ftx.beginPath(); ftx.moveTo(0,v); ftx.lineTo(512,v); ftx.stroke()
-  }
-  const ftex = new THREE.CanvasTexture(ftc); ftex.wrapS = ftex.wrapT = THREE.RepeatWrapping; ftex.repeat.set(3,3)
-  mats.push(ftex as unknown as THREE.Material)
-  const floor = new THREE.Mesh(track(new THREE.PlaneGeometry(20,18)),
-    trackM(new THREE.MeshPhongMaterial({ map:ftex, color:0x110820, shininess:80, specular:0x220044 })))
-  floor.rotation.x = -Math.PI/2; scene.add(floor)
-
-  // Walls & ceiling
-  const bwMat = trackM(new THREE.MeshPhongMaterial({ color:0x0a0614, emissive:0x040008 }))
-  const bw = new THREE.Mesh(track(new THREE.PlaneGeometry(20,10)), bwMat); bw.position.set(0,5,-9); scene.add(bw)
-  const swGeo = track(new THREE.PlaneGeometry(18,10)); const swMat = trackM(new THREE.MeshPhongMaterial({ color:0x09051a }))
-  const lw = new THREE.Mesh(swGeo, swMat); lw.rotation.y=Math.PI/2; lw.position.set(-10,5,0); scene.add(lw)
-  const rw = new THREE.Mesh(swGeo, swMat); rw.rotation.y=-Math.PI/2; rw.position.set(10,5,0); scene.add(rw)
-  const ceil = new THREE.Mesh(track(new THREE.PlaneGeometry(20,18)), trackM(new THREE.MeshPhongMaterial({ color:0x06021a })))
-  ceil.rotation.x=Math.PI/2; ceil.position.set(0,8,0); scene.add(ceil)
-
-  // Neon trim lines
-  const nLine = (x1:number,y1:number,z1:number,x2:number,y2:number,z2:number,col:number,li=1.5) => {
+  // ── RIGGING ───────────────────────────────────────────────────────────────
+  const rig = (x1:number,y1:number,z1:number,x2:number,y2:number,z2:number) => {
     const g = track(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x1,y1,z1),new THREE.Vector3(x2,y2,z2)]))
-    scene.add(new THREE.Line(g, trackM(new THREE.LineBasicMaterial({ color:col }))))
-    const l = new THREE.PointLight(col,li,12); l.position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2); scene.add(l)
+    ship.add(new THREE.Line(g, trackM(new THREE.LineBasicMaterial({color:0x1a1008,transparent:true,opacity:0.7}))))
   }
-  nLine(-10,9.9,-8.9,10,9.9,-8.9,0x00eeff,2)   // back top
-  nLine(-10,0.05,-8.9,10,0.05,-8.9,0xff00bb,2)  // back bottom
-  nLine(-9.9,0,-8.9,-9.9,9.9,-8.9,0xff00bb)      // back left
-  nLine(9.9,0,-8.9,9.9,9.9,-8.9,0x00eeff)        // back right
-  nLine(-9.9,9.9,-9,-9.9,9.9,9,0xff8800,1)       // side top left
-  nLine(9.9,9.9,-9,9.9,9.9,9,0x8800ff,1)         // side top right
-  nLine(-10,0.05,-9,10,0.05,9,0xff00bb,1)         // floor edge back
-
-  // Desk
-  const desk = box(6,0.15,2.5,0x1a0d2e); desk.position.set(0,2.5,-6)
-  ;[[-2.9,1.25,-7.1],[2.9,1.25,-7.1],[-2.9,1.25,-4.9],[2.9,1.25,-4.9]].forEach(([x,y,z])=>{
-    const leg=box(0.15,2.5,0.15,0x150a22); leg.position.set(x,y,z)
-  })
-
-  // CRT Monitor
-  const mon = box(2.2,1.8,0.9,0x18102a); mon.position.set(0,3.58,-7)
-  // Screen texture
-  const stc = document.createElement('canvas'); stc.width=256; stc.height=200
-  const sctx = stc.getContext('2d')!
-  sctx.fillStyle='#000020'; sctx.fillRect(0,0,256,200)
-  for(let i=0;i<200;i+=4){sctx.fillStyle='rgba(0,0,0,0.35)';sctx.fillRect(0,i,256,2)}
-  sctx.font='bold 13px monospace'
-  sctx.fillStyle='#00ff88'; sctx.fillText('> FRIDAY OS v2.0',8,28); sctx.fillText('READY_',8,168)
-  sctx.fillStyle='#00cc55'; sctx.fillText('Loading modules...',8,52); sctx.fillText('████████░░ 80%',8,76)
-  sctx.fillStyle='#ff00aa'; sctx.fillText('HIGH SCORE: 999999',8,110)
-  sctx.fillStyle='#00eeff'; sctx.fillText('PLAYER 1  READY',8,140)
-  const stex=new THREE.CanvasTexture(stc); mats.push(stex as unknown as THREE.Material)
-  const screen=new THREE.Mesh(track(new THREE.PlaneGeometry(1.9,1.5)),trackM(new THREE.MeshBasicMaterial({map:stex})))
-  screen.position.set(0,3.58,-6.54); scene.add(screen)
-  const scLight=new THREE.PointLight(0x00ff88,3.5,14); scLight.position.set(0,3.5,-5.5); scene.add(scLight)
-
-  // Keyboard
-  const kb=box(1.8,0.08,0.65,0x201040); kb.position.set(0,2.6,-5.8)
-  // Keycaps canvas
-  const ktc=document.createElement('canvas'); ktc.width=180; ktc.height=65
-  const kctx=ktc.getContext('2d')!
-  kctx.fillStyle='#180a30'; kctx.fillRect(0,0,180,65)
-  for(let row=0;row<4;row++) for(let col=0;col<12;col++){
-    const lit=Math.random()>0.7
-    kctx.fillStyle=lit?`hsl(${Math.random()*60+270},100%,60%)`:'#2a1858'
-    kctx.fillRect(col*15+1,row*16+1,13,14)
+  rig(0,mainTop,0,  14, 8, 0);  rig(8,foreTop,0, 14,8,0)
+  rig(8,foreTop,0,   0,mainTop,0); rig(-9,mizTop,0, 0,mainTop,0)
+  for (const z of [-3.5, 3.5]) {
+    rig(0,mainTop,0,  0, 8, z); rig(8,foreTop,0, 8, 8, z); rig(-9,mizTop,0,-9,12,z)
   }
-  const ktex=new THREE.CanvasTexture(ktc); mats.push(ktex as unknown as THREE.Material)
-  const kbFace=new THREE.Mesh(track(new THREE.PlaneGeometry(1.8,0.65)),trackM(new THREE.MeshBasicMaterial({map:ktex})))
-  kbFace.rotation.x=-Math.PI/2; kbFace.position.set(0,2.65,-5.8); scene.add(kbFace)
+  rig(0,21,0, 8,12,0); rig(-9,18,0, 0,12,0); rig(0,30,0, 8,20,0)
 
-  // Speakers
-  const spk1=box(0.5,0.8,0.4,0x150a28,0x050015); spk1.position.set(-1.5,2.95,-7)
-  const spk2=box(0.5,0.8,0.4,0x150a28,0x050015); spk2.position.set(1.5,2.95,-7)
-  new THREE.PointLight(0xff00bb,1,6)
+  // Stern lantern spheres
+  for (const lz of [-2.5, 0, 2.5])
+    add(track(new THREE.SphereGeometry(0.32, 8, 8)), lanMat, -14, 17, lz)
 
-  // Neon wall signs
-  ;[{x:-5,y:6.5,w:2.8,h:0.75,c:0xff00bb},{x:4.8,y:7.2,w:3.2,h:0.75,c:0x00eeff},{x:0,y:8.1,w:5,h:0.55,c:0xffcc00}]
-  .forEach(({x,y,w,h,c})=>{
-    const s=new THREE.Mesh(track(new THREE.PlaneGeometry(w,h)),trackM(new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.95})))
-    s.position.set(x,y,-8.85); scene.add(s)
-    const sl=new THREE.PointLight(c,3,22); sl.position.set(x,y,-7.5); scene.add(sl)
-  })
+  // ── OCEAN ─────────────────────────────────────────────────────────────────
+  const OW = 48
+  const oceanGeo = track(new THREE.PlaneGeometry(300, 220, OW, OW))
+  const oceanMat = trackM(new THREE.MeshPhongMaterial({ color: 0x040c1a, shininess: 90, specular: 0x0d2244 }))
+  const ocean = new THREE.Mesh(oceanGeo, oceanMat); ocean.rotation.x = -Math.PI/2; ocean.position.y = -0.5; scene.add(ocean)
 
-  // Posters
-  ;[{x:-3.5,c:0x3300aa},{x:3.5,c:0xaa0055}].forEach(({x,c})=>{
-    const p=new THREE.Mesh(track(new THREE.PlaneGeometry(1.6,2.2)),trackM(new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.85})))
-    p.position.set(x,5.5,-8.85); scene.add(p)
-    const pl=new THREE.PointLight(c,1,10); pl.position.set(x,5.5,-7.5); scene.add(pl)
-  })
+  // ── SKY ───────────────────────────────────────────────────────────────────
+  const sPos = new Float32Array(2500*3)
+  for (let i = 0; i < 2500; i++) {
+    const th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*0.65), r=180+Math.random()*120
+    sPos[i*3]=r*Math.sin(ph)*Math.cos(th); sPos[i*3+1]=Math.abs(r*Math.cos(ph))+15; sPos[i*3+2]=r*Math.sin(ph)*Math.sin(th)
+  }
+  const sGeo=track(new THREE.BufferGeometry()); sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3))
+  scene.add(new THREE.Points(sGeo,trackM(new THREE.PointsMaterial({color:0xeeeeff,size:0.55,transparent:true,opacity:0.72}))))
 
-  // PC Tower
-  const tower=box(0.7,2.2,0.7,0x12082a,0x040012); tower.position.set(3.5,1.1,-7.2)
-  const pwrL=new THREE.PointLight(0x00ff33,1.2,3); pwrL.position.set(3.5,2,-6.86); scene.add(pwrL)
+  // Moon
+  const moonMesh=new THREE.Mesh(track(new THREE.SphereGeometry(7,16,16)),trackM(new THREE.MeshBasicMaterial({color:0xddeeff})))
+  moonMesh.position.set(-65,72,-85); scene.add(moonMesh)
 
-  // Floating dust particles
-  const DP=180, dp=new Float32Array(DP*3)
-  for(let i=0;i<DP;i++){dp[i*3]=(Math.random()-.5)*18;dp[i*3+1]=Math.random()*7;dp[i*3+2]=(Math.random()-.5)*16}
-  const dustGeo=track(new THREE.BufferGeometry()); dustGeo.setAttribute('position',new THREE.BufferAttribute(dp,3))
-  scene.add(new THREE.Points(dustGeo,trackM(new THREE.PointsMaterial({color:0xaa88ff,size:0.04,transparent:true,opacity:0.65}))))
+  // Storm clouds (dark semi-transparent planes)
+  for (let i=0;i<7;i++){
+    const cg=track(new THREE.PlaneGeometry(50+Math.random()*70,10+Math.random()*18))
+    const cm=trackM(new THREE.MeshBasicMaterial({color:0x030710,transparent:true,opacity:0.62+Math.random()*0.28,side:THREE.DoubleSide}))
+    const cloud=new THREE.Mesh(cg,cm)
+    cloud.position.set((Math.random()-.5)*130, 36+Math.random()*30, -30-Math.random()*90)
+    cloud.rotation.z=(Math.random()-.5)*0.35; scene.add(cloud)
+  }
 
-  // Lighting
-  scene.add(new THREE.AmbientLight(0x080214,2.5))
-  const purp=new THREE.PointLight(0x8800ff,3.5,28); purp.position.set(0,7.5,-2); scene.add(purp)
-  const pink=new THREE.PointLight(0xff0088,3,22); pink.position.set(-8,4,-2); scene.add(pink)
-  const cyan=new THREE.PointLight(0x00ccff,3,22); cyan.position.set(8,4,-2); scene.add(cyan)
+  // ── LIGHTING ──────────────────────────────────────────────────────────────
+  scene.add(new THREE.AmbientLight(0x040810, 2.5))
+  const moonLight=new THREE.PointLight(0xaaccee,6,250); moonLight.position.set(-65,72,-85); scene.add(moonLight)
+  const fillLight=new THREE.DirectionalLight(0x334466,1.5); fillLight.position.set(-2,1,0.5); scene.add(fillLight)
+  const lantern1=new THREE.PointLight(0xff8833,3,22); lantern1.position.set(-14,17, 2.5); scene.add(lantern1)
+  const lantern2=new THREE.PointLight(0xff8833,3,22); lantern2.position.set(-14,17,-2.5); scene.add(lantern2)
+  const lantern3=new THREE.PointLight(0xff8833,2,18); lantern3.position.set(-14,17,  0); scene.add(lantern3)
+  // Supernatural ghost glow (Black Pearl has a curse)
+  const ghostGlow=new THREE.PointLight(0x00dd66,1.2,40); ghostGlow.position.set(0,5,0); scene.add(ghostGlow)
 
+  // ── ANIMATION ─────────────────────────────────────────────────────────────
   let t=0, raf=0
   const animate=()=>{
     raf=requestAnimationFrame(animate); t+=0.01
-    scLight.intensity=3+Math.sin(t*8)*0.5+(Math.random()>0.98?-2:0)
-    pwrL.intensity=1+Math.sin(t*2)*0.5
-    camera.position.x=Math.sin(t*0.04)*0.7
-    camera.position.y=3.2+Math.sin(t*0.06)*0.12
-    camera.lookAt(Math.sin(t*0.03)*0.8,3.5,-5)
-    renderer.render(scene,camera)
-  }
-  animate()
-  return ()=>{ cancelAnimationFrame(raf); geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); renderer.dispose() }
-}
 
-// ── Agujero Negro — black hole with accretion disk, jets & orbiting matter ────
-function bgAgujero(canvas: HTMLCanvasElement): () => void {
-  const W = canvas.width, H = canvas.height
-  const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x000002)
-  const camera = new THREE.PerspectiveCamera(60, W/H, 0.1, 2000)
-  camera.position.set(0,25,60); camera.lookAt(0,0,0)
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
-  renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
-
-  const geos: THREE.BufferGeometry[] = [], mats: THREE.Material[] = []
-  const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
-  const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
-
-  // Stars
-  const sPos=new Float32Array(5000*3)
-  for(let i=0;i<5000;i++){
-    const th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=250+Math.random()*750
-    sPos[i*3]=r*Math.sin(ph)*Math.cos(th); sPos[i*3+1]=r*Math.sin(ph)*Math.sin(th); sPos[i*3+2]=r*Math.cos(ph)
-  }
-  const sGeo=track(new THREE.BufferGeometry()); sGeo.setAttribute('position',new THREE.BufferAttribute(sPos,3))
-  scene.add(new THREE.Points(sGeo,trackM(new THREE.PointsMaterial({color:0xeeddff,size:0.45}))))
-
-  // Black hole
-  scene.add(new THREE.Mesh(track(new THREE.SphereGeometry(8,32,32)),trackM(new THREE.MeshBasicMaterial({color:0x000000}))))
-
-  // Photon ring
-  const photon=new THREE.Mesh(track(new THREE.RingGeometry(8.05,8.8,128)),
-    trackM(new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.75,side:THREE.DoubleSide})))
-  photon.rotation.x=Math.PI*0.15; scene.add(photon)
-
-  // Accretion disk layers
-  const TILT=Math.PI*0.12
-  ;[
-    [8.8,13,0xffffff,0.9],[13,18,0xffdd44,0.75],[18,25,0xff7700,0.6],
-    [25,34,0xff2200,0.45],[34,45,0x660022,0.28],[45,58,0x220044,0.14],
-  ].forEach(([inner,outer,col,op])=>{
-    const m=new THREE.Mesh(track(new THREE.RingGeometry(inner as number,outer as number,128)),
-      trackM(new THREE.MeshBasicMaterial({color:col as number,transparent:true,opacity:op as number,side:THREE.DoubleSide})))
-    m.rotation.x=TILT; scene.add(m)
-  })
-
-  // Einstein ring / lensing glow (opposite tilt)
-  const lensGeo=track(new THREE.RingGeometry(7.5,10.5,128))
-  const lensMat=trackM(new THREE.MeshBasicMaterial({color:0xff8800,transparent:true,opacity:0.35,side:THREE.DoubleSide}))
-  const lens=new THREE.Mesh(lensGeo,lensMat); lens.rotation.x=-TILT+Math.PI*0.5; scene.add(lens)
-
-  // Orbiting particles (matter spiraling in)
-  const ORBS=350, orbPos=new Float32Array(ORBS*3)
-  const orbData=Array.from({length:ORBS},()=>{
-    const r=9+Math.random()*48, theta=Math.random()*Math.PI*2
-    return { r, theta, spd:0.009/Math.sqrt(r/10), spread:(Math.random()-.5)*0.4 }
-  })
-  const orbGeo=track(new THREE.BufferGeometry()); orbGeo.setAttribute('position',new THREE.BufferAttribute(orbPos,3))
-  scene.add(new THREE.Points(orbGeo,trackM(new THREE.PointsMaterial({color:0xffaa44,size:0.35,transparent:true,opacity:0.85}))))
-
-  // Polar jets (relativistic plasma beams)
-  const makeJet=(dir:number,col:number)=>{
-    const pts=new Float32Array(80*3)
-    for(let i=0;i<80;i++){
-      const frac=i/79, spread=frac*frac*5
-      pts[i*3]=(Math.random()-.5)*spread; pts[i*3+1]=dir*(8+frac*90); pts[i*3+2]=(Math.random()-.5)*spread
+    // Ocean waves
+    const pos=oceanGeo.attributes.position.array as Float32Array
+    for(let i=0;i<pos.length;i+=3){
+      const x=pos[i],z=pos[i+2]
+      pos[i+1]=Math.sin(x*0.09+t)*1.5+Math.sin(z*0.07+t*1.4)*1.0+Math.sin(x*0.14+z*0.11+t*0.8)*0.5
     }
-    const g=track(new THREE.BufferGeometry()); g.setAttribute('position',new THREE.BufferAttribute(pts,3))
-    scene.add(new THREE.Points(g,trackM(new THREE.PointsMaterial({color:col,size:0.55,transparent:true,opacity:0.65}))))
-    const jl=new THREE.PointLight(col,3,40); jl.position.set(0,dir*30,0); scene.add(jl)
-  }
-  makeJet(1,0x4499ff); makeJet(-1,0x4499ff)
+    oceanGeo.attributes.position.needsUpdate=true; oceanGeo.computeVertexNormals()
 
-  // Core glow
-  const coreL=new THREE.PointLight(0xff6600,10,90); scene.add(coreL)
-  const rimL=new THREE.PointLight(0xff4400,4,50); rimL.position.set(0,8,0); scene.add(rimL)
-  scene.add(new THREE.AmbientLight(0x020006,2))
+    // Lantern flicker
+    lantern1.intensity=2.5+Math.sin(t*9)*0.7
+    lantern2.intensity=2.5+Math.sin(t*7.5+1)*0.7
+    lantern3.intensity=2+Math.sin(t*11+2)*0.5
+    ghostGlow.intensity=0.8+Math.sin(t*1.5)*0.8
 
-  let t=0, raf=0
-  const animate=()=>{
-    raf=requestAnimationFrame(animate); t+=0.005
-    const op=orbGeo.attributes.position.array as Float32Array
-    for(let i=0;i<ORBS;i++){
-      orbData[i].theta+=orbData[i].spd
-      const {r,theta,spread}=orbData[i]
-      op[i*3]=r*Math.cos(theta); op[i*3+1]=Math.sin(theta*2)*spread; op[i*3+2]=r*Math.sin(theta)
-    }
-    orbGeo.attributes.position.needsUpdate=true
-    photon.rotation.z=t*0.4
-    lens.rotation.z=-t*0.2
-    coreL.intensity=9+Math.sin(t*15)*1.5
-    camera.position.x=Math.sin(t*0.08)*70
-    camera.position.y=20+Math.sin(t*0.05)*14
-    camera.position.z=Math.cos(t*0.08)*70
-    camera.lookAt(0,0,0)
+    // Ship rocking (only ship group, ocean stays level)
+    ship.rotation.z=Math.sin(t*0.45)*0.022
+    ship.rotation.x=Math.sin(t*0.33)*0.012
+    ship.position.y=Math.sin(t*0.55)*0.6
+
+    // Camera slow drift
+    camera.position.x=55+Math.sin(t*0.04)*6
+    camera.position.y=14+Math.sin(t*0.06)*2
+    camera.lookAt(0,12,0)
     renderer.render(scene,camera)
   }
   animate()
@@ -1115,10 +800,9 @@ function bgAgujero(canvas: HTMLCanvasElement): () => void {
 
 const BG_RUNNERS: Record<BgName, (c: HTMLCanvasElement) => () => void> = {
   lluvia: bgLluvia, brasas: bgBrasas, aurora: bgAurora, cosmos: bgCosmos,
-  mar: bgMar, planeta: bgPlaneta, tunel: bgTunel,
-  cyberpunk: bgCyberpunk, gamer: bgGamer, agujero: bgAgujero,
+  mar: bgMar, planeta: bgPlaneta, tunel: bgTunel, perla: bgPerla,
 }
-const IS_3D_SET = new Set<BgName>(['mar', 'planeta', 'tunel', 'cyberpunk', 'gamer', 'agujero'])
+const IS_3D_SET = new Set<BgName>(['mar', 'planeta', 'tunel', 'perla'])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(s: number) {

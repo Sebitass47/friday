@@ -77,6 +77,7 @@ Página full-screen de productividad tipo "focus space". Sin sidebar, layout pro
 - Mar: océano nocturno Three.js con PlaneGeometry y animación de vértices (olas), luna PointLight y estrellas Points
 - Planeta: Three.js SphereGeometry con CanvasTexture de bandas, anillos RingGeometry inclinados, atmósfera transparente y DirectionalLight
 - Túnel: Three.js corredor hexagonal — rings de MeshBasicMaterial vuelan hacia la cámara con niebla Fog
+- Perla: Three.js Perla Negra — barco pirata en mar nocturno, Three.js con hull de BoxGeometry por secciones, 3 mástiles CylinderGeometry, velas PlaneGeometry con billow, jarcias LineSegments, océano animado, luna, estrellas, nubes tormentosas, luz verde fantasmal
 
 **Sonidos ambientales (Web Audio API sintetizado):**
 - 9 sonidos: Lluvia, Cafetería, Tráfico, Olas, Bosque, Pájaros, Viento, Cascada, Fuego

@@ -24,7 +24,7 @@ const BG_LIST: { key: BgName; label: string }[] = [
   { key: 'aurora', label: 'Aurora' },
   { key: 'cosmos', label: 'Cosmos' },
   { key: 'mar', label: 'Mar' },
-  { key: 'planeta', label: 'Planeta' },
+  { key: 'planeta', label: 'Sistema' },
   { key: 'tunel', label: 'Túnel' },
 ]
 const SOUND_LIST: { key: SoundKey; label: string }[] = [
@@ -248,80 +248,146 @@ function bgPlaneta(canvas: HTMLCanvasElement): () => void {
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x000008)
 
-  const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 1000)
-  camera.position.set(0, 1, 7)
+  const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 2000)
+  camera.position.set(0, 30, 70)
+  camera.lookAt(0, 0, 0)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false })
   renderer.setSize(W, H)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
+  const geos: THREE.BufferGeometry[] = []
+  const mats: THREE.Material[] = []
+  function track<T extends THREE.BufferGeometry>(g: T) { geos.push(g); return g }
+  function trackM<T extends THREE.Material>(m: T) { mats.push(m); return m }
+
   // Stars
-  const sPos = new Float32Array(2500 * 3)
-  for (let i = 0; i < 2500; i++) {
-    const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1), r = 80 + Math.random() * 200
-    sPos[i * 3] = r * Math.sin(phi) * Math.cos(theta); sPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta); sPos[i * 3 + 2] = r * Math.cos(phi)
+  const sPos = new Float32Array(3000 * 3)
+  for (let i = 0; i < 3000; i++) {
+    const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), r = 300 + Math.random() * 700
+    sPos[i*3] = r*Math.sin(ph)*Math.cos(th); sPos[i*3+1] = r*Math.sin(ph)*Math.sin(th); sPos[i*3+2] = r*Math.cos(ph)
   }
-  const sGeo = new THREE.BufferGeometry(); sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3))
-  scene.add(new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0xddd5ff, size: 0.18 })))
+  const sGeo = track(new THREE.BufferGeometry()); sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3))
+  scene.add(new THREE.Points(sGeo, trackM(new THREE.PointsMaterial({ color: 0xddd8ff, size: 0.35 }))))
 
-  // Planet texture via canvas
-  const tc = document.createElement('canvas'); tc.width = 1024; tc.height = 512
-  const tctx = tc.getContext('2d')!
-  const bg = tctx.createLinearGradient(0, 0, 0, 512)
-  bg.addColorStop(0, '#081850'); bg.addColorStop(.25, '#0e2278'); bg.addColorStop(.5, '#1535a0')
-  bg.addColorStop(.75, '#0e2278'); bg.addColorStop(1, '#071240')
-  tctx.fillStyle = bg; tctx.fillRect(0, 0, 1024, 512)
-  for (let b = 0; b < 14; b++) {
-    const y = (b / 14) * 512, bh = 512 / 14
-    tctx.fillStyle = `rgba(${b % 2 === 0 ? '80,130,220' : '30,55,155'},${0.04 + .08 * Math.abs(Math.sin(b * 1.4))})`
-    tctx.fillRect(0, y, 1024, bh)
+  // Sun
+  const sunGeo = track(new THREE.SphereGeometry(5, 32, 32))
+  const sunMat = trackM(new THREE.MeshBasicMaterial({ color: 0xffee55 }))
+  const sunMesh = new THREE.Mesh(sunGeo, sunMat)
+  scene.add(sunMesh)
+  // Sun corona (glow)
+  const coronaGeo = track(new THREE.SphereGeometry(6.5, 24, 24))
+  const coronaMat = trackM(new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.12 }))
+  scene.add(new THREE.Mesh(coronaGeo, coronaMat))
+  const sunLight = new THREE.PointLight(0xfff5d0, 4, 600); scene.add(sunLight)
+  scene.add(new THREE.AmbientLight(0x060810, 1.2))
+
+  // Planet definitions: [radius, orbitDist, speed, color, tilt?, rings?, moons?]
+  type PlanetDef = { r: number; dist: number; spd: number; color: number; tilt?: number; rings?: boolean; moon?: boolean; stripes?: boolean }
+  const defs: PlanetDef[] = [
+    { r: 0.55, dist: 10,  spd: 4.7,  color: 0xaaaaaa },                              // Mercury
+    { r: 0.95, dist: 16,  spd: 1.85, color: 0xddaa66, tilt: 0.05 },                   // Venus
+    { r: 1.0,  dist: 22,  spd: 1.0,  color: 0x3366ee, tilt: 0.41, moon: true },       // Earth
+    { r: 0.65, dist: 30,  spd: 0.53, color: 0xcc4422, tilt: 0.44 },                   // Mars
+    { r: 2.8,  dist: 46,  spd: 0.08, color: 0xccaa77, tilt: 0.05, stripes: true },    // Jupiter
+    { r: 2.2,  dist: 63,  spd: 0.03, color: 0xddcc88, tilt: 0.47, rings: true },      // Saturn
+  ]
+
+  type PlanetObj = { pivot: THREE.Object3D; mesh: THREE.Mesh; spd: number; moon?: { pivot: THREE.Object3D } }
+  const planets: PlanetObj[] = []
+
+  for (const d of defs) {
+    // Orbit ring
+    const orb: THREE.Vector3[] = []
+    for (let i = 0; i <= 128; i++) {
+      const a = (i / 128) * Math.PI * 2
+      orb.push(new THREE.Vector3(d.dist * Math.cos(a), 0, d.dist * Math.sin(a)))
+    }
+    const og = track(new THREE.BufferGeometry().setFromPoints(orb))
+    scene.add(new THREE.Line(og, trackM(new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.07 }))))
+
+    // Pivot (rotation around sun)
+    const pivot = new THREE.Object3D()
+    pivot.rotation.y = Math.random() * Math.PI * 2
+    scene.add(pivot)
+
+    // Planet mesh
+    let mat: THREE.MeshPhongMaterial
+    if (d.stripes) {
+      // Jupiter-like canvas texture
+      const tc = document.createElement('canvas'); tc.width = 256; tc.height = 128
+      const tx = tc.getContext('2d')!
+      const bgs = tx.createLinearGradient(0, 0, 0, 128)
+      bgs.addColorStop(0, '#ccaa66'); bgs.addColorStop(.5, '#ddbb88'); bgs.addColorStop(1, '#ccaa66')
+      tx.fillStyle = bgs; tx.fillRect(0, 0, 256, 128)
+      for (let b = 0; b < 10; b++) {
+        tx.fillStyle = `rgba(${b%2===0?'100,60,20':'180,140,80'},0.25)`
+        tx.fillRect(0, (b/10)*128, 256, 128/10)
+      }
+      const tex = new THREE.CanvasTexture(tc); tex.wrapS = THREE.RepeatWrapping
+      mats.push(tex as unknown as THREE.Material)
+      mat = trackM(new THREE.MeshPhongMaterial({ map: tex, shininess: 15 }))
+    } else {
+      mat = trackM(new THREE.MeshPhongMaterial({ color: d.color, shininess: d.moon ? 8 : 20 }))
+    }
+    const pg = track(new THREE.SphereGeometry(d.r, 24, 24))
+    const mesh = new THREE.Mesh(pg, mat)
+    mesh.position.x = d.dist
+    mesh.rotation.z = d.tilt ?? 0
+    pivot.add(mesh)
+
+    const obj: PlanetObj = { pivot, mesh, spd: d.spd }
+
+    // Saturn rings
+    if (d.rings) {
+      const rg = track(new THREE.RingGeometry(d.r * 1.55, d.r * 2.7, 80))
+      const rm = trackM(new THREE.MeshBasicMaterial({ color: 0xbbaa77, transparent: true, opacity: 0.38, side: THREE.DoubleSide }))
+      const rm2 = trackM(new THREE.MeshBasicMaterial({ color: 0x998855, transparent: true, opacity: 0.18, side: THREE.DoubleSide }))
+      const rg2 = track(new THREE.RingGeometry(d.r * 2.8, d.r * 3.4, 80))
+      const rMesh = new THREE.Mesh(rg, rm); rMesh.rotation.x = Math.PI * 0.43
+      const rMesh2 = new THREE.Mesh(rg2, rm2); rMesh2.rotation.x = Math.PI * 0.43
+      mesh.add(rMesh); mesh.add(rMesh2)
+    }
+
+    // Earth moon
+    if (d.moon) {
+      const moonPivot = new THREE.Object3D(); mesh.add(moonPivot)
+      const mg = track(new THREE.SphereGeometry(0.27, 16, 16))
+      const mm = trackM(new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 5 }))
+      const moonMesh = new THREE.Mesh(mg, mm); moonMesh.position.x = 1.8
+      moonPivot.add(moonMesh)
+      obj.moon = { pivot: moonPivot }
+    }
+
+    planets.push(obj)
   }
-  // Storm spot
-  const spot = tctx.createRadialGradient(280, 330, 0, 280, 330, 60)
-  spot.addColorStop(0, 'rgba(150,200,255,0.18)'); spot.addColorStop(1, 'rgba(0,0,0,0)')
-  tctx.fillStyle = spot; tctx.fillRect(0, 0, 1024, 512)
-
-  const tex = new THREE.CanvasTexture(tc); tex.wrapS = THREE.RepeatWrapping
-
-  // Planet sphere
-  const planetGeo = new THREE.SphereGeometry(2, 64, 64)
-  const planetMat = new THREE.MeshPhongMaterial({ map: tex, shininess: 25, specular: 0x204080 })
-  const planet = new THREE.Mesh(planetGeo, planetMat)
-  planet.position.set(0.3, 0.2, 0)
-  scene.add(planet)
-
-  // Atmosphere glow (slightly larger transparent sphere)
-  const atmGeo = new THREE.SphereGeometry(2.18, 32, 32)
-  const atmMat = new THREE.MeshPhongMaterial({ color: 0x2244ff, transparent: true, opacity: 0.1, side: THREE.FrontSide })
-  scene.add(new THREE.Mesh(atmGeo, atmMat))
-
-  // Rings
-  const ringGeo = new THREE.RingGeometry(2.8, 4.5, 128)
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0x7090c0, transparent: true, opacity: 0.28, side: THREE.DoubleSide })
-  const ring = new THREE.Mesh(ringGeo, ringMat)
-  ring.rotation.x = Math.PI * 0.22; ring.rotation.z = 0.15
-  ring.position.copy(planet.position)
-  scene.add(ring)
-
-  // Lights
-  const sun = new THREE.DirectionalLight(0xddeeff, 1.8); sun.position.set(-4, 2, 5); scene.add(sun)
-  scene.add(new THREE.AmbientLight(0x060820, 1.5))
 
   let t = 0, raf = 0
   const animate = () => {
     raf = requestAnimationFrame(animate)
-    t += 0.004
-    planet.rotation.y = t
-    tex.offset.x = t * 0.015
+    t += 0.005
+    // Sun slow rotation
+    sunMesh.rotation.y = t * 0.3
+    // Planet orbits
+    for (const p of planets) {
+      p.pivot.rotation.y += p.spd * 0.005
+      p.mesh.rotation.y += 0.01
+      if (p.moon) p.moon.pivot.rotation.y += 0.04
+    }
+    // Gentle camera drift — slow arc above the system
+    camera.position.x = Math.sin(t * 0.07) * 18
+    camera.position.y = 28 + Math.sin(t * 0.05) * 6
+    camera.position.z = 65 + Math.cos(t * 0.06) * 10
+    camera.lookAt(0, 0, 0)
     renderer.render(scene, camera)
   }
   animate()
 
   return () => {
     cancelAnimationFrame(raf)
+    geos.forEach(g => g.dispose())
+    mats.forEach(m => m.dispose())
     renderer.dispose()
-    planetGeo.dispose(); planetMat.dispose(); atmGeo.dispose(); atmMat.dispose()
-    ringGeo.dispose(); ringMat.dispose(); sGeo.dispose(); tex.dispose(); tc.remove()
   }
 }
 

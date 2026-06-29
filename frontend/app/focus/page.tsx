@@ -836,6 +836,7 @@ export default function FocusPage() {
   // UI toggles — tasks default closed on mobile, open on desktop
   const [showTasks, setShowTasks] = useState(false)
   const [showSounds, setShowSounds] = useState(true)
+  const [showMusic, setShowMusic] = useState(false)
   const [zen, setZen] = useState(false)
 
   useEffect(() => {
@@ -1109,6 +1110,13 @@ export default function FocusPage() {
                 : { color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
               }
             >Sonidos</button>
+            <button onClick={() => setShowMusic(s => !s)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              style={showMusic
+                ? { background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }
+                : { color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
+              }
+            >Música</button>
             <button onClick={() => setZen(true)}
               className="px-3 py-1.5 rounded-full text-xs text-white/40 border border-white/[0.07] hover:text-white/65 transition-all"
             >Zen</button>
@@ -1261,6 +1269,34 @@ export default function FocusPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* ── Lofi Boy YouTube player — floating bottom-left ─────────────────── */}
+      {!zen && showMusic && (
+        <div className="fixed z-30 rounded-2xl overflow-hidden"
+          style={{
+            left: '16px',
+            bottom: showSounds ? '88px' : '16px',
+            width: '280px',
+            transition: 'bottom .3s',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          {/* Header bar */}
+          <div className="flex items-center justify-between px-3 py-2 flex-shrink-0"
+            style={{ background: 'rgba(7,5,18,0.92)', backdropFilter: 'blur(16px)' }}>
+            <span className="text-[11px] text-white/60 font-medium">🎵 Lofi Boy</span>
+            <button onClick={() => setShowMusic(false)}
+              className="text-white/30 hover:text-white/70 transition-colors text-base leading-none">×</button>
+          </div>
+          <iframe
+            src="https://www.youtube.com/embed/4xDzrJKXOOY?autoplay=1&controls=1&modestbranding=1&rel=0"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            style={{ display: 'block', width: '280px', height: '158px', border: 'none' }}
+          />
+        </div>
       )}
 
       {/* ── Sound mixer — full width, one row, no scroll ───────────────────── */}

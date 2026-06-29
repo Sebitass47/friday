@@ -640,7 +640,7 @@ export default function FocusPage() {
 
       {/* ── Header — z-50 so it always sits above every panel ──────────────── */}
       {!zen && (
-        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2.5">
+        <header className="fixed top-0 right-0 z-50 flex items-center justify-between px-4 py-2.5 transition-all duration-300" style={{ left: navOpen ? '240px' : '0' }}>
           <div className="flex items-center gap-2 flex-shrink-0 mr-2">
             {/* Nav toggle — only when sidebar is closed */}
             {!navOpen && (

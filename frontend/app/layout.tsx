@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { SidebarProvider } from "@/components/layout/SidebarContext";
 
 export const metadata: Metadata = {
   title: "FRIDAY",
@@ -36,7 +37,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col font-sans bg-white dark:bg-[#0A0A0A] text-black dark:text-white transition-colors duration-300">
         <ThemeProvider>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
         </ThemeProvider>
       </body>
     </html>

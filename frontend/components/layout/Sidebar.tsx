@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu, X, CheckSquare, CalendarDays, Timer } from 'lucide-react'
+import {
+  LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu, X,
+  CheckSquare, CalendarDays, Timer, ChevronLeft,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
+import { useSidebar } from './SidebarContext'
 
 const NAV = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Finanzas' },
@@ -18,8 +21,8 @@ const NAV = [
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
+  const { open, toggle } = useSidebar()
 
   function logout() {
     localStorage.removeItem('token')
@@ -28,12 +31,21 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      {/* Brand */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6B46E5] dark:bg-[#AF9BFF]/20 border border-[#6B46E5]/30 dark:border-[#AF9BFF]/30">
-          <span className="text-sm font-bold text-white dark:text-[#AF9BFF]">F</span>
+      {/* Brand + collapse button */}
+      <div className="flex items-center justify-between px-5 py-5 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6B46E5] dark:bg-[#AF9BFF]/20 border border-[#6B46E5]/30 dark:border-[#AF9BFF]/30">
+            <span className="text-sm font-bold text-white dark:text-[#AF9BFF]">F</span>
+          </div>
+          <span className="text-base font-semibold text-black dark:text-white tracking-wide">FRIDAY</span>
         </div>
-        <span className="text-base font-semibold text-black dark:text-white tracking-wide">FRIDAY</span>
+        <button
+          onClick={toggle}
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-black/40 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all"
+          title="Colapsar menú"
+        >
+          <ChevronLeft size={16} strokeWidth={2} />
+        </button>
       </div>
 
       {/* Nav */}
@@ -46,7 +58,7 @@ export default function Sidebar() {
               <Link
                 key={href}
                 href={href}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => { if (window.innerWidth < 1024) toggle() }}
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                   active
@@ -62,7 +74,6 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
       {/* Bottom */}
@@ -87,26 +98,29 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#141414] border border-black/10 dark:border-white/10 lg:hidden text-black dark:text-white shadow-sm"
-      >
-        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-      </button>
+      {/* Hamburger — visible whenever sidebar is closed */}
+      {!open && (
+        <button
+          onClick={toggle}
+          className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#141414] border border-black/10 dark:border-white/10 text-black dark:text-white shadow-sm transition-all hover:shadow-md"
+        >
+          <Menu size={18} />
+        </button>
+      )}
 
-      {mobileOpen && (
+      {/* Backdrop — only on mobile when open */}
+      {open && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={toggle}
         />
       )}
 
+      {/* Sidebar panel */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-white/98 dark:bg-[#0D0D0D]/98 backdrop-blur-xl border-r border-black/[0.06] dark:border-white/[0.06] transition-all duration-300',
-          'lg:translate-x-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          'fixed inset-y-0 left-0 z-40 flex w-60 flex-col bg-white/98 dark:bg-[#0D0D0D]/98 backdrop-blur-xl border-r border-black/[0.06] dark:border-white/[0.06] transition-transform duration-300',
+          open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {sidebarContent}

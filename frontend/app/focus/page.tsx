@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getTasks, toggleTaskComplete, createTask } from '@/lib/api'
 import { Task } from '@/lib/types'
+import Sidebar from '@/components/layout/Sidebar'
+import { useSidebar } from '@/components/layout/SidebarContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type BgName = 'lluvia' | 'estrellas' | 'brasas' | 'aurora' | 'cosmos'
@@ -409,6 +411,7 @@ function TaskCard({ task, onToggle }: { task: Task; onToggle: (id: string) => vo
 export default function FocusPage() {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const { open: navOpen, toggle: toggleNav } = useSidebar()
 
   // Auth
   useEffect(() => {
@@ -629,12 +632,27 @@ export default function FocusPage() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#060010]" style={{ fontFamily: 'system-ui,sans-serif', userSelect: 'none' }}>
 
+      {/* Nav sidebar — overlays on focus page */}
+      <Sidebar />
+
       {/* Canvas background */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
       {/* ── Header — z-50 so it always sits above every panel ──────────────── */}
       {!zen && (
         <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-2 flex-shrink-0 mr-2">
+            {/* Nav toggle — only when sidebar is closed */}
+            {!navOpen && (
+              <button onClick={toggleNav}
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-white/50 hover:text-white/80 transition-all"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
+                title="Abrir navegación"
+              >
+                <span className="text-sm">☰</span>
+              </button>
+            )}
+          </div>
           {/* BG tabs — scrollable on small screens */}
           <div className="overflow-x-auto flex-1 mr-3" style={{ scrollbarWidth: 'none' }}>
             <div className="flex items-center gap-1 min-w-max">
@@ -667,7 +685,7 @@ export default function FocusPage() {
             >Sonidos</button>
             <button onClick={() => setZen(true)}
               className="px-3 py-1.5 rounded-full text-xs text-white/40 border border-white/[0.07] hover:text-white/65 transition-all"
-            >zen</button>
+            >Zen</button>
           </div>
         </header>
       )}
@@ -676,7 +694,7 @@ export default function FocusPage() {
       {zen && (
         <button onClick={() => setZen(false)}
           className="fixed top-4 right-4 z-50 px-3 py-1.5 rounded-full text-xs text-white/35 border border-white/[0.06] hover:text-white/55 transition-all"
-        >salir zen</button>
+        >Salir Zen</button>
       )}
 
       {/* ── Center timer — no padding shifts, panel is floating ────────────── */}
@@ -750,21 +768,6 @@ export default function FocusPage() {
       {/* ── Tasks panel — floating card, z-30 (below header z-50) ──────────── */}
       {!zen && (
         <>
-          {/* Floating toggle when panel is closed */}
-          {!showTasks && (
-            <button onClick={() => setShowTasks(true)}
-              className="fixed right-4 z-30 flex items-center justify-center rounded-xl text-white/50 hover:text-white/80 transition-all active:scale-95"
-              style={{
-                top: 'calc(50% - 40px)',
-                width: '36px', height: '36px',
-                background: 'rgba(10,8,24,0.7)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                backdropFilter: 'blur(12px)',
-              }}
-              title="Abrir tareas"
-            >☰</button>
-          )}
-
           {/* Floating panel */}
           {showTasks && (
             <div className="fixed z-30 flex flex-col rounded-2xl overflow-hidden"

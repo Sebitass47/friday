@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
+import { useSidebar } from './SidebarContext'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -25,10 +26,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
+  const { open } = useSidebar()
+
   return (
     <div className="flex min-h-screen bg-white dark:bg-[#0A0A0A]">
       <Sidebar />
-      <main className="lg:ml-60 flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+      <main className={`flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 transition-all duration-300 ${open ? 'lg:ml-60' : 'lg:ml-0'}`}>
         {children}
       </main>
     </div>

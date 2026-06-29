@@ -71,10 +71,12 @@ Página full-screen de productividad tipo "focus space". Sin sidebar, layout pro
 
 **Fondos animados (canvas 2D):**
 - Lluvia: gotas animadas con ángulo, glow morado en el suelo
-- Estrellas: estrellas con brillo pulsante + nebulosas de colores
 - Brasas: partículas de brasa flotando hacia arriba con glow
 - Aurora: 10 blobs de colores vivos moviéndose rápido (sin efecto cristal)
 - Cosmos: campo de estrellas 3D con proyección de perspectiva (warp-speed), nebulosas y trails
+- Mar: océano nocturno con perspectiva 3D, olas animadas, luna y columna de luz lunar
+- Planeta: planeta gaseoso azul-índigo con bandas animadas, anillos (frente/atrás), atmósfera glow y estrellas
+- Túnel: corredor hexagonal tipo warp con glow neon morado/índigo en movimiento continuo
 
 **Sonidos ambientales (Web Audio API sintetizado):**
 - 9 sonidos: Lluvia, Cafetería, Tráfico, Olas, Bosque, Pájaros, Viento, Cascada, Fuego
@@ -88,13 +90,15 @@ Página full-screen de productividad tipo "focus space". Sin sidebar, layout pro
 
 **Panel de tareas:**
 - Tareas del día (due_date = hoy, sin recurrencia, sin eventos)
-- Toggle completar, estrella, etiqueta con color
+- TaskCard: circle toggle + título + badge etiqueta + estrella; click abre TaskDetail modal
+- TaskDetail: título, toggle completar, estrella, notas, fecha/hora, recordatorio, subtareas
 - Input para agregar tarea rápida con etiqueta
-- Panel ocultable
+- Panel flotante ocultable
 
 **UI:**
 - Modo zen (oculta header y controles, solo fondo + timer)
-- Botones Tareas / Sonidos en header para ocultar/mostrar paneles
+- Botones Tareas / Sonidos / Zen en header
+- Sidebar: prop `hideExternalToggle` — Focus maneja su propio ☰ en el header
 - Color acento: #6B46E5 (morado FRIDAY)
 - Sin modo claro/oscuro — siempre dark full-screen
 

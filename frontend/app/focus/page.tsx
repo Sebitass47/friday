@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getTasks, toggleTaskComplete, createTask } from '@/lib/api'
+import { getTasks, toggleTaskComplete, createTask, updateTask } from '@/lib/api'
 import { Task } from '@/lib/types'
 import Sidebar from '@/components/layout/Sidebar'
 import { useSidebar } from '@/components/layout/SidebarContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type BgName = 'lluvia' | 'estrellas' | 'brasas' | 'aurora' | 'cosmos'
+type BgName = 'lluvia' | 'brasas' | 'aurora' | 'cosmos' | 'mar' | 'planeta' | 'tunel'
 type TimerStyle = 'anillo' | 'minimal' | 'tarjeta'
 type SoundKey = 'lluvia' | 'cafeteria' | 'trafico' | 'olas' | 'bosque' | 'pajaros' | 'viento' | 'cascada' | 'fuego'
 type Phase = 'work' | 'short' | 'long'
@@ -19,10 +19,12 @@ const DEFAULT_SETTINGS: PomSettings = { session: 25, shortBreak: 5, longBreak: 1
 
 const BG_LIST: { key: BgName; label: string }[] = [
   { key: 'lluvia', label: 'Lluvia' },
-  { key: 'estrellas', label: 'Estrellas' },
   { key: 'brasas', label: 'Brasas' },
   { key: 'aurora', label: 'Aurora' },
   { key: 'cosmos', label: 'Cosmos' },
+  { key: 'mar', label: 'Mar' },
+  { key: 'planeta', label: 'Planeta' },
+  { key: 'tunel', label: 'Túnel' },
 ]
 const SOUND_LIST: { key: SoundKey; label: string }[] = [
   { key: 'lluvia', label: 'Lluvia' }, { key: 'cafeteria', label: 'Cafetería' },
@@ -158,36 +160,192 @@ function bgLluvia(canvas: HTMLCanvasElement): () => void {
   return () => cancelAnimationFrame(raf)
 }
 
-function bgEstrellas(canvas: HTMLCanvasElement): () => void {
+// ── Mar — ocean night with perspective waves, moon & moonlight column ──────────
+function bgMar(canvas: HTMLCanvasElement): () => void {
   const ctx = canvas.getContext('2d')!
   const W = canvas.width, H = canvas.height
-  const stars = Array.from({ length: 340 }, () => ({
+  const HORIZON = H * 0.40
+  const stars = Array.from({ length: 170 }, () => ({
+    x: Math.random() * W, y: Math.random() * HORIZON * 0.96,
+    r: 0.3 + Math.random() * 1.3, a: 0.25 + Math.random() * 0.75, ph: Math.random() * Math.PI * 2,
+  }))
+  const MX = W * 0.68, MY = HORIZON * 0.27
+  let t = 0, raf = 0
+  const draw = () => {
+    // Sky
+    const skyG = ctx.createLinearGradient(0, 0, 0, HORIZON)
+    skyG.addColorStop(0, '#000812'); skyG.addColorStop(0.65, '#010b1e'); skyG.addColorStop(1, '#051530')
+    ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, HORIZON + 2)
+    // Stars
+    for (const s of stars) {
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(220,215,255,${s.a * (0.55 + 0.45 * Math.sin(t * .55 + s.ph))})`; ctx.fill()
+    }
+    // Moon glow
+    const mGlow = ctx.createRadialGradient(MX, MY, 0, MX, MY, 100)
+    mGlow.addColorStop(0, 'rgba(215,205,150,0.18)'); mGlow.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = mGlow; ctx.fillRect(0, 0, W, HORIZON)
+    // Moon
+    ctx.beginPath(); ctx.arc(MX, MY, 20, 0, Math.PI * 2); ctx.fillStyle = '#ddd5b2'; ctx.fill()
+    ctx.beginPath(); ctx.arc(MX + 6, MY - 3, 17, 0, Math.PI * 2); ctx.fillStyle = '#ccc5a0'; ctx.fill()
+    // Water base
+    const waterG = ctx.createLinearGradient(0, HORIZON, 0, H)
+    waterG.addColorStop(0, '#04122c'); waterG.addColorStop(0.35, '#030d20'); waterG.addColorStop(1, '#010810')
+    ctx.fillStyle = waterG; ctx.fillRect(0, HORIZON, W, H - HORIZON)
+    // Moonlight trapezoid
+    ctx.save()
+    ctx.beginPath()
+    ctx.moveTo(MX - 7, HORIZON); ctx.lineTo(MX + 7, HORIZON)
+    ctx.lineTo(W / 2 + W * .12, H); ctx.lineTo(W / 2 - W * .12, H)
+    ctx.closePath()
+    const mlG = ctx.createLinearGradient(0, HORIZON, 0, H)
+    mlG.addColorStop(0, 'rgba(200,185,110,0.2)'); mlG.addColorStop(.5, 'rgba(140,125,70,0.08)'); mlG.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = mlG; ctx.fill(); ctx.restore()
+    // Perspective waves
+    const N = 58
+    for (let i = 0; i < N; i++) {
+      const frac = i / N
+      const y = HORIZON + (H - HORIZON) * Math.pow(frac, 1.35)
+      const amp = 0.4 + frac * 4.8, freq = 0.02 - frac * 0.014, spd = 0.5 + frac * 1.6
+      const alpha = 0.04 + frac * 0.25
+      ctx.beginPath(); ctx.moveTo(0, y)
+      for (let x = 0; x <= W; x += 3) {
+        const wy = y + Math.sin(x * freq + t * spd + frac * 9) * amp
+          + Math.sin(x * freq * .65 - t * spd * .55 + frac * 4) * amp * .38
+        ctx.lineTo(x, wy)
+      }
+      ctx.strokeStyle = `rgba(75,115,185,${alpha})`; ctx.lineWidth = 0.4 + frac * .75; ctx.stroke()
+    }
+    // Horizon blend
+    const hG = ctx.createLinearGradient(0, HORIZON - 12, 0, HORIZON + 22)
+    hG.addColorStop(0, 'rgba(0,0,0,0)'); hG.addColorStop(.5, 'rgba(35,75,150,0.12)'); hG.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = hG; ctx.fillRect(0, HORIZON - 12, W, 34)
+    t += 0.012; raf = requestAnimationFrame(draw)
+  }
+  ctx.fillStyle = '#000812'; ctx.fillRect(0, 0, W, H); draw()
+  return () => cancelAnimationFrame(raf)
+}
+
+// ── Planeta — gas giant with rings, atmosphere glow, star field ────────────────
+function bgPlaneta(canvas: HTMLCanvasElement): () => void {
+  const ctx = canvas.getContext('2d')!
+  const W = canvas.width, H = canvas.height
+  const PR = Math.min(W, H) * 0.27, PX = W * 0.52, PY = H * 0.44
+  const stars = Array.from({ length: 300 }, () => ({
     x: Math.random() * W, y: Math.random() * H,
-    r: 0.4 + Math.random() * 1.9,
-    ba: 0.3 + Math.random() * 0.7,
-    spd: 0.3 + Math.random() * 1.2, ph: Math.random() * Math.PI * 2,
+    r: 0.3 + Math.random() * 1.5, a: 0.2 + Math.random() * 0.8, ph: Math.random() * Math.PI * 2,
   }))
   let t = 0, raf = 0
   const draw = () => {
-    ctx.fillStyle = '#03030c'; ctx.fillRect(0, 0, W, H)
-    const nb = (cx: number, cy: number, r: number, col: string) => {
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
-      g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)')
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H)
-    }
-    nb(W * .28, H * .38, 420, 'rgba(50,10,120,0.2)')
-    nb(W * .74, H * .55, 300, 'rgba(15,35,120,0.15)')
-    nb(W * .5, H * .18, 230, 'rgba(80,20,150,0.12)')
+    ctx.fillStyle = '#000008'; ctx.fillRect(0, 0, W, H)
+    // Stars (skip inside planet)
     for (const s of stars) {
-      const a = s.ba * (0.45 + 0.55 * Math.sin(t * s.spd + s.ph))
+      const dx = s.x - PX, dy = s.y - PY
+      if (dx * dx + dy * dy < (PR + 25) * (PR + 25)) continue
       ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(220,210,255,${a})`
-      if (s.r > 1.2) { ctx.shadowBlur = 8; ctx.shadowColor = `rgba(160,130,255,${a * .6})` }
-      ctx.fill(); ctx.shadowBlur = 0
+      ctx.fillStyle = `rgba(210,205,255,${s.a * (0.5 + 0.5 * Math.sin(t * .4 + s.ph))})`; ctx.fill()
     }
+    // Back ring (behind planet)
+    ctx.save(); ctx.translate(PX, PY); ctx.scale(1, 0.26)
+    for (let r = 0; r < Math.PI; r += Math.PI) {  // only top arc = behind
+      ctx.beginPath(); ctx.arc(0, 0, PR * 1.72, Math.PI, 0)
+      ctx.strokeStyle = 'rgba(120,160,220,0.18)'; ctx.lineWidth = PR * 0.22 / 0.26; ctx.stroke()
+      ctx.beginPath(); ctx.arc(0, 0, PR * 1.5, Math.PI, 0)
+      ctx.strokeStyle = 'rgba(140,180,240,0.25)'; ctx.lineWidth = PR * 0.07 / 0.26; ctx.stroke()
+    }
+    ctx.restore()
+    // Planet base circle
+    ctx.save(); ctx.beginPath(); ctx.arc(PX, PY, PR, 0, Math.PI * 2); ctx.clip()
+    // Deep space-blue base
+    const base = ctx.createLinearGradient(PX - PR, PY - PR, PX + PR, PY + PR)
+    base.addColorStop(0, '#0a1c60'); base.addColorStop(.3, '#102580'); base.addColorStop(.5, '#1535a0')
+    base.addColorStop(.65, '#0e2278'); base.addColorStop(1, '#071240')
+    ctx.fillStyle = base; ctx.fillRect(PX - PR, PY - PR, PR * 2, PR * 2)
+    // Animated horizontal cloud bands
+    for (let b = 0; b < 9; b++) {
+      const by = PY - PR + (b / 8) * PR * 2
+      const bh = PR * 0.11
+      const xShift = Math.sin(t * 0.15 + b * 0.8) * PR * 0.04
+      const alpha = 0.05 + 0.07 * Math.abs(Math.sin(b * 1.3 + t * 0.1))
+      ctx.fillStyle = `rgba(${b % 2 === 0 ? '60,100,210' : '30,55,150'},${alpha})`
+      ctx.fillRect(PX - PR + xShift, by, PR * 2, bh)
+    }
+    // Storm oval
+    const sx = PX - PR * .18 + Math.sin(t * .25) * PR * .08, sy = PY + PR * .18
+    ctx.beginPath(); ctx.ellipse(sx, sy, PR * .2, PR * .1, t * .04, 0, Math.PI * 2)
+    ctx.strokeStyle = 'rgba(160,210,255,0.12)'; ctx.lineWidth = 3; ctx.stroke()
+    // Terminator shadow (darker right-to-left gradient)
+    const shadow = ctx.createRadialGradient(PX - PR * .35, PY, 0, PX + PR * .1, PY, PR * 1.2)
+    shadow.addColorStop(0, 'rgba(0,0,0,0)'); shadow.addColorStop(.65, 'rgba(0,0,0,0)')
+    shadow.addColorStop(1, 'rgba(0,0,20,0.82)')
+    ctx.fillStyle = shadow; ctx.fillRect(PX - PR, PY - PR, PR * 2, PR * 2)
+    ctx.restore()
+    // Atmosphere glow
+    const atm = ctx.createRadialGradient(PX, PY, PR * 0.9, PX, PY, PR * 1.22)
+    atm.addColorStop(0, 'rgba(60,110,255,0.22)'); atm.addColorStop(.5, 'rgba(40,80,200,0.1)'); atm.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = atm; ctx.beginPath(); ctx.arc(PX, PY, PR * 1.22, 0, Math.PI * 2); ctx.fill()
+    // Front ring (in front of planet — bottom arc only)
+    ctx.save(); ctx.translate(PX, PY); ctx.scale(1, 0.26)
+    ctx.save(); ctx.beginPath(); ctx.rect(-PR * 2.5, 0, PR * 5, PR * 3 / 0.26); ctx.clip()
+    ctx.beginPath(); ctx.arc(0, 0, PR * 1.72, 0, Math.PI)
+    ctx.strokeStyle = 'rgba(130,175,235,0.28)'; ctx.lineWidth = PR * 0.22 / 0.26; ctx.stroke()
+    ctx.beginPath(); ctx.arc(0, 0, PR * 1.5, 0, Math.PI)
+    ctx.strokeStyle = 'rgba(160,200,255,0.35)'; ctx.lineWidth = PR * 0.07 / 0.26; ctx.stroke()
+    ctx.restore(); ctx.restore()
     t += 0.007; raf = requestAnimationFrame(draw)
   }
-  draw(); return () => cancelAnimationFrame(raf)
+  ctx.fillStyle = '#000008'; ctx.fillRect(0, 0, W, H); draw()
+  return () => cancelAnimationFrame(raf)
+}
+
+// ── Túnel — hexagonal warp corridor with neon glow ────────────────────────────
+function bgTunel(canvas: HTMLCanvasElement): () => void {
+  const ctx = canvas.getContext('2d')!
+  const W = canvas.width, H = canvas.height
+  const CX = W / 2, CY = H / 2
+  const maxR = Math.sqrt(W * W + H * H) * 0.62
+  const N_SEG = 22
+  let t = 0, raf = 0
+
+  function hexPath(r: number, rot: number) {
+    ctx.beginPath()
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 3) * i + rot
+      const x = CX + r * Math.cos(a), y = CY + r * Math.sin(a)
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+  }
+
+  const draw = () => {
+    ctx.fillStyle = 'rgba(2,0,10,0.35)'; ctx.fillRect(0, 0, W, H)
+    const speed = 0.28
+    for (let i = N_SEG; i >= 0; i--) {
+      const frac = ((i + t * speed) % N_SEG) / N_SEG
+      const r = frac * maxR + 4
+      if (r < 2) continue
+      const alpha = (1 - frac) * 0.75
+      const hue = 255 + frac * 50   // purple → indigo
+      const lum = 55 + (1 - frac) * 25
+      hexPath(r, frac * Math.PI / 8 + t * 0.08)
+      ctx.strokeStyle = `hsla(${hue},80%,${lum}%,${alpha})`
+      ctx.lineWidth = Math.max(0.4, (1 - frac) * 3.5)
+      ctx.shadowBlur = (1 - frac) * 18; ctx.shadowColor = `hsla(${hue},90%,70%,${alpha})`
+      ctx.stroke()
+      // Inner fill for closest segments
+      if (frac < 0.15) {
+        ctx.fillStyle = `hsla(${hue},60%,20%,${(0.15 - frac) * 0.3})`; ctx.fill()
+      }
+    }
+    ctx.shadowBlur = 0
+    // Center vortex glow
+    const cg = ctx.createRadialGradient(CX, CY, 0, CX, CY, 120)
+    cg.addColorStop(0, 'rgba(140,80,255,0.18)'); cg.addColorStop(.4, 'rgba(80,40,200,0.08)'); cg.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H)
+    t += 0.016; raf = requestAnimationFrame(draw)
+  }
+  ctx.fillStyle = '#02000a'; ctx.fillRect(0, 0, W, H); draw()
+  return () => cancelAnimationFrame(raf)
 }
 
 function bgBrasas(canvas: HTMLCanvasElement): () => void {
@@ -327,7 +485,8 @@ function bgCosmos(canvas: HTMLCanvasElement): () => void {
 }
 
 const BG_RUNNERS: Record<BgName, (c: HTMLCanvasElement) => () => void> = {
-  lluvia: bgLluvia, estrellas: bgEstrellas, brasas: bgBrasas, aurora: bgAurora, cosmos: bgCosmos,
+  lluvia: bgLluvia, brasas: bgBrasas, aurora: bgAurora, cosmos: bgCosmos,
+  mar: bgMar, planeta: bgPlaneta, tunel: bgTunel,
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -369,39 +528,160 @@ function Controls({ running, toggle, reset, skip, openSettings }: {
 }
 
 // ─── Task card ────────────────────────────────────────────────────────────────
-function TaskCard({ task, onToggle }: { task: Task; onToggle: (id: string) => void }) {
+function TaskCard({ task, onToggle, onClick }: { task: Task; onToggle: (id: string) => void; onClick: (t: Task) => void }) {
   const color = LABEL_COLORS[task.label ?? ''] ?? ACCENT
   return (
-    <div className="rounded-xl px-3 py-2.5 transition-all hover:bg-white/[0.04]"
-      style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', borderLeft: `2px solid ${color}55` }}
+    <div
+      onClick={() => onClick(task)}
+      className="group flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all"
+      style={{
+        background: 'rgba(255,255,255,0.02)',
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+      }}
     >
-      <div className="flex items-start gap-2.5">
-        <button onClick={() => onToggle(task.id)}
-          className="mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 transition-all hover:scale-110 flex items-center justify-center"
+      {/* Circle toggle */}
+      <button
+        onClick={e => { e.stopPropagation(); onToggle(task.id) }}
+        className="flex-shrink-0 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-all"
+        style={task.is_completed
+          ? { background: color, borderColor: color }
+          : { borderColor: 'rgba(255,255,255,0.25)', background: 'transparent' }
+        }
+      >
+        {task.is_completed && <span className="text-white text-[8px] leading-none">✓</span>}
+      </button>
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p
+          className="text-[12.5px] font-medium leading-snug truncate"
           style={task.is_completed
-            ? { background: color, borderColor: color }
-            : { borderColor: 'rgba(255,255,255,0.3)' }
+            ? { textDecoration: 'line-through', color: 'rgba(255,255,255,0.3)' }
+            : { color: 'rgba(255,255,255,0.85)' }
           }
-        >
-          {task.is_completed && <span className="text-white text-[7px] leading-none">✓</span>}
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-[12px] text-white/80 leading-snug break-words"
-            style={task.is_completed ? { textDecoration: 'line-through', opacity: 0.4 } : {}}
-          >{task.title}</p>
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {task.label && LABEL_COLORS[task.label] && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                style={{ background: `${color}22`, color }}>
-                {task.label}
-              </span>
-            )}
-            {task.reminder_at && (
-              <span className="text-[9px] text-white/30">🕐 {task.reminder_at.slice(11, 16)}</span>
-            )}
+        >{task.title}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {task.label && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+              style={{ background: `${color}20`, color }}>
+              {task.label}
+            </span>
+          )}
+          {task.reminder_at && (
+            <span className="text-[9px] text-white/30">🕐 {task.reminder_at.slice(11, 16)}</span>
+          )}
+          {task.subtasks && task.subtasks.length > 0 && (
+            <span className="text-[9px] text-white/25">
+              {task.subtasks.filter(s => s.is_completed).length}/{task.subtasks.length}
+            </span>
+          )}
+        </div>
+      </div>
+      {/* Star */}
+      <span className="flex-shrink-0 text-[13px] ml-1" style={{ color: task.is_starred ? '#facc15' : 'rgba(255,255,255,0.15)' }}>
+        {task.is_starred ? '★' : '☆'}
+      </span>
+    </div>
+  )
+}
+
+// ── Task Detail Modal ──────────────────────────────────────────────────────────
+function TaskDetail({
+  task, onClose, onToggle, onToggleStar,
+}: {
+  task: Task
+  onClose: () => void
+  onToggle: (id: string) => void
+  onToggleStar: (id: string, starred: boolean) => void
+}) {
+  const color = LABEL_COLORS[task.label ?? ''] ?? ACCENT
+  const completedSubs = task.subtasks?.filter(s => s.is_completed).length ?? 0
+  const totalSubs = task.subtasks?.length ?? 0
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-sm rounded-2xl p-5 flex flex-col gap-4"
+        style={{ background: 'rgba(20,15,40,0.92)', border: '1px solid rgba(255,255,255,0.1)', borderLeft: `3px solid ${color}` }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <button
+              onClick={() => onToggle(task.id)}
+              className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+              style={task.is_completed
+                ? { background: color, borderColor: color }
+                : { borderColor: 'rgba(255,255,255,0.3)' }
+              }
+            >
+              {task.is_completed && <span className="text-white text-[9px]">✓</span>}
+            </button>
+            <h3
+              className="text-[15px] font-semibold leading-snug"
+              style={task.is_completed
+                ? { textDecoration: 'line-through', color: 'rgba(255,255,255,0.4)' }
+                : { color: 'rgba(255,255,255,0.9)' }
+              }
+            >{task.title}</h3>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => onToggleStar(task.id, !task.is_starred)}
+              className="text-[18px] transition-transform hover:scale-110"
+              style={{ color: task.is_starred ? '#facc15' : 'rgba(255,255,255,0.2)' }}
+            >{task.is_starred ? '★' : '☆'}</button>
+            <button onClick={onClose} className="text-white/30 hover:text-white/70 text-xl leading-none transition-colors">×</button>
           </div>
         </div>
-        {task.is_starred && <span className="text-[11px] text-yellow-400 flex-shrink-0 mt-0.5">★</span>}
+        {/* Meta */}
+        <div className="flex flex-wrap gap-2">
+          {task.label && (
+            <span className="text-[10px] font-bold px-2 py-1 rounded-lg"
+              style={{ background: `${color}22`, color }}>
+              {task.label}
+            </span>
+          )}
+          {task.due_date && (
+            <span className="text-[10px] px-2 py-1 rounded-lg text-white/50"
+              style={{ background: 'rgba(255,255,255,0.05)' }}>
+              📅 {task.due_date}
+              {task.due_time && ` · ${task.due_time.slice(0, 5)}`}
+            </span>
+          )}
+          {task.reminder_at && (
+            <span className="text-[10px] px-2 py-1 rounded-lg text-white/50"
+              style={{ background: 'rgba(255,255,255,0.05)' }}>
+              🔔 {task.reminder_at.slice(11, 16)}
+            </span>
+          )}
+        </div>
+        {/* Notes */}
+        {task.notes && (
+          <p className="text-[12px] text-white/50 leading-relaxed bg-white/[0.03] rounded-xl px-3 py-2.5">{task.notes}</p>
+        )}
+        {/* Subtasks */}
+        {totalSubs > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">
+              Subtareas · {completedSubs}/{totalSubs}
+            </p>
+            {task.subtasks.map(sub => (
+              <div key={sub.id} className="flex items-center gap-2.5 px-1">
+                <div
+                  className="w-3.5 h-3.5 rounded-full border flex-shrink-0 flex items-center justify-center"
+                  style={sub.is_completed ? { background: color, borderColor: color } : { borderColor: 'rgba(255,255,255,0.2)' }}
+                >
+                  {sub.is_completed && <span className="text-[6px] text-white">✓</span>}
+                </div>
+                <span className="text-[12px]"
+                  style={sub.is_completed ? { textDecoration: 'line-through', color: 'rgba(255,255,255,0.3)' } : { color: 'rgba(255,255,255,0.7)' }}>
+                  {sub.title}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -453,6 +733,7 @@ export default function FocusPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [newTitle, setNewTitle] = useState('')
   const [newLabel, setNewLabel] = useState('Trabajo')
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   // Refs
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -472,12 +753,14 @@ export default function FocusPage() {
   totalFocusedRef.current = totalFocused
 
   // ── Load tasks ──────────────────────────────────────────────────────────────
-  const loadTasks = useCallback(async () => {
+  const loadTasks = useCallback(async (): Promise<Task[] | null> => {
     try {
       const all = await getTasks({ is_event: false })
       const today = todayStr()
-      setTasks(all.filter(t => t.due_date === today && t.recurrence === null))
-    } catch { /* ignore */ }
+      const filtered = all.filter(t => t.due_date === today && t.recurrence === null)
+      setTasks(filtered)
+      return filtered
+    } catch { return null }
   }, [])
 
   useEffect(() => { if (ready) loadTasks() }, [ready, loadTasks])
@@ -594,13 +877,25 @@ export default function FocusPage() {
 
   // ── Tasks ───────────────────────────────────────────────────────────────────
   async function doToggle(id: string) {
-    try { await toggleTaskComplete(id); await loadTasks() } catch { /* ignore */ }
+    try {
+      await toggleTaskComplete(id)
+      const fresh = await loadTasks()
+      if (fresh) setSelectedTask(prev => prev?.id === id ? (fresh.find(t => t.id === id) ?? null) : prev)
+    } catch { /* ignore */ }
   }
   async function addTask() {
     if (!newTitle.trim()) return
     try {
       await createTask({ title: newTitle.trim(), label: newLabel, due_date: todayStr(), is_event: false })
       setNewTitle(''); await loadTasks()
+    } catch { /* ignore */ }
+  }
+
+  async function toggleStar(id: string, starred: boolean) {
+    try {
+      await updateTask(id, { is_starred: starred })
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, is_starred: starred } : t))
+      setSelectedTask(prev => prev?.id === id ? { ...prev, is_starred: starred } : prev)
     } catch { /* ignore */ }
   }
 
@@ -632,8 +927,8 @@ export default function FocusPage() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#060010]" style={{ fontFamily: 'system-ui,sans-serif', userSelect: 'none' }}>
 
-      {/* Nav sidebar — overlays on focus page */}
-      <Sidebar />
+      {/* Nav sidebar — overlays on focus page; focus page has its own ☰ in header */}
+      <Sidebar hideExternalToggle />
 
       {/* Canvas background */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
@@ -794,20 +1089,20 @@ export default function FocusPage() {
               </div>
 
               {/* Task list */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden py-2.5 px-2.5 space-y-1.5" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ scrollbarWidth: 'none' }}>
                 {tasks.length === 0 && (
-                  <p className="text-white/25 text-xs text-center pt-6">Sin tareas para hoy</p>
+                  <p className="text-white/25 text-xs text-center pt-6 pb-4">Sin tareas para hoy</p>
                 )}
                 {pendingTasks.length > 0 && (
                   <>
-                    <p className="text-[10px] font-bold text-white/28 uppercase tracking-widest px-1 pb-1">Hoy</p>
-                    {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} />)}
+                    <p className="text-[10px] font-bold text-white/28 uppercase tracking-widest px-3 pt-2.5 pb-1">Hoy</p>
+                    {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={setSelectedTask} />)}
                   </>
                 )}
                 {completedTasks.length > 0 && (
                   <>
-                    <p className="text-[10px] font-bold text-white/18 uppercase tracking-widest px-1 pb-1 pt-2">Completadas</p>
-                    {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} />)}
+                    <p className="text-[10px] font-bold text-white/18 uppercase tracking-widest px-3 pt-3 pb-1">Completadas</p>
+                    {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={setSelectedTask} />)}
                   </>
                 )}
               </div>
@@ -946,6 +1241,16 @@ export default function FocusPage() {
             >Guardar</button>
           </div>
         </div>
+      )}
+
+      {/* ── Task detail modal — z-[60] so it's above everything ────────────── */}
+      {selectedTask && (
+        <TaskDetail
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onToggle={doToggle}
+          onToggleStar={toggleStar}
+        />
       )}
     </div>
   )

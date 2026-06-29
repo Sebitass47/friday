@@ -18,7 +18,7 @@ const NAV = [
   { href: '/focus', icon: Timer, label: 'Focus' },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ hideExternalToggle = false }: { hideExternalToggle?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
@@ -98,8 +98,8 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Hamburger — visible whenever sidebar is closed */}
-      {!open && (
+      {/* Hamburger — visible whenever sidebar is closed, unless page handles its own */}
+      {!open && !hideExternalToggle && (
         <button
           onClick={toggle}
           className="fixed top-4 left-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl bg-white dark:bg-[#141414] border border-black/10 dark:border-white/10 text-black dark:text-white shadow-sm transition-all hover:shadow-md"

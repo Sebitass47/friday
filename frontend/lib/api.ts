@@ -233,6 +233,10 @@ export async function getTasks(params: { is_event?: boolean; label?: string; sea
   return req(`/tasks/?${qs}`)
 }
 
+export async function getTask(id: string): Promise<Task> {
+  return req(`/tasks/${id}`)
+}
+
 export async function createTask(data: {
   title: string
   notes?: string | null

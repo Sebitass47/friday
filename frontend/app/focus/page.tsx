@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getTasks, toggleTaskComplete, createTask, updateTask } from '@/lib/api'
+import * as THREE from 'three'
+import { getTasks, getTask, toggleTaskComplete, createTask, updateTask } from '@/lib/api'
 import { Task } from '@/lib/types'
 import Sidebar from '@/components/layout/Sidebar'
 import { useSidebar } from '@/components/layout/SidebarContext'
@@ -160,192 +161,242 @@ function bgLluvia(canvas: HTMLCanvasElement): () => void {
   return () => cancelAnimationFrame(raf)
 }
 
-// ── Mar — ocean night with perspective waves, moon & moonlight column ──────────
+// ── Mar — Three.js night ocean: animated waves, moon, moonlight column ────────
 function bgMar(canvas: HTMLCanvasElement): () => void {
-  const ctx = canvas.getContext('2d')!
   const W = canvas.width, H = canvas.height
-  const HORIZON = H * 0.40
-  const stars = Array.from({ length: 170 }, () => ({
-    x: Math.random() * W, y: Math.random() * HORIZON * 0.96,
-    r: 0.3 + Math.random() * 1.3, a: 0.25 + Math.random() * 0.75, ph: Math.random() * Math.PI * 2,
-  }))
-  const MX = W * 0.68, MY = HORIZON * 0.27
-  let t = 0, raf = 0
-  const draw = () => {
-    // Sky
-    const skyG = ctx.createLinearGradient(0, 0, 0, HORIZON)
-    skyG.addColorStop(0, '#000812'); skyG.addColorStop(0.65, '#010b1e'); skyG.addColorStop(1, '#051530')
-    ctx.fillStyle = skyG; ctx.fillRect(0, 0, W, HORIZON + 2)
-    // Stars
-    for (const s of stars) {
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(220,215,255,${s.a * (0.55 + 0.45 * Math.sin(t * .55 + s.ph))})`; ctx.fill()
-    }
-    // Moon glow
-    const mGlow = ctx.createRadialGradient(MX, MY, 0, MX, MY, 100)
-    mGlow.addColorStop(0, 'rgba(215,205,150,0.18)'); mGlow.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = mGlow; ctx.fillRect(0, 0, W, HORIZON)
-    // Moon
-    ctx.beginPath(); ctx.arc(MX, MY, 20, 0, Math.PI * 2); ctx.fillStyle = '#ddd5b2'; ctx.fill()
-    ctx.beginPath(); ctx.arc(MX + 6, MY - 3, 17, 0, Math.PI * 2); ctx.fillStyle = '#ccc5a0'; ctx.fill()
-    // Water base
-    const waterG = ctx.createLinearGradient(0, HORIZON, 0, H)
-    waterG.addColorStop(0, '#04122c'); waterG.addColorStop(0.35, '#030d20'); waterG.addColorStop(1, '#010810')
-    ctx.fillStyle = waterG; ctx.fillRect(0, HORIZON, W, H - HORIZON)
-    // Moonlight trapezoid
-    ctx.save()
-    ctx.beginPath()
-    ctx.moveTo(MX - 7, HORIZON); ctx.lineTo(MX + 7, HORIZON)
-    ctx.lineTo(W / 2 + W * .12, H); ctx.lineTo(W / 2 - W * .12, H)
-    ctx.closePath()
-    const mlG = ctx.createLinearGradient(0, HORIZON, 0, H)
-    mlG.addColorStop(0, 'rgba(200,185,110,0.2)'); mlG.addColorStop(.5, 'rgba(140,125,70,0.08)'); mlG.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = mlG; ctx.fill(); ctx.restore()
-    // Perspective waves
-    const N = 58
-    for (let i = 0; i < N; i++) {
-      const frac = i / N
-      const y = HORIZON + (H - HORIZON) * Math.pow(frac, 1.35)
-      const amp = 0.4 + frac * 4.8, freq = 0.02 - frac * 0.014, spd = 0.5 + frac * 1.6
-      const alpha = 0.04 + frac * 0.25
-      ctx.beginPath(); ctx.moveTo(0, y)
-      for (let x = 0; x <= W; x += 3) {
-        const wy = y + Math.sin(x * freq + t * spd + frac * 9) * amp
-          + Math.sin(x * freq * .65 - t * spd * .55 + frac * 4) * amp * .38
-        ctx.lineTo(x, wy)
-      }
-      ctx.strokeStyle = `rgba(75,115,185,${alpha})`; ctx.lineWidth = 0.4 + frac * .75; ctx.stroke()
-    }
-    // Horizon blend
-    const hG = ctx.createLinearGradient(0, HORIZON - 12, 0, HORIZON + 22)
-    hG.addColorStop(0, 'rgba(0,0,0,0)'); hG.addColorStop(.5, 'rgba(35,75,150,0.12)'); hG.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = hG; ctx.fillRect(0, HORIZON - 12, W, 34)
-    t += 0.012; raf = requestAnimationFrame(draw)
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x000810)
+  scene.fog = new THREE.FogExp2(0x020c1e, 0.018)
+
+  const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 600)
+  camera.position.set(0, 6, 18)
+  camera.lookAt(0, 0, -30)
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false })
+  renderer.setSize(W, H)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 0.75
+
+  // Ocean plane
+  const oceanGeo = new THREE.PlaneGeometry(300, 300, 100, 100)
+  oceanGeo.rotateX(-Math.PI / 2)
+  const oceanMat = new THREE.MeshPhongMaterial({ color: 0x041535, emissive: 0x020810, shininess: 90, specular: 0x2050a0 })
+  const ocean = new THREE.Mesh(oceanGeo, oceanMat)
+  scene.add(ocean)
+
+  // Sky plane (behind everything)
+  const skyGeo = new THREE.PlaneGeometry(600, 300)
+  const skyMat = new THREE.MeshBasicMaterial({ color: 0x000810, side: THREE.FrontSide })
+  const sky = new THREE.Mesh(skyGeo, skyMat)
+  sky.position.set(0, 0, -140)
+  scene.add(sky)
+
+  // Stars
+  const sPos = new Float32Array(600 * 3)
+  for (let i = 0; i < 600; i++) {
+    sPos[i * 3] = (Math.random() - .5) * 500; sPos[i * 3 + 1] = Math.random() * 120 + 5; sPos[i * 3 + 2] = (Math.random() - .5) * 500
   }
-  ctx.fillStyle = '#000812'; ctx.fillRect(0, 0, W, H); draw()
-  return () => cancelAnimationFrame(raf)
+  const sGeo = new THREE.BufferGeometry(); sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3))
+  const sMat = new THREE.PointsMaterial({ color: 0xddd5ff, size: 0.5 })
+  scene.add(new THREE.Points(sGeo, sMat))
+
+  // Moon
+  const moonGeo = new THREE.SphereGeometry(4, 16, 16)
+  const moonMat = new THREE.MeshBasicMaterial({ color: 0xddd5b0 })
+  const moon = new THREE.Mesh(moonGeo, moonMat)
+  moon.position.set(40, 70, -100)
+  scene.add(moon)
+  const moonLight = new THREE.PointLight(0xd0c880, 3.5, 600)
+  moonLight.position.copy(moon.position)
+  scene.add(moonLight)
+  scene.add(new THREE.AmbientLight(0x020818, 2))
+
+  // Wave vertex animation
+  const posAttr = oceanGeo.attributes.position as THREE.BufferAttribute
+  const origX = new Float32Array(posAttr.count), origZ = new Float32Array(posAttr.count)
+  for (let i = 0; i < posAttr.count; i++) { origX[i] = posAttr.getX(i); origZ[i] = posAttr.getZ(i) }
+
+  let t = 0, raf = 0
+  const animate = () => {
+    raf = requestAnimationFrame(animate)
+    t += 0.012
+    for (let i = 0; i < posAttr.count; i++) {
+      const x = origX[i], z = origZ[i]
+      const y = Math.sin(x * 0.08 + t) * 0.9
+        + Math.sin(z * 0.06 + t * 0.75) * 0.6
+        + Math.sin((x + z) * 0.04 + t * 1.1) * 0.35
+      posAttr.setY(i, y)
+    }
+    posAttr.needsUpdate = true
+    oceanGeo.computeVertexNormals()
+    renderer.render(scene, camera)
+  }
+  animate()
+
+  return () => {
+    cancelAnimationFrame(raf)
+    renderer.dispose()
+    oceanGeo.dispose(); oceanMat.dispose(); skyGeo.dispose(); skyMat.dispose()
+    moonGeo.dispose(); moonMat.dispose(); sGeo.dispose(); sMat.dispose()
+  }
 }
 
-// ── Planeta — gas giant with rings, atmosphere glow, star field ────────────────
+// ── Planeta — Three.js gas giant: rotating sphere, rings, stars, atmosphere ───
 function bgPlaneta(canvas: HTMLCanvasElement): () => void {
-  const ctx = canvas.getContext('2d')!
   const W = canvas.width, H = canvas.height
-  const PR = Math.min(W, H) * 0.27, PX = W * 0.52, PY = H * 0.44
-  const stars = Array.from({ length: 300 }, () => ({
-    x: Math.random() * W, y: Math.random() * H,
-    r: 0.3 + Math.random() * 1.5, a: 0.2 + Math.random() * 0.8, ph: Math.random() * Math.PI * 2,
-  }))
-  let t = 0, raf = 0
-  const draw = () => {
-    ctx.fillStyle = '#000008'; ctx.fillRect(0, 0, W, H)
-    // Stars (skip inside planet)
-    for (const s of stars) {
-      const dx = s.x - PX, dy = s.y - PY
-      if (dx * dx + dy * dy < (PR + 25) * (PR + 25)) continue
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(210,205,255,${s.a * (0.5 + 0.5 * Math.sin(t * .4 + s.ph))})`; ctx.fill()
-    }
-    // Back ring (behind planet)
-    ctx.save(); ctx.translate(PX, PY); ctx.scale(1, 0.26)
-    for (let r = 0; r < Math.PI; r += Math.PI) {  // only top arc = behind
-      ctx.beginPath(); ctx.arc(0, 0, PR * 1.72, Math.PI, 0)
-      ctx.strokeStyle = 'rgba(120,160,220,0.18)'; ctx.lineWidth = PR * 0.22 / 0.26; ctx.stroke()
-      ctx.beginPath(); ctx.arc(0, 0, PR * 1.5, Math.PI, 0)
-      ctx.strokeStyle = 'rgba(140,180,240,0.25)'; ctx.lineWidth = PR * 0.07 / 0.26; ctx.stroke()
-    }
-    ctx.restore()
-    // Planet base circle
-    ctx.save(); ctx.beginPath(); ctx.arc(PX, PY, PR, 0, Math.PI * 2); ctx.clip()
-    // Deep space-blue base
-    const base = ctx.createLinearGradient(PX - PR, PY - PR, PX + PR, PY + PR)
-    base.addColorStop(0, '#0a1c60'); base.addColorStop(.3, '#102580'); base.addColorStop(.5, '#1535a0')
-    base.addColorStop(.65, '#0e2278'); base.addColorStop(1, '#071240')
-    ctx.fillStyle = base; ctx.fillRect(PX - PR, PY - PR, PR * 2, PR * 2)
-    // Animated horizontal cloud bands
-    for (let b = 0; b < 9; b++) {
-      const by = PY - PR + (b / 8) * PR * 2
-      const bh = PR * 0.11
-      const xShift = Math.sin(t * 0.15 + b * 0.8) * PR * 0.04
-      const alpha = 0.05 + 0.07 * Math.abs(Math.sin(b * 1.3 + t * 0.1))
-      ctx.fillStyle = `rgba(${b % 2 === 0 ? '60,100,210' : '30,55,150'},${alpha})`
-      ctx.fillRect(PX - PR + xShift, by, PR * 2, bh)
-    }
-    // Storm oval
-    const sx = PX - PR * .18 + Math.sin(t * .25) * PR * .08, sy = PY + PR * .18
-    ctx.beginPath(); ctx.ellipse(sx, sy, PR * .2, PR * .1, t * .04, 0, Math.PI * 2)
-    ctx.strokeStyle = 'rgba(160,210,255,0.12)'; ctx.lineWidth = 3; ctx.stroke()
-    // Terminator shadow (darker right-to-left gradient)
-    const shadow = ctx.createRadialGradient(PX - PR * .35, PY, 0, PX + PR * .1, PY, PR * 1.2)
-    shadow.addColorStop(0, 'rgba(0,0,0,0)'); shadow.addColorStop(.65, 'rgba(0,0,0,0)')
-    shadow.addColorStop(1, 'rgba(0,0,20,0.82)')
-    ctx.fillStyle = shadow; ctx.fillRect(PX - PR, PY - PR, PR * 2, PR * 2)
-    ctx.restore()
-    // Atmosphere glow
-    const atm = ctx.createRadialGradient(PX, PY, PR * 0.9, PX, PY, PR * 1.22)
-    atm.addColorStop(0, 'rgba(60,110,255,0.22)'); atm.addColorStop(.5, 'rgba(40,80,200,0.1)'); atm.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = atm; ctx.beginPath(); ctx.arc(PX, PY, PR * 1.22, 0, Math.PI * 2); ctx.fill()
-    // Front ring (in front of planet — bottom arc only)
-    ctx.save(); ctx.translate(PX, PY); ctx.scale(1, 0.26)
-    ctx.save(); ctx.beginPath(); ctx.rect(-PR * 2.5, 0, PR * 5, PR * 3 / 0.26); ctx.clip()
-    ctx.beginPath(); ctx.arc(0, 0, PR * 1.72, 0, Math.PI)
-    ctx.strokeStyle = 'rgba(130,175,235,0.28)'; ctx.lineWidth = PR * 0.22 / 0.26; ctx.stroke()
-    ctx.beginPath(); ctx.arc(0, 0, PR * 1.5, 0, Math.PI)
-    ctx.strokeStyle = 'rgba(160,200,255,0.35)'; ctx.lineWidth = PR * 0.07 / 0.26; ctx.stroke()
-    ctx.restore(); ctx.restore()
-    t += 0.007; raf = requestAnimationFrame(draw)
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x000008)
+
+  const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 1000)
+  camera.position.set(0, 1, 7)
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false })
+  renderer.setSize(W, H)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+  // Stars
+  const sPos = new Float32Array(2500 * 3)
+  for (let i = 0; i < 2500; i++) {
+    const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1), r = 80 + Math.random() * 200
+    sPos[i * 3] = r * Math.sin(phi) * Math.cos(theta); sPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta); sPos[i * 3 + 2] = r * Math.cos(phi)
   }
-  ctx.fillStyle = '#000008'; ctx.fillRect(0, 0, W, H); draw()
-  return () => cancelAnimationFrame(raf)
+  const sGeo = new THREE.BufferGeometry(); sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3))
+  scene.add(new THREE.Points(sGeo, new THREE.PointsMaterial({ color: 0xddd5ff, size: 0.18 })))
+
+  // Planet texture via canvas
+  const tc = document.createElement('canvas'); tc.width = 1024; tc.height = 512
+  const tctx = tc.getContext('2d')!
+  const bg = tctx.createLinearGradient(0, 0, 0, 512)
+  bg.addColorStop(0, '#081850'); bg.addColorStop(.25, '#0e2278'); bg.addColorStop(.5, '#1535a0')
+  bg.addColorStop(.75, '#0e2278'); bg.addColorStop(1, '#071240')
+  tctx.fillStyle = bg; tctx.fillRect(0, 0, 1024, 512)
+  for (let b = 0; b < 14; b++) {
+    const y = (b / 14) * 512, bh = 512 / 14
+    tctx.fillStyle = `rgba(${b % 2 === 0 ? '80,130,220' : '30,55,155'},${0.04 + .08 * Math.abs(Math.sin(b * 1.4))})`
+    tctx.fillRect(0, y, 1024, bh)
+  }
+  // Storm spot
+  const spot = tctx.createRadialGradient(280, 330, 0, 280, 330, 60)
+  spot.addColorStop(0, 'rgba(150,200,255,0.18)'); spot.addColorStop(1, 'rgba(0,0,0,0)')
+  tctx.fillStyle = spot; tctx.fillRect(0, 0, 1024, 512)
+
+  const tex = new THREE.CanvasTexture(tc); tex.wrapS = THREE.RepeatWrapping
+
+  // Planet sphere
+  const planetGeo = new THREE.SphereGeometry(2, 64, 64)
+  const planetMat = new THREE.MeshPhongMaterial({ map: tex, shininess: 25, specular: 0x204080 })
+  const planet = new THREE.Mesh(planetGeo, planetMat)
+  planet.position.set(0.3, 0.2, 0)
+  scene.add(planet)
+
+  // Atmosphere glow (slightly larger transparent sphere)
+  const atmGeo = new THREE.SphereGeometry(2.18, 32, 32)
+  const atmMat = new THREE.MeshPhongMaterial({ color: 0x2244ff, transparent: true, opacity: 0.1, side: THREE.FrontSide })
+  scene.add(new THREE.Mesh(atmGeo, atmMat))
+
+  // Rings
+  const ringGeo = new THREE.RingGeometry(2.8, 4.5, 128)
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x7090c0, transparent: true, opacity: 0.28, side: THREE.DoubleSide })
+  const ring = new THREE.Mesh(ringGeo, ringMat)
+  ring.rotation.x = Math.PI * 0.22; ring.rotation.z = 0.15
+  ring.position.copy(planet.position)
+  scene.add(ring)
+
+  // Lights
+  const sun = new THREE.DirectionalLight(0xddeeff, 1.8); sun.position.set(-4, 2, 5); scene.add(sun)
+  scene.add(new THREE.AmbientLight(0x060820, 1.5))
+
+  let t = 0, raf = 0
+  const animate = () => {
+    raf = requestAnimationFrame(animate)
+    t += 0.004
+    planet.rotation.y = t
+    tex.offset.x = t * 0.015
+    renderer.render(scene, camera)
+  }
+  animate()
+
+  return () => {
+    cancelAnimationFrame(raf)
+    renderer.dispose()
+    planetGeo.dispose(); planetMat.dispose(); atmGeo.dispose(); atmMat.dispose()
+    ringGeo.dispose(); ringMat.dispose(); sGeo.dispose(); tex.dispose(); tc.remove()
+  }
 }
 
-// ── Túnel — hexagonal warp corridor with neon glow ────────────────────────────
+// ── Túnel — Three.js hexagonal warp corridor flying toward viewer ─────────────
 function bgTunel(canvas: HTMLCanvasElement): () => void {
-  const ctx = canvas.getContext('2d')!
   const W = canvas.width, H = canvas.height
-  const CX = W / 2, CY = H / 2
-  const maxR = Math.sqrt(W * W + H * H) * 0.62
-  const N_SEG = 22
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x020008)
+  scene.fog = new THREE.Fog(0x020008, 0.5, 28)
+
+  const camera = new THREE.PerspectiveCamera(80, W / H, 0.1, 80)
+  camera.position.set(0, 0, 0)
+  camera.lookAt(0, 0, -1)
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false })
+  renderer.setSize(W, H)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+  // Build hexagonal ring geometry
+  function makeHexRing(outerR: number, innerR: number): THREE.BufferGeometry {
+    const N = 6, pts: number[] = []
+    for (let i = 0; i < N; i++) {
+      const a0 = (Math.PI / 3) * i + Math.PI / 6
+      const a1 = (Math.PI / 3) * (i + 1) + Math.PI / 6
+      // Two triangles per face
+      pts.push(outerR * Math.cos(a0), outerR * Math.sin(a0), 0)
+      pts.push(innerR * Math.cos(a0), innerR * Math.sin(a0), 0)
+      pts.push(outerR * Math.cos(a1), outerR * Math.sin(a1), 0)
+      pts.push(innerR * Math.cos(a0), innerR * Math.sin(a0), 0)
+      pts.push(innerR * Math.cos(a1), innerR * Math.sin(a1), 0)
+      pts.push(outerR * Math.cos(a1), outerR * Math.sin(a1), 0)
+    }
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3))
+    return geo
+  }
+
+  const N_RINGS = 32, SPACING = 2.2
+  const rings: { mesh: THREE.Mesh; geo: THREE.BufferGeometry; mat: THREE.MeshBasicMaterial; initZ: number }[] = []
+
+  for (let i = 0; i < N_RINGS; i++) {
+    const frac = i / N_RINGS
+    const hue = 270 + frac * 50
+    const geo = makeHexRing(1.6, 1.35)
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(`hsl(${hue},85%,60%)`), transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.position.z = -i * SPACING
+    rings.push({ mesh, geo, mat, initZ: -i * SPACING })
+    scene.add(mesh)
+  }
+
+  const totalLen = N_RINGS * SPACING
   let t = 0, raf = 0
-
-  function hexPath(r: number, rot: number) {
-    ctx.beginPath()
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i + rot
-      const x = CX + r * Math.cos(a), y = CY + r * Math.sin(a)
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-    }
-    ctx.closePath()
+  const animate = () => {
+    raf = requestAnimationFrame(animate)
+    t += 0.008
+    const offset = t * SPACING * 3
+    camera.rotation.z = Math.sin(t * 0.4) * 0.08
+    rings.forEach((r, i) => {
+      let z = r.initZ + offset
+      while (z > 1.5) z -= totalLen
+      r.mesh.position.z = z
+      // Fade out rings very close to camera
+      const dist = Math.abs(z)
+      r.mat.opacity = dist < 1 ? dist * 0.7 : 0.75
+    })
+    renderer.render(scene, camera)
   }
+  animate()
 
-  const draw = () => {
-    ctx.fillStyle = 'rgba(2,0,10,0.35)'; ctx.fillRect(0, 0, W, H)
-    const speed = 0.28
-    for (let i = N_SEG; i >= 0; i--) {
-      const frac = ((i + t * speed) % N_SEG) / N_SEG
-      const r = frac * maxR + 4
-      if (r < 2) continue
-      const alpha = (1 - frac) * 0.75
-      const hue = 255 + frac * 50   // purple → indigo
-      const lum = 55 + (1 - frac) * 25
-      hexPath(r, frac * Math.PI / 8 + t * 0.08)
-      ctx.strokeStyle = `hsla(${hue},80%,${lum}%,${alpha})`
-      ctx.lineWidth = Math.max(0.4, (1 - frac) * 3.5)
-      ctx.shadowBlur = (1 - frac) * 18; ctx.shadowColor = `hsla(${hue},90%,70%,${alpha})`
-      ctx.stroke()
-      // Inner fill for closest segments
-      if (frac < 0.15) {
-        ctx.fillStyle = `hsla(${hue},60%,20%,${(0.15 - frac) * 0.3})`; ctx.fill()
-      }
-    }
-    ctx.shadowBlur = 0
-    // Center vortex glow
-    const cg = ctx.createRadialGradient(CX, CY, 0, CX, CY, 120)
-    cg.addColorStop(0, 'rgba(140,80,255,0.18)'); cg.addColorStop(.4, 'rgba(80,40,200,0.08)'); cg.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H)
-    t += 0.016; raf = requestAnimationFrame(draw)
+  return () => {
+    cancelAnimationFrame(raf)
+    rings.forEach(r => { r.geo.dispose(); r.mat.dispose() })
+    renderer.dispose()
   }
-  ctx.fillStyle = '#02000a'; ctx.fillRect(0, 0, W, H); draw()
-  return () => cancelAnimationFrame(raf)
 }
 
 function bgBrasas(canvas: HTMLCanvasElement): () => void {
@@ -488,6 +539,7 @@ const BG_RUNNERS: Record<BgName, (c: HTMLCanvasElement) => () => void> = {
   lluvia: bgLluvia, brasas: bgBrasas, aurora: bgAurora, cosmos: bgCosmos,
   mar: bgMar, planeta: bgPlaneta, tunel: bgTunel,
 }
+const IS_3D_SET = new Set<BgName>(['mar', 'planeta', 'tunel'])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(s: number) {
@@ -736,7 +788,8 @@ export default function FocusPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   // Refs
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const canvas2DRef = useRef<HTMLCanvasElement | null>(null)
+  const canvas3DRef = useRef<HTMLCanvasElement | null>(null)
   const cleanupBgRef = useRef<(() => void) | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const handlesRef = useRef<Partial<Record<SoundKey, SoundHandle>>>({})
@@ -767,8 +820,9 @@ export default function FocusPage() {
 
   // ── Canvas background ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!ready || !canvasRef.current) return
-    const canvas = canvasRef.current
+    const is3D = IS_3D_SET.has(bg)
+    const canvas = is3D ? canvas3DRef.current : canvas2DRef.current
+    if (!ready || !canvas) return
     canvas.width = window.innerWidth; canvas.height = window.innerHeight
     cleanupBgRef.current?.()
     cleanupBgRef.current = BG_RUNNERS[bg](canvas)
@@ -876,6 +930,14 @@ export default function FocusPage() {
   }, [])
 
   // ── Tasks ───────────────────────────────────────────────────────────────────
+  async function openDetail(task: Task) {
+    setSelectedTask(task)  // show immediately with what we have
+    try {
+      const full = await getTask(task.id)  // fetch full version with notes + subtasks
+      setSelectedTask(full)
+    } catch { /* keep the task we already set */ }
+  }
+
   async function doToggle(id: string) {
     try {
       await toggleTaskComplete(id)
@@ -930,8 +992,11 @@ export default function FocusPage() {
       {/* Nav sidebar — overlays on focus page; focus page has its own ☰ in header */}
       <Sidebar hideExternalToggle />
 
-      {/* Canvas background */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      {/* Canvas background — 2D for lluvia/brasas/aurora/cosmos, WebGL for mar/planeta/tunel */}
+      <canvas ref={canvas2DRef} className="absolute inset-0 w-full h-full"
+        style={{ display: IS_3D_SET.has(bg) ? 'none' : 'block' }} />
+      <canvas ref={canvas3DRef} className="absolute inset-0 w-full h-full"
+        style={{ display: IS_3D_SET.has(bg) ? 'block' : 'none' }} />
 
       {/* ── Header — z-50 so it always sits above every panel ──────────────── */}
       {!zen && (
@@ -1069,7 +1134,7 @@ export default function FocusPage() {
               style={{
                 right: '16px',
                 top: '56px',
-                width: '220px',
+                width: '300px',
                 maxHeight: 'calc(100vh - 56px - 88px)',
                 background: 'rgba(7,5,18,0.78)',
                 backdropFilter: 'blur(20px)',
@@ -1096,13 +1161,13 @@ export default function FocusPage() {
                 {pendingTasks.length > 0 && (
                   <>
                     <p className="text-[10px] font-bold text-white/28 uppercase tracking-widest px-3 pt-2.5 pb-1">Hoy</p>
-                    {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={setSelectedTask} />)}
+                    {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={openDetail} />)}
                   </>
                 )}
                 {completedTasks.length > 0 && (
                   <>
                     <p className="text-[10px] font-bold text-white/18 uppercase tracking-widest px-3 pt-3 pb-1">Completadas</p>
-                    {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={setSelectedTask} />)}
+                    {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} onClick={openDetail} />)}
                   </>
                 )}
               </div>
@@ -1132,32 +1197,31 @@ export default function FocusPage() {
         </>
       )}
 
-      {/* ── Sound mixer — centered, max 680px ──────────────────────────────── */}
+      {/* ── Sound mixer — full width, one row, no scroll ───────────────────── */}
       {!zen && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4 pb-3 transition-all duration-300"
+        <div className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 transition-all duration-300"
           style={{ transform: showSounds ? 'translateY(0)' : 'translateY(120%)' }}
         >
-          <div className="rounded-2xl px-5 py-3 w-full"
-            style={{ maxWidth: '680px', background: 'rgba(8,6,20,0.82)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)' }}
+          <div className="rounded-2xl px-4 py-3 w-full"
+            style={{ background: 'rgba(8,6,20,0.88)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(24px)' }}
           >
-            <div className="overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              <div className="flex gap-5 min-w-max pb-0.5">
-                {SOUND_LIST.map(s => (
-                  <div key={s.key} className="flex flex-col items-center gap-1.5" style={{ minWidth: '58px' }}>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full transition-all duration-200 flex-shrink-0"
-                        style={{ background: volumes[s.key] > 0 ? ACCENT : 'rgba(255,255,255,0.2)', boxShadow: volumes[s.key] > 0 ? `0 0 6px ${ACCENT}` : 'none' }} />
-                      <span className="text-[10px] text-white/50 whitespace-nowrap">{s.label}</span>
-                    </div>
-                    <input type="range" min="0" max="1" step="0.01"
-                      value={volumes[s.key]}
-                      onChange={e => setVolume(s.key, parseFloat(e.target.value))}
-                      className="w-full cursor-pointer"
-                      style={{ accentColor: ACCENT, height: '3px' }}
-                    />
+            <div className="flex items-center" style={{ gap: '0' }}>
+              {SOUND_LIST.map((s, i) => (
+                <div key={s.key} className="flex flex-col items-center gap-1"
+                  style={{ flex: 1, minWidth: 0, padding: '0 6px', borderRight: i < SOUND_LIST.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  <div className="flex items-center gap-1.5 w-full justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-200"
+                      style={{ background: volumes[s.key] > 0 ? ACCENT : 'rgba(255,255,255,0.2)', boxShadow: volumes[s.key] > 0 ? `0 0 5px ${ACCENT}` : 'none' }} />
+                    <span className="text-[9.5px] text-white/50 whitespace-nowrap overflow-hidden text-ellipsis">{s.label}</span>
                   </div>
-                ))}
-              </div>
+                  <input type="range" min="0" max="1" step="0.01"
+                    value={volumes[s.key]}
+                    onChange={e => setVolume(s.key, parseFloat(e.target.value))}
+                    className="w-full cursor-pointer"
+                    style={{ accentColor: ACCENT, height: '3px' }}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>

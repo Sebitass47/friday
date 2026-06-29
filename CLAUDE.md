@@ -74,9 +74,9 @@ Página full-screen de productividad tipo "focus space". Sin sidebar, layout pro
 - Brasas: partículas de brasa flotando hacia arriba con glow
 - Aurora: 10 blobs de colores vivos moviéndose rápido (sin efecto cristal)
 - Cosmos: campo de estrellas 3D con proyección de perspectiva (warp-speed), nebulosas y trails
-- Mar: océano nocturno con perspectiva 3D, olas animadas, luna y columna de luz lunar
-- Planeta: planeta gaseoso azul-índigo con bandas animadas, anillos (frente/atrás), atmósfera glow y estrellas
-- Túnel: corredor hexagonal tipo warp con glow neon morado/índigo en movimiento continuo
+- Mar: océano nocturno Three.js con PlaneGeometry y animación de vértices (olas), luna PointLight y estrellas Points
+- Planeta: Three.js SphereGeometry con CanvasTexture de bandas, anillos RingGeometry inclinados, atmósfera transparente y DirectionalLight
+- Túnel: Three.js corredor hexagonal — rings de MeshBasicMaterial vuelan hacia la cámara con niebla Fog
 
 **Sonidos ambientales (Web Audio API sintetizado):**
 - 9 sonidos: Lluvia, Cafetería, Tráfico, Olas, Bosque, Pájaros, Viento, Cascada, Fuego

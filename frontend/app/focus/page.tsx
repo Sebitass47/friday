@@ -444,7 +444,7 @@ function bgTunel(canvas: HTMLCanvasElement): () => void {
   const animate = () => {
     raf = requestAnimationFrame(animate)
     t += 0.008
-    const offset = t * SPACING * 3
+    const offset = t * SPACING * 0.6
     camera.rotation.z = Math.sin(t * 0.4) * 0.08
     rings.forEach((r, i) => {
       let z = r.initZ + offset

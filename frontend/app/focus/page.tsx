@@ -432,10 +432,14 @@ export default function FocusPage() {
   const [sessionsDone, setSessionsDone] = useState(0)
   const [totalFocused, setTotalFocused] = useState(0)
 
-  // UI toggles
-  const [showTasks, setShowTasks] = useState(true)
+  // UI toggles — tasks default closed on mobile, open on desktop
+  const [showTasks, setShowTasks] = useState(false)
   const [showSounds, setShowSounds] = useState(true)
   const [zen, setZen] = useState(false)
+
+  useEffect(() => {
+    if (window.innerWidth >= 1024) setShowTasks(true)
+  }, [])
 
   // Sounds
   const [volumes, setVolumes] = useState<Record<SoundKey, number>>(
@@ -628,22 +632,15 @@ export default function FocusPage() {
       {/* Canvas background */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* ── Header — z-50 so it always sits above every panel ──────────────── */}
       {!zen && (
-        <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-5 py-3">
-          <div className="flex items-center gap-4">
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: ACCENT }}>
-                <span className="text-white text-xs font-bold">F</span>
-              </div>
-              <span className="text-white font-semibold text-sm tracking-wide">espacio focus</span>
-            </div>
-            {/* BG tabs */}
-            <div className="flex items-center gap-1">
+        <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2.5">
+          {/* BG tabs — scrollable on small screens */}
+          <div className="overflow-x-auto flex-1 mr-3" style={{ scrollbarWidth: 'none' }}>
+            <div className="flex items-center gap-1 min-w-max">
               {BG_LIST.map(b => (
                 <button key={b.key} onClick={() => setBg(b.key)}
-                  className="px-3 py-1 rounded-full text-xs font-medium transition-all"
+                  className="px-3 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap"
                   style={bg === b.key
                     ? { background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.22)' }
                     : { color: 'rgba(255,255,255,0.45)', border: '1px solid transparent' }
@@ -652,21 +649,22 @@ export default function FocusPage() {
               ))}
             </div>
           </div>
-          {/* Right */}
-          <div className="flex items-center gap-2">
-            {(['Tareas', 'Sonidos'] as const).map((label, i) => {
-              const active = i === 0 ? showTasks : showSounds
-              const toggle = i === 0 ? () => setShowTasks(s => !s) : () => setShowSounds(s => !s)
-              return (
-                <button key={label} onClick={toggle}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                  style={active
-                    ? { background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }
-                    : { color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
-                  }
-                >{label}</button>
-              )
-            })}
+          {/* Right controls */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button onClick={() => setShowTasks(s => !s)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              style={showTasks
+                ? { background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }
+                : { color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
+              }
+            >Tareas</button>
+            <button onClick={() => setShowSounds(s => !s)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              style={showSounds
+                ? { background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }
+                : { color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
+              }
+            >Sonidos</button>
             <button onClick={() => setZen(true)}
               className="px-3 py-1.5 rounded-full text-xs text-white/40 border border-white/[0.07] hover:text-white/65 transition-all"
             >zen</button>
@@ -677,42 +675,33 @@ export default function FocusPage() {
       {/* Zen exit */}
       {zen && (
         <button onClick={() => setZen(false)}
-          className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-full text-xs text-white/35 border border-white/[0.06] hover:text-white/55 transition-all"
+          className="fixed top-4 right-4 z-50 px-3 py-1.5 rounded-full text-xs text-white/35 border border-white/[0.06] hover:text-white/55 transition-all"
         >salir zen</button>
       )}
 
-      {/* ── Center timer ───────────────────────────────────────────────────── */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 transition-all duration-300"
-        style={{ paddingRight: showTasks && !zen ? '224px' : '0', paddingBottom: showSounds && !zen ? '72px' : '0' }}
+      {/* ── Center timer — no padding shifts, panel is floating ────────────── */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10"
+        style={{ paddingBottom: showSounds && !zen ? '80px' : '0', paddingTop: !zen ? '48px' : '0', transition: 'padding .3s' }}
       >
         {/* Anillo */}
         {timerStyle === 'anillo' && (
           <div className="flex flex-col items-center gap-5">
-            <div className="relative" style={{ filter: 'drop-shadow(0 0 40px rgba(107,70,229,0.25))' }}>
+            <div style={{ filter: 'drop-shadow(0 0 40px rgba(107,70,229,0.25))' }}>
               <svg width="260" height="260">
-                {/* Background ring */}
-                <circle cx={CX} cy={CY} r={R} fill="rgba(255,255,255,0.02)"
-                  stroke="rgba(255,255,255,0.07)" strokeWidth={SW} />
-                {/* Progress arc */}
+                <circle cx={CX} cy={CY} r={R} fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.07)" strokeWidth={SW} />
                 <circle cx={CX} cy={CY} r={R} fill="none"
                   stroke={ACCENT} strokeWidth={SW + 1} strokeLinecap="round"
                   strokeDasharray={circumference} strokeDashoffset={dashOffset}
                   transform={`rotate(-90 ${CX} ${CY})`}
                   style={{ filter: `drop-shadow(0 0 8px ${ACCENT}99)`, transition: 'stroke-dashoffset .8s linear' }}
                 />
-                {/* Phase label */}
-                <text x={CX} y={112} textAnchor="middle" fill={ACCENT}
-                  fontSize="9.5" fontWeight="700" letterSpacing="2.5" style={{ fontFamily: 'system-ui' }}>
+                <text x={CX} y={112} textAnchor="middle" fill={ACCENT} fontSize="9.5" fontWeight="700" letterSpacing="2.5" style={{ fontFamily: 'system-ui' }}>
                   {PHASE_LABEL[phase]}
                 </text>
-                {/* Time */}
-                <text x={CX} y={149} textAnchor="middle" fill="white"
-                  fontSize="44" fontWeight="700" style={{ fontFamily: 'system-ui' }}>
+                <text x={CX} y={149} textAnchor="middle" fill="white" fontSize="44" fontWeight="700" style={{ fontFamily: 'system-ui' }}>
                   {fmt(secs)}
                 </text>
-                {/* Progress text */}
-                <text x={CX} y={168} textAnchor="middle" fill="rgba(255,255,255,0.35)"
-                  fontSize="11" style={{ fontFamily: 'system-ui' }}>
+                <text x={CX} y={168} textAnchor="middle" fill="rgba(255,255,255,0.35)" fontSize="11" style={{ fontFamily: 'system-ui' }}>
                   {fmtFocus(totalFocused)} / {settings.goalHours}h enfocado
                 </text>
               </svg>
@@ -723,10 +712,10 @@ export default function FocusPage() {
 
         {/* Minimal */}
         {timerStyle === 'minimal' && (
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 px-4">
             <p className="font-bold tracking-[4px]" style={{ color: ACCENT, fontSize: '11px' }}>{PHASE_LABEL[phase]}</p>
-            <p className="font-bold text-white leading-none" style={{ fontSize: 'clamp(72px,9vw,112px)' }}>{fmt(secs)}</p>
-            <div className="rounded-full bg-white/[0.08] overflow-hidden" style={{ width: 'clamp(240px,28vw,340px)', height: '3px' }}>
+            <p className="font-bold text-white leading-none text-center" style={{ fontSize: 'clamp(60px,9vw,112px)' }}>{fmt(secs)}</p>
+            <div className="rounded-full bg-white/[0.08] overflow-hidden" style={{ width: 'clamp(200px,28vw,340px)', height: '3px' }}>
               <div className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${progress * 100}%`, background: ACCENT, boxShadow: `0 0 10px ${ACCENT}` }} />
             </div>
@@ -737,16 +726,16 @@ export default function FocusPage() {
 
         {/* Tarjeta */}
         {timerStyle === 'tarjeta' && (
-          <div className="flex flex-col items-center gap-4">
-            <div className="rounded-2xl px-8 py-7 flex flex-col items-center gap-3"
-              style={{ background: 'rgba(12,8,26,0.72)', border: '1px solid rgba(255,255,255,0.09)', backdropFilter: 'blur(24px)', minWidth: '310px' }}
+          <div className="flex flex-col items-center gap-4 px-4">
+            <div className="rounded-2xl px-6 py-6 flex flex-col items-center gap-3 w-full max-w-xs"
+              style={{ background: 'rgba(12,8,26,0.72)', border: '1px solid rgba(255,255,255,0.09)', backdropFilter: 'blur(24px)' }}
             >
               <p className="font-bold tracking-[4px]" style={{ color: ACCENT, fontSize: '10px' }}>{PHASE_LABEL[phase]}</p>
-              <div className="flex items-center gap-5 mt-1">
+              <div className="flex items-center gap-4 mt-1">
                 <button onClick={() => !running && setSecs(s => Math.max(60, s - 60))}
                   className="w-10 h-10 rounded-xl bg-white/[0.07] border border-white/10 text-white/65 hover:bg-white/[0.13] transition-all text-xl font-light active:scale-95"
                 >−</button>
-                <span className="font-bold text-white text-center tabular-nums" style={{ fontSize: '56px', minWidth: '160px' }}>{fmt(secs)}</span>
+                <span className="font-bold text-white text-center tabular-nums" style={{ fontSize: 'clamp(42px,7vw,56px)', minWidth: '130px' }}>{fmt(secs)}</span>
                 <button onClick={() => !running && setSecs(s => s + 60)}
                   className="w-10 h-10 rounded-xl bg-white/[0.07] border border-white/10 text-white/65 hover:bg-white/[0.13] transition-all text-xl font-light active:scale-95"
                 >+</button>
@@ -758,75 +747,109 @@ export default function FocusPage() {
         )}
       </div>
 
-      {/* ── Tasks panel ────────────────────────────────────────────────────── */}
-      <div className="absolute top-0 right-0 bottom-0 z-20 flex flex-col overflow-hidden transition-all duration-300"
-        style={{ width: showTasks && !zen ? '224px' : '0', background: 'rgba(7,5,18,0.68)', backdropFilter: 'blur(18px)', borderLeft: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        {showTasks && !zen && (
-          <div className="flex flex-col h-full" style={{ minWidth: '224px' }}>
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-14 pb-3 border-b border-white/[0.05]">
-              <span className="text-white text-sm font-semibold">Tareas</span>
-              <span className="text-white/30 text-[11px]">{doneTasks} de {tasks.length} hechas</span>
-            </div>
-            {/* List */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-3 space-y-2" style={{ scrollbarWidth: 'none' }}>
-              {tasks.length === 0 && (
-                <p className="text-white/25 text-xs text-center pt-6">Sin tareas para hoy</p>
-              )}
-              {pendingTasks.length > 0 && (
-                <>
-                  <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1 pb-1">Hoy</p>
-                  {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} />)}
-                </>
-              )}
-              {completedTasks.length > 0 && (
-                <>
-                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest px-1 pb-1 pt-2">Completadas</p>
-                  {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} />)}
-                </>
-              )}
-            </div>
-            {/* Add task */}
-            <div className="border-t border-white/[0.05] p-3 space-y-2">
-              <input value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addTask()}
-                placeholder="Nueva tarea..."
-                className="w-full bg-white/[0.06] border border-white/[0.09] rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-white/22 outline-none focus:border-white/20 transition-all"
-                style={{ userSelect: 'text' }}
-              />
-              <div className="flex gap-2">
-                <select value={newLabel} onChange={e => setNewLabel(e.target.value)}
-                  className="flex-1 min-w-0 bg-white/[0.06] border border-white/[0.09] rounded-lg px-2 py-1.5 text-xs text-white/70 outline-none cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.06)', colorScheme: 'dark' }}
-                >
-                  {Object.keys(LABEL_COLORS).map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <button onClick={addTask}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-base hover:opacity-85 transition-all flex-shrink-0 active:scale-95"
-                  style={{ background: ACCENT }}>+</button>
+      {/* ── Tasks panel — floating card, z-30 (below header z-50) ──────────── */}
+      {!zen && (
+        <>
+          {/* Floating toggle when panel is closed */}
+          {!showTasks && (
+            <button onClick={() => setShowTasks(true)}
+              className="fixed right-4 z-30 flex items-center justify-center rounded-xl text-white/50 hover:text-white/80 transition-all active:scale-95"
+              style={{
+                top: 'calc(50% - 40px)',
+                width: '36px', height: '36px',
+                background: 'rgba(10,8,24,0.7)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(12px)',
+              }}
+              title="Abrir tareas"
+            >☰</button>
+          )}
+
+          {/* Floating panel */}
+          {showTasks && (
+            <div className="fixed z-30 flex flex-col rounded-2xl overflow-hidden"
+              style={{
+                right: '16px',
+                top: '56px',
+                width: '220px',
+                maxHeight: 'calc(100vh - 56px - 88px)',
+                background: 'rgba(7,5,18,0.78)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.09)',
+                boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+              }}
+            >
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0">
+                <span className="text-white text-sm font-semibold">Tareas</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/30 text-[10px]">{doneTasks}/{tasks.length}</span>
+                  <button onClick={() => setShowTasks(false)}
+                    className="text-white/30 hover:text-white/65 transition-all text-lg leading-none w-5 h-5 flex items-center justify-center"
+                  >×</button>
+                </div>
+              </div>
+
+              {/* Task list */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden py-2.5 px-2.5 space-y-1.5" style={{ scrollbarWidth: 'none' }}>
+                {tasks.length === 0 && (
+                  <p className="text-white/25 text-xs text-center pt-6">Sin tareas para hoy</p>
+                )}
+                {pendingTasks.length > 0 && (
+                  <>
+                    <p className="text-[10px] font-bold text-white/28 uppercase tracking-widest px-1 pb-1">Hoy</p>
+                    {pendingTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} />)}
+                  </>
+                )}
+                {completedTasks.length > 0 && (
+                  <>
+                    <p className="text-[10px] font-bold text-white/18 uppercase tracking-widest px-1 pb-1 pt-2">Completadas</p>
+                    {completedTasks.map(t => <TaskCard key={t.id} task={t} onToggle={doToggle} />)}
+                  </>
+                )}
+              </div>
+
+              {/* Add task */}
+              <div className="border-t border-white/[0.05] p-2.5 space-y-2 flex-shrink-0">
+                <input value={newTitle} onChange={e => setNewTitle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addTask()}
+                  placeholder="Nueva tarea..."
+                  className="w-full bg-white/[0.06] border border-white/[0.09] rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-white/22 outline-none focus:border-white/20 transition-all"
+                  style={{ userSelect: 'text' }}
+                />
+                <div className="flex gap-1.5">
+                  <select value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                    className="flex-1 min-w-0 rounded-lg px-2 py-1.5 text-xs text-white/70 outline-none cursor-pointer border border-white/[0.09]"
+                    style={{ background: 'rgba(255,255,255,0.06)', colorScheme: 'dark' }}
+                  >
+                    {Object.keys(LABEL_COLORS).map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                  <button onClick={addTask}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-base hover:opacity-85 transition-all flex-shrink-0 active:scale-95"
+                    style={{ background: ACCENT }}>+</button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      )}
 
-      {/* ── Sound mixer ────────────────────────────────────────────────────── */}
+      {/* ── Sound mixer — centered, max 680px ──────────────────────────────── */}
       {!zen && (
-        <div className="absolute bottom-0 left-0 right-0 z-20 transition-all duration-300"
-          style={{ transform: showSounds ? 'translateY(0)' : 'translateY(110%)', paddingRight: showTasks ? '224px' : '0' }}
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center px-4 pb-3 transition-all duration-300"
+          style={{ transform: showSounds ? 'translateY(0)' : 'translateY(120%)' }}
         >
-          <div className="mx-4 mb-3 rounded-2xl px-5 py-3"
-            style={{ background: 'rgba(8,6,20,0.78)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)' }}
+          <div className="rounded-2xl px-5 py-3 w-full"
+            style={{ maxWidth: '680px', background: 'rgba(8,6,20,0.82)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)' }}
           >
             <div className="overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-              <div className="flex gap-6 min-w-max pb-0.5">
+              <div className="flex gap-5 min-w-max pb-0.5">
                 {SOUND_LIST.map(s => (
-                  <div key={s.key} className="flex flex-col items-center gap-1.5" style={{ minWidth: '64px' }}>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full transition-all duration-200"
+                  <div key={s.key} className="flex flex-col items-center gap-1.5" style={{ minWidth: '58px' }}>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full transition-all duration-200 flex-shrink-0"
                         style={{ background: volumes[s.key] > 0 ? ACCENT : 'rgba(255,255,255,0.2)', boxShadow: volumes[s.key] > 0 ? `0 0 6px ${ACCENT}` : 'none' }} />
-                      <span className="text-[11px] text-white/50">{s.label}</span>
+                      <span className="text-[10px] text-white/50 whitespace-nowrap">{s.label}</span>
                     </div>
                     <input type="range" min="0" max="1" step="0.01"
                       value={volumes[s.key]}
@@ -842,13 +865,13 @@ export default function FocusPage() {
         </div>
       )}
 
-      {/* ── Settings modal ──────────────────────────────────────────────────── */}
+      {/* ── Settings modal — z-50 so it's above everything ─────────────────── */}
       {showSettings && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
           onClick={e => e.target === e.currentTarget && setShowSettings(false)}
         >
-          <div className="rounded-2xl p-6 w-[390px] max-w-[92vw] max-h-[90vh] overflow-y-auto"
+          <div className="rounded-2xl p-6 w-full max-w-[390px] max-h-[90vh] overflow-y-auto"
             style={{ background: 'rgba(12,8,26,0.97)', border: '1px solid rgba(255,255,255,0.1)', scrollbarWidth: 'none' }}
           >
             <div className="flex items-center justify-between mb-5">

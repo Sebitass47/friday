@@ -606,14 +606,16 @@ function bgCosmos(canvas: HTMLCanvasElement): () => void {
 }
 
 // ── Cyberpunk City — rain-soaked city viewed from window height ───────────────
+// ── Synthwave City — neon-edged city from above, purple grid sky ──────────────
 function bgCyberpunk(canvas: HTMLCanvasElement): () => void {
   const W = canvas.width, H = canvas.height
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x000810)
-  scene.fog = new THREE.Fog(0x010a1a, 70, 210)
+  scene.background = new THREE.Color(0x030012)
+  scene.fog = new THREE.Fog(0x06001a, 100, 280)
 
-  const camera = new THREE.PerspectiveCamera(68, W / H, 0.1, 280)
-  camera.position.set(0, 8, 6); camera.lookAt(0, 13, -20)
+  // Camera elevated, looking down-forward at city (bird's-eye synthwave angle)
+  const camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 400)
+  camera.position.set(0, 48, 58); camera.lookAt(0, 2, -65)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
   renderer.setSize(W, H); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -622,180 +624,155 @@ function bgCyberpunk(canvas: HTMLCanvasElement): () => void {
   const track = <T extends THREE.BufferGeometry>(g: T) => { geos.push(g); return g }
   const trackM = <T extends THREE.Material>(m: T) => { mats.push(m); return m }
 
-  // Window texture — dark walls with bright lit rooms visible through windows
-  function winTex(cols: number, rows: number): THREE.CanvasTexture {
-    const cw = 18, rh = 20
-    const tc = document.createElement('canvas'); tc.width = cols * cw; tc.height = rows * rh
-    const tx = tc.getContext('2d')!
-    tx.fillStyle = '#03080f'; tx.fillRect(0, 0, tc.width, tc.height)
-    const wc = ['#ffee99','#ffcc55','#ffaa33','#aaddff','#ff99cc','#ccffee','#ffffcc','#ffdd77','#ffffff','#88ccff']
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      if (Math.random() < 0.65) {
-        tx.fillStyle = wc[Math.floor(Math.random() * wc.length)]
-        tx.globalAlpha = 0.8 + Math.random() * 0.2
-        tx.fillRect(c*cw+2, r*rh+2, cw-4, rh-4)
-        if (Math.random() > 0.65) {  // curtain shadow
-          tx.fillStyle = 'rgba(0,0,0,0.4)'; tx.fillRect(c*cw+2, r*rh+2, Math.floor((cw-4)*0.4), rh-4)
-        }
-      }
-    }
-    tx.globalAlpha = 1
-    const tex = new THREE.CanvasTexture(tc); mats.push(tex as unknown as THREE.Material); return tex
-  }
+  const PINK = 0xff22cc, CYAN = 0x00ddff, PURPLE = 0x9922ee
 
-  // Neon sign with canvas text
-  const signWords = ['HOTEL','RAMEN','BAR','NOODLES','SPA','SYNTH','CYBER','OPEN','24H','ROOMS','CLUB','NEON']
-  function neonSignTex(text: string, col: string): THREE.CanvasTexture {
-    const tc = document.createElement('canvas'); tc.width = 256; tc.height = 64
-    const tx = tc.getContext('2d')!
-    tx.fillStyle = '#000000'; tx.fillRect(0, 0, 256, 64)
-    tx.font = 'bold 38px monospace'; tx.textAlign = 'center'; tx.textBaseline = 'middle'
-    tx.shadowColor = col; tx.shadowBlur = 22
-    for (let i = 0; i < 4; i++) { tx.fillStyle = col; tx.fillText(text, 128, 32) }
-    const tex = new THREE.CanvasTexture(tc); mats.push(tex as unknown as THREE.Material); return tex
-  }
+  // Sky background gradient (purple → deep blue)
+  const skyTc = document.createElement('canvas'); skyTc.width = 2; skyTc.height = 256
+  const skx = skyTc.getContext('2d')!
+  const skyGrad = skx.createLinearGradient(0,0,0,256)
+  skyGrad.addColorStop(0,'#080030'); skyGrad.addColorStop(0.55,'#150055'); skyGrad.addColorStop(1,'#0c0035')
+  skx.fillStyle = skyGrad; skx.fillRect(0,0,2,256)
+  const skyTex = new THREE.CanvasTexture(skyTc); mats.push(skyTex as unknown as THREE.Material)
+  const skyBg = new THREE.Mesh(track(new THREE.PlaneGeometry(700,350)),
+    trackM(new THREE.MeshBasicMaterial({ map: skyTex })))
+  skyBg.position.set(0,80,-200); scene.add(skyBg)
 
-  // Wet ground with neon streaks
-  const gtc = document.createElement('canvas'); gtc.width = 512; gtc.height = 512
-  const gx = gtc.getContext('2d')!
-  gx.fillStyle = '#020810'; gx.fillRect(0, 0, 512, 512)
-  for (let i = 0; i < 25; i++) {
-    const x = Math.random()*512
-    gx.strokeStyle = 'rgba(50,70,120,0.22)'; gx.lineWidth = 1+Math.random()*2
-    gx.beginPath(); gx.moveTo(x,0); gx.lineTo(x+(Math.random()-0.5)*30,512); gx.stroke()
-  }
-  const gTex = new THREE.CanvasTexture(gtc); mats.push(gTex as unknown as THREE.Material)
-  const ground = new THREE.Mesh(track(new THREE.PlaneGeometry(300, 200)),
-    trackM(new THREE.MeshPhongMaterial({ map: gTex, color: 0x06101a, shininess: 300, specular: 0x3355aa })))
-  ground.rotation.x = -Math.PI/2; scene.add(ground)
+  // Ground grid — perspective from camera naturally creates vanishing-point effect
+  const gGrid = new THREE.GridHelper(600, 48, 0x5511cc, 0x330088)
+  geos.push(gGrid.geometry)
+  const gGridMats = Array.isArray(gGrid.material) ? gGrid.material : [gGrid.material]
+  gGridMats.forEach(m => { (m as THREE.LineBasicMaterial).transparent=true; (m as THREE.LineBasicMaterial).opacity=0.45; mats.push(m) })
+  scene.add(gGrid)
 
-  // Window frame (dark room interior around the view)
-  const fMat = trackM(new THREE.MeshBasicMaterial({ color: 0x030108 }))
-  ;[
-    [0, 7, 5.8, 20, 0.5, 3],    // sill bottom
-    [0, 16, 5.8, 20, 0.5, 3],   // top
-    [-9.5, 11.5, 5.8, 1, 10, 3], // left pillar
-    [9.5, 11.5, 5.8, 1, 10, 3], // right pillar
-  ].forEach(([x,y,z,w,h,d]) => {
-    const m = new THREE.Mesh(track(new THREE.BoxGeometry(w,h,d)), fMat)
-    m.position.set(x,y,z); scene.add(m)
-  })
+  // Sky ceiling grid (mirrored above city, appears as synthwave sky)
+  const sGrid = new THREE.GridHelper(600, 48, 0x7733ff, 0x4422aa)
+  geos.push(sGrid.geometry)
+  const sGridMats = Array.isArray(sGrid.material) ? sGrid.material : [sGrid.material]
+  sGridMats.forEach(m => { (m as THREE.LineBasicMaterial).transparent=true; (m as THREE.LineBasicMaterial).opacity=0.55; mats.push(m) })
+  sGrid.position.y = 92; sGrid.rotation.x = Math.PI; scene.add(sGrid)
 
-  // Buildings — left/right flanks + deep center
+  // Red accent line cutting through sky grid (like in reference)
+  const redPts = [new THREE.Vector3(-55,92.05,65), new THREE.Vector3(-18,92.05,-280)]
+  const redGeo = track(new THREE.BufferGeometry().setFromPoints(redPts))
+  scene.add(new THREE.LineSegments(redGeo, trackM(new THREE.LineBasicMaterial({ color:0xff0000, transparent:true, opacity:0.88 }))))
+
+  // Buildings — city block grid, near-black with neon edge outlines
   type BD = { x:number; z:number; w:number; d:number; h:number }
-  const bDefs: BD[] = [
-    // Left flank
-    {x:-11,z:-7,w:8,d:6,h:24},{x:-19,z:-16,w:9,d:7,h:44},{x:-9,z:-23,w:7,d:5,h:38},
-    {x:-23,z:-31,w:10,d:8,h:60},{x:-13,z:-43,w:8,d:6,h:50},{x:-27,z:-55,w:12,d:9,h:74},{x:-33,z:-40,w:7,d:6,h:32},
-    // Right flank
-    {x:11,z:-7,w:8,d:6,h:28},{x:19,z:-16,w:9,d:7,h:48},{x:9,z:-23,w:7,d:5,h:36},
-    {x:23,z:-31,w:10,d:8,h:64},{x:13,z:-43,w:8,d:6,h:46},{x:27,z:-55,w:12,d:9,h:70},{x:33,z:-40,w:7,d:6,h:34},
-    // Center deep
-    {x:0,z:-51,w:16,d:10,h:88},{x:-6,z:-69,w:11,d:8,h:64},{x:8,z:-64,w:10,d:8,h:76},
+  const blocks: BD[] = [
+    // Front (near camera)
+    {x:-24,z:12,w:12,d:10,h:8},{x:-9,z:14,w:8,d:9,h:14},{x:6,z:10,w:14,d:11,h:10},{x:22,z:13,w:10,d:8,h:12},
+    // Near-mid
+    {x:-30,z:-8,w:10,d:8,h:22},{x:-17,z:-6,w:8,d:7,h:36},{x:-4,z:-10,w:9,d:8,h:18},{x:10,z:-7,w:11,d:9,h:28},{x:25,z:-9,w:9,d:8,h:20},
+    // Mid
+    {x:-36,z:-26,w:12,d:10,h:40},{x:-22,z:-24,w:9,d:8,h:56},{x:-8,z:-28,w:10,d:9,h:32},{x:6,z:-24,w:8,d:7,h:48},{x:18,z:-28,w:11,d:9,h:38},{x:30,z:-22,w:10,d:8,h:30},
+    // Far
+    {x:-38,z:-46,w:14,d:11,h:60},{x:-20,z:-44,w:11,d:9,h:76},{x:-5,z:-48,w:12,d:10,h:86},{x:12,z:-44,w:10,d:8,h:66},{x:28,z:-46,w:13,d:10,h:72},{x:40,z:-41,w:9,d:8,h:52},
+    // Very far
+    {x:-14,z:-70,w:16,d:12,h:94},{x:5,z:-74,w:14,d:11,h:98},{x:22,z:-68,w:12,d:10,h:84},{x:-30,z:-65,w:10,d:8,h:58},{x:35,z:-62,w:11,d:9,h:68},
   ]
 
-  const NEON_PAL = [0xff00cc,0x00eeff,0xff4400,0x8800ff,0x00ff88,0xffcc00,0xff0066,0x00ffcc]
-  const animSigns: { mat: THREE.MeshBasicMaterial; light: THREE.PointLight; rate: number; on: boolean }[] = []
+  const NEON_COLS = [PINK, CYAN, PURPLE, 0xff00aa, 0x00ffcc, 0xaa44ff, 0xff66ff]
+  const animEdges: { mat: THREE.LineBasicMaterial; phase: number }[] = []
   const avLights: { light: THREE.PointLight; phase: number }[] = []
 
-  for (const b of bDefs) {
-    const cols = Math.max(3, Math.round(b.w * 0.9))
-    const rows = Math.max(5, Math.round(b.h * 0.55))
-    const tex = winTex(cols, rows)
-    // emissiveMap = windows always lit, independent of scene lighting
-    const bMat = trackM(new THREE.MeshPhongMaterial({
-      color: 0x050c18, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.9, shininess: 10,
-    }))
-    const bMesh = new THREE.Mesh(track(new THREE.BoxGeometry(b.w, b.h, b.d)), bMat)
+  const bBodyMat = trackM(new THREE.MeshPhongMaterial({ color: 0x04000e, emissive: 0x020008, shininess: 4 }))
+
+  for (const b of blocks) {
+    const bGeo = track(new THREE.BoxGeometry(b.w, b.h, b.d))
+    const bMesh = new THREE.Mesh(bGeo, bBodyMat)
     bMesh.position.set(b.x, b.h/2, b.z); scene.add(bMesh)
 
-    // Neon sign
-    if (Math.random() > 0.22) {
-      const nc = NEON_PAL[Math.floor(Math.random() * NEON_PAL.length)]
-      const ncHex = '#' + nc.toString(16).padStart(6, '0')
-      const isText = Math.random() > 0.45
-      const sw = b.w * (0.4 + Math.random() * 0.4), sh = 1.4 + Math.random() * 0.9
-      let signMat: THREE.MeshBasicMaterial
-      if (isText) {
-        const word = signWords[Math.floor(Math.random() * signWords.length)]
-        signMat = trackM(new THREE.MeshBasicMaterial({ map: neonSignTex(word, ncHex), transparent: true, opacity: 0.98 }))
-      } else {
-        signMat = trackM(new THREE.MeshBasicMaterial({ color: nc, transparent: true, opacity: 0.96 }))
+    // Neon edge outlines (EdgesGeometry) — the key synthwave look
+    const nc = NEON_COLS[Math.floor(Math.random() * NEON_COLS.length)]
+    const eGeo = track(new THREE.EdgesGeometry(bGeo))
+    const eMat = trackM(new THREE.LineBasicMaterial({ color: nc, transparent: true, opacity: 0.88 }))
+    const edges = new THREE.LineSegments(eGeo, eMat); edges.position.copy(bMesh.position); scene.add(edges)
+    animEdges.push({ mat: eMat, phase: Math.random() * Math.PI * 2 })
+
+    // Glow from neon edges
+    const gl = new THREE.PointLight(nc, 1.2, 22); gl.position.set(b.x, b.h*0.5, b.z); scene.add(gl)
+
+    // Vertical LED strips on front face
+    if (Math.random() > 0.45) {
+      const vc = Math.random() > 0.5 ? CYAN : PINK
+      const ns = 1 + Math.floor(Math.random() * 3)
+      for (let s = 0; s < ns; s++) {
+        const sx = b.x - b.w/2 + (s+1)*b.w/(ns+1)
+        const sGeo = track(new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(sx, 0.05, b.z - b.d/2 - 0.08),
+          new THREE.Vector3(sx, b.h, b.z - b.d/2 - 0.08),
+        ]))
+        scene.add(new THREE.Line(sGeo, trackM(new THREE.LineBasicMaterial({ color: vc, transparent: true, opacity: 0.8 }))))
       }
-      const sy = b.h * (0.72 + Math.random() * 0.22)
-      const sign = new THREE.Mesh(track(new THREE.PlaneGeometry(sw, sh)), signMat)
-      sign.position.set(b.x, sy, b.z - b.d/2 - 0.1); scene.add(sign)
-      const sl = new THREE.PointLight(nc, 4, 30); sl.position.set(b.x, sy, b.z - b.d/2 - 2); scene.add(sl)
-      animSigns.push({ mat: signMat, light: sl, rate: 0.002 + Math.random()*0.003, on: true })
     }
 
-    // Rooftop aviation blink (tall buildings)
-    if (b.h > 40) {
-      const al = new THREE.PointLight(0xff2200, 2.5, 14)
-      al.position.set(b.x, b.h + 0.5, b.z); scene.add(al)
+    // Horizontal neon band around building
+    if (b.h > 32 && Math.random() > 0.48) {
+      const ry = b.h * (0.35 + Math.random() * 0.3)
+      const rc = Math.random() > 0.5 ? PINK : CYAN
+      const hw = b.w/2 + 0.12, hd = b.d/2 + 0.12
+      const bandPts = [
+        new THREE.Vector3(b.x-hw,ry,b.z-hd), new THREE.Vector3(b.x+hw,ry,b.z-hd),
+        new THREE.Vector3(b.x+hw,ry,b.z+hd), new THREE.Vector3(b.x-hw,ry,b.z+hd),
+        new THREE.Vector3(b.x-hw,ry,b.z-hd),
+      ]
+      const bGeo2 = track(new THREE.BufferGeometry().setFromPoints(bandPts))
+      scene.add(new THREE.Line(bGeo2, trackM(new THREE.LineBasicMaterial({ color: rc, transparent: true, opacity: 0.9 }))))
+    }
+
+    // Sparse window dots (barely visible, adds texture at closer distances)
+    if (b.h > 14) {
+      const wc = Math.floor(b.w * b.h * 0.07), wp = new Float32Array(wc * 3)
+      for (let i = 0; i < wc; i++) {
+        wp[i*3]=b.x+(Math.random()-.5)*b.w*0.82; wp[i*3+1]=Math.random()*b.h*0.88+b.h*0.05; wp[i*3+2]=b.z-b.d/2-0.08
+      }
+      const wGeo = track(new THREE.BufferGeometry()); wGeo.setAttribute('position', new THREE.BufferAttribute(wp,3))
+      scene.add(new THREE.Points(wGeo, trackM(new THREE.PointsMaterial({ color:0xccaaff, size:0.22, transparent:true, opacity:0.55 }))))
+    }
+
+    // Aviation blink on very tall buildings
+    if (b.h > 58) {
+      const al = new THREE.PointLight(0xff2200, 2.5, 15); al.position.set(b.x, b.h+0.5, b.z); scene.add(al)
       avLights.push({ light: al, phase: Math.random() * Math.PI * 2 })
     }
   }
 
-  // Rain as LineSegments (proper streaks)
-  const RC = 700
-  const rV = new Float32Array(RC * 6), rSpd = new Float32Array(RC)
-  for (let i = 0; i < RC; i++) {
-    const x=(Math.random()-.5)*140, z=-Math.random()*110, y=Math.random()*80, len=1+Math.random()*2
-    rV[i*6]=x; rV[i*6+1]=y; rV[i*6+2]=z; rV[i*6+3]=x+0.3; rV[i*6+4]=y-len; rV[i*6+5]=z+0.1
-    rSpd[i] = 1.2 + Math.random() * 1.5
-  }
-  const rGeo = track(new THREE.BufferGeometry()); rGeo.setAttribute('position', new THREE.BufferAttribute(rV, 3))
-  scene.add(new THREE.LineSegments(rGeo, trackM(new THREE.LineBasicMaterial({ color: 0x8899bb, transparent: true, opacity: 0.4 }))))
+  // Scene lighting
+  scene.add(new THREE.AmbientLight(0x080022, 3))
+  const lp = new THREE.PointLight(PINK, 4, 150); lp.position.set(-35, 20, 0); scene.add(lp)
+  const lc = new THREE.PointLight(CYAN, 4, 150); lc.position.set(35, 20, 0); scene.add(lc)
+  const lpu = new THREE.PointLight(PURPLE, 2, 100); lpu.position.set(0, 30, -40); scene.add(lpu)
 
-  // Flying cars (pairs of front/tail lights)
-  const cars = Array.from({ length: 6 }, () => {
-    const y=10+Math.random()*22, z=-8-Math.random()*44
-    const head=new THREE.PointLight(0xffffff,2.5,22); head.position.set(-68,y,z)
-    const tail=new THREE.PointLight(0xff2200,1.2,10); tail.position.set(-70,y,z)
-    scene.add(head, tail); return { lights:[head,tail], spd:0.14+Math.random()*0.22 }
+  // Flying craft lights (slow horizontal movement)
+  const crafts = Array.from({ length: 5 }, () => {
+    const l = new THREE.PointLight(0xffffff, 1.8, 18)
+    l.position.set(-90, 22+Math.random()*18, -15-Math.random()*65)
+    scene.add(l); return { light: l, spd: 0.08+Math.random()*0.12 }
   })
 
-  // Ground neon puddle reflections (colored PointLights near street level)
-  ;[[-10,0,-8,0xff00cc,2],[ 10,0,-8,0x00ccff,2],[0,0,-18,0xffcc00,1.5],[-6,0,-28,0xff4400,1.5]].forEach(([x,y,z,c,i])=>{
-    const l=new THREE.PointLight(c as number,i as number,22); l.position.set(x as number,y as number,z as number); scene.add(l)
-  })
+  let t = 0, raf = 0
+  const animate = () => {
+    raf = requestAnimationFrame(animate); t += 0.008
 
-  scene.add(new THREE.AmbientLight(0x030810, 4))
-  const ml1=new THREE.PointLight(0xff00cc,5,100); ml1.position.set(-15,4,2); scene.add(ml1)
-  const ml2=new THREE.PointLight(0x00ccff,5,100); ml2.position.set(15,4,2); scene.add(ml2)
+    // Scroll ground grid forward (flying-through-city effect)
+    gGrid.position.z = (gGrid.position.z + 0.06) % (600/48)
 
-  let t=0, raf=0
-  const animate=()=>{
-    raf=requestAnimationFrame(animate); t+=0.012
+    // Craft lights
+    for (const c of crafts) { c.light.position.x += c.spd; if (c.light.position.x > 90) c.light.position.x = -90 }
 
-    // Rain streaks
-    const rv2=rGeo.attributes.position.array as Float32Array
-    for(let i=0;i<RC;i++){
-      rv2[i*6+1]-=rSpd[i]; rv2[i*6+4]-=rSpd[i]
-      if(rv2[i*6+4]<-2){
-        const x=(Math.random()-.5)*140, z=-Math.random()*110, y=78+Math.random()*12, len=1+Math.random()*2
-        rv2[i*6]=x; rv2[i*6+1]=y; rv2[i*6+2]=z; rv2[i*6+3]=x+0.3; rv2[i*6+4]=y-len; rv2[i*6+5]=z+0.1
-      }
-    }
-    rGeo.attributes.position.needsUpdate=true
+    // Aviation blinks
+    avLights.forEach(a => { a.light.intensity = Math.sin(t*2.8+a.phase) > 0.5 ? 3.5 : 0 })
 
-    // Cars
-    for(const c of cars){ c.lights.forEach(l=>l.position.x+=c.spd); if(c.lights[0].position.x>72) c.lights.forEach(l=>l.position.x=-72) }
+    // Subtle neon edge pulse (slow breathing)
+    animEdges.forEach(e => { e.mat.opacity = 0.72 + Math.sin(t*1.2+e.phase)*0.18 })
 
-    // Neon sign blinks
-    animSigns.forEach(s=>{ if(Math.random()<s.rate){ s.on=!s.on; s.light.intensity=s.on?4:0; s.mat.opacity=s.on?0.97:0 } })
-
-    // Aviation lights pulse
-    avLights.forEach(a=>{ a.light.intensity=Math.sin(t*2.5+a.phase)>0.6?3:0 })
-
-    // Gentle camera sway
-    camera.position.x=Math.sin(t*0.02)*1.5; camera.position.y=8+Math.sin(t*0.033)*0.3
-    camera.lookAt(Math.sin(t*0.015)*2.5,13,-20)
-    renderer.render(scene,camera)
+    // Very slow camera pan
+    camera.position.x = Math.sin(t * 0.012) * 5
+    camera.lookAt(Math.sin(t * 0.009) * 4, 2, -65)
+    renderer.render(scene, camera)
   }
   animate()
-  return ()=>{ cancelAnimationFrame(raf); geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); renderer.dispose() }
+  return () => { cancelAnimationFrame(raf); geos.forEach(g=>g.dispose()); mats.forEach(m=>m.dispose()); renderer.dispose() }
 }
 
 // ── Gamer Room — 80s neon bedroom with CRT, grid floor, synthwave vibes ───────

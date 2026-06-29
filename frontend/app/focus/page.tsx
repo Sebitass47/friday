@@ -715,7 +715,6 @@ function bgCyberpunk(canvas: HTMLCanvasElement): () => void {
 
   for(const b of blocks){
     const bGeo=track(new THREE.BoxGeometry(b.w,b.h,b.d))
-    scene.add(Object.assign(new THREE.Mesh(bGeo,bBodyMat),{position:{x:b.x,y:b.h/2,z:b.z}}))
     const bMesh=new THREE.Mesh(bGeo,bBodyMat); bMesh.position.set(b.x,b.h/2,b.z); scene.add(bMesh)
 
     const nc=NEON_COLS[Math.floor(Math.random()*NEON_COLS.length)]
@@ -739,7 +738,7 @@ function bgCyberpunk(canvas: HTMLCanvasElement): () => void {
         const tGeo2=track(new THREE.BoxGeometry(tw2,th2,td2))
         const tMesh2=new THREE.Mesh(tGeo2,bBodyMat); tMesh2.position.set(b.x,b.h+th+th2/2,b.z); scene.add(tMesh2)
         const teGeo2=track(new THREE.EdgesGeometry(tGeo2))
-        scene.add(Object.assign(new THREE.LineSegments(teGeo2,eMat),{position:tMesh2.position.clone()}))
+        const tEdge2=new THREE.LineSegments(teGeo2,eMat); tEdge2.position.copy(tMesh2.position); scene.add(tEdge2)
       }
     }
 

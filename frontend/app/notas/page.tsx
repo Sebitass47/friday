@@ -98,7 +98,7 @@ function NoteCard({ note, isDark, onPin, onDelete, onEdit }: NoteCardProps) {
 
   return (
     <div
-      className="rounded-2xl p-4 flex flex-col gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+      className="rounded-2xl p-4 flex flex-col gap-2 cursor-pointer transition-all duration-200 shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_14px_rgba(0,0,0,0.4)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.14)] dark:hover:shadow-[0_6px_24px_rgba(0,0,0,0.58)] hover:-translate-y-0.5"
       style={{ background: bg, border: `1px solid ${border}` }}
       onClick={() => onEdit(note)}
     >

@@ -457,6 +457,12 @@ export default function ToDoPage() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      setPanelTask(null); setCreating(true); setPanelOpen(true)
+    }
+  }, [])
+
   const todayTasks = tasks.filter(t => t.due_date === today())
   const { pct, offset, circ, r } = progressRing(todayTasks)
 

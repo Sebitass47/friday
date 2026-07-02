@@ -26,6 +26,25 @@ FRIDAY es una app personal de Sebastian. Empezó como tracker de finanzas person
 
 ## Módulos ya construidos
 
+### Inicio (`/`)
+
+Dashboard personal central. Reemplaza el redirect que había a `/dashboard`.
+
+**Cards:**
+- **Finanzas del mes** — disponible (ingreso − compromisos − gastado cash/débito), 3 sub-métricas, chips de pagos de tarjeta próximos (≤7 días)
+- **Recordatorios de hoy** — tareas con `due_date = hoy` que no están completadas
+- **Próximos 7 días** — eventos ordenados por fecha con badge relativo (Hoy / Mañana / Mié…)
+- **Notas recientes** — notas creadas hace menos de 7 días, mini-cards con color de fondo
+
+**FAB speed-dial** (bottom-right, siempre visible):
+- Botón + con gradiente rosa-morado; al abrir rota a X y expande 4 opciones animadas
+- 💸 Gasto → `/dashboard?new=1` (abre QuickTransactionFAB automáticamente)
+- ✅ Tarea → `/to_do?new=1` (abre panel de crear tarea)
+- 📅 Evento → `/events?new=1` (abre panel de crear evento)
+- 📝 Nota → `/notas?new=1` (abre formulario de nueva nota)
+
+**Auto-open `?new=1`:** implementado en QuickTransactionFAB, to_do, events y notas — al llegar con ese param el formulario se abre solo.
+
 ### Finanzas (`/dashboard`)
 
 Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas). Los datos se cargan en `loadAll()` al montar.
@@ -258,8 +277,6 @@ frontend/
 
 ## Lo que viene (visión del usuario)
 
-Sebastian quiere que FRIDAY sea su app personal completa. Los módulos planeados fuera de finanzas:
-
-- Lo que se te ocurra a ti, Sebastian 😄
+Sebastian quiere que FRIDAY sea su app personal completa. Todos los módulos planeados están construidos. El siguiente paso es lo que Sebastian decida. 🚀
 
 Todo va en el mismo repo/contenedores. No separar en microservicios.

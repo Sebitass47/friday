@@ -310,6 +310,12 @@ export default function EventsPage() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      setPanelEvent(null); setCreating(true); setPanelOpen(true)
+    }
+  }, [])
+
   // ── Client-side filtering ──────────────────────────────────────────────────
   const filtered = allEvents.filter(e => {
     if (filterLabel && e.label !== filterLabel) return false

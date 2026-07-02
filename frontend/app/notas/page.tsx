@@ -317,6 +317,9 @@ export default function NotasPage() {
 
   useEffect(() => {
     load()
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      setShowForm(true)
+    }
   }, [])
 
   async function load() {

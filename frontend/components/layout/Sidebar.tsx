@@ -4,19 +4,20 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu, X,
-  CheckSquare, CalendarDays, Timer, ChevronLeft, StickyNote,
+  CheckSquare, CalendarDays, Timer, ChevronLeft, StickyNote, Home,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
 import { useSidebar } from './SidebarContext'
 
 const NAV = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Finanzas' },
-  { href: '/simulador', icon: Sparkles, label: 'Simulador' },
-  { href: '/to_do', icon: CheckSquare, label: 'Tareas' },
-  { href: '/events', icon: CalendarDays, label: 'Eventos' },
-  { href: '/focus', icon: Timer, label: 'Focus' },
-  { href: '/notas', icon: StickyNote, label: 'Notas' },
+  { href: '/',          icon: Home,          label: 'Inicio' },
+  { href: '/dashboard', icon: LayoutDashboard,label: 'Finanzas' },
+  { href: '/simulador', icon: Sparkles,       label: 'Simulador' },
+  { href: '/to_do',     icon: CheckSquare,    label: 'Tareas' },
+  { href: '/events',    icon: CalendarDays,   label: 'Eventos' },
+  { href: '/focus',     icon: Timer,          label: 'Focus' },
+  { href: '/notas',     icon: StickyNote,     label: 'Notas' },
 ]
 
 export default function Sidebar({ hideExternalToggle = false }: { hideExternalToggle?: boolean }) {
@@ -54,7 +55,7 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
         <p className="text-[10px] font-semibold text-black/30 dark:text-white/30 uppercase tracking-widest px-2 mb-2">Espacio</p>
         <nav className="space-y-0.5">
           {NAV.map(({ href, icon: Icon, label }) => {
-            const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+            const active = pathname === href || (href !== '/' && href !== '/dashboard' && pathname.startsWith(href))
             return (
               <Link
                 key={href}

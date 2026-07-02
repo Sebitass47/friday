@@ -30,6 +30,12 @@ export default function QuickTransactionFAB() {
   const [incomeCategory, setIncomeCategory] = useState('')
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      setOpen(true); setMode('expense')
+    }
+  }, [])
+
+  useEffect(() => {
     if (open && mode === 'expense') {
       getAccounts().then(setAccounts).catch(console.error)
     }

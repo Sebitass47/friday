@@ -78,9 +78,14 @@ Página full-screen de productividad tipo "focus space". Sin sidebar, layout pro
 - Planeta: Three.js SphereGeometry con CanvasTexture de bandas, anillos RingGeometry inclinados, atmósfera transparente y DirectionalLight
 - Túnel: Three.js corredor hexagonal — rings de MeshBasicMaterial vuelan hacia la cámara con niebla Fog
 
-**Sonidos ambientales (Web Audio API sintetizado):**
-- 9 sonidos: Lluvia, Cafetería, Tráfico, Olas, Bosque, Pájaros, Viento, Cascada, Fuego
-- Mezcla de volúmenes independiente, mezclador en barra inferior
+**Sonidos ambientales (mp3 reales en `/public/sounds/`):**
+- 6 sonidos: Lluvia, Olas, Viento, Cascada, Aves, Fuego
+- Mezcla de volúmenes independiente, mezclador en barra inferior fija
+
+**Lofi Boy player:**
+- Player flotante (bottom-left) con embed de YouTube — Lofi Boy 24/7 stream
+- Activable con botón "Música" en el header; se cierra con ×
+- Se eleva sobre la barra de sonidos cuando ambos están visibles
 
 **Pomodoro:**
 - 3 estilos de reloj: Anillo (SVG con arc de progreso), Minimal (texto grande + barra), Tarjeta (card oscura con ±)
@@ -97,7 +102,7 @@ Página full-screen de productividad tipo "focus space". Sin sidebar, layout pro
 
 **UI:**
 - Modo zen (oculta header y controles, solo fondo + timer)
-- Botones Tareas / Sonidos / Zen en header
+- Botones Tareas / Sonidos / Música / Zen en header
 - Sidebar: prop `hideExternalToggle` — Focus maneja su propio ☰ en el header
 - Color acento: #6B46E5 (morado FRIDAY)
 - Sin modo claro/oscuro — siempre dark full-screen
@@ -186,7 +191,9 @@ frontend/
 │   └── utils.ts
 └── public/
     ├── sw.js                       # Service Worker: push notifications + PWA offline
-    └── manifest.json               # PWA manifest
+    ├── manifest.json               # PWA manifest
+    └── sounds/                     # MP3s para el mezclador de /focus
+        └── lluvia.mp3, olas.mp3, viento.mp3, cascada.mp3, aves.mp3, fuego.mp3
 ```
 
 ---
@@ -232,7 +239,6 @@ frontend/
 
 Sebastian quiere que FRIDAY sea su app personal completa. Los módulos planeados fuera de finanzas:
 
-- **Lofi / ambiente** (`/lofi`) — imagen de fondo chill, sonidos de ambiente (lluvia, ciudad, café), reproducibles con mezcla de volúmenes
 - **Mininotas** — notas rápidas tipo sticky notes
 
 Todo va en el mismo repo/contenedores. No separar en microservicios.

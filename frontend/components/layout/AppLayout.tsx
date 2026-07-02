@@ -8,6 +8,7 @@ import { useSidebar } from './SidebarContext'
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [ready, setReady] = useState(false)
+  const { open } = useSidebar()
 
   useEffect(() => {
     const tok = localStorage.getItem('token')
@@ -25,8 +26,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
-
-  const { open } = useSidebar()
 
   return (
     <div className="flex min-h-screen bg-white dark:bg-[#0A0A0A]">

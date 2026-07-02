@@ -121,8 +121,19 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
   const [newSubtask, setNewSubtask] = useState('')
   const [saving, setSaving] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const mountedRef = useRef(false)
 
   useEffect(() => { if (creating) titleRef.current?.focus() }, [creating])
+
+  // Auto-save when any field changes (debounced, edit mode only)
+  useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return }
+    if (creating || !task || !title.trim()) return
+    const payload = buildPayload()
+    const id = setTimeout(() => { onUpdate(task.id, payload) }, 600)
+    return () => clearTimeout(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, label, dueDateType, customDate, reminderDate, reminderTime, dayBefore, recurrence, notes])
 
   function buildPayload() {
     let due_date: string | null = null
@@ -613,6 +624,7 @@ export default function ToDoPage() {
         {/* Right panel — always dark */}
         {panelOpen && (
           <TaskPanel
+            key={panelTask?.id ?? 'new'}
             task={panelTask}
             creating={creating}
             onClose={closePanel}

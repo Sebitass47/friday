@@ -1,7 +1,7 @@
 import type {
   User, Account, RecurringExpense, InstallmentPurchase,
   SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse,
-  Expense, CreditPayment, Income, Task, Subtask
+  Expense, CreditPayment, Income, Task, Subtask, Note
 } from './types'
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/v1'
@@ -288,4 +288,41 @@ export async function updateSubtask(taskId: string, subtaskId: string, data: { t
 
 export async function deleteSubtask(taskId: string, subtaskId: string): Promise<void> {
   return req(`/tasks/${taskId}/subtasks/${subtaskId}`, { method: 'DELETE' })
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+export async function getNotes(params: { label?: string; search?: string } = {}): Promise<Note[]> {
+  const qs = new URLSearchParams()
+  if (params.label) qs.set('label', params.label)
+  if (params.search) qs.set('search', params.search)
+  return req(`/notes/?${qs}`)
+}
+
+export async function createNote(data: {
+  title: string
+  content?: string | null
+  label?: string | null
+  color?: string
+  is_pinned?: boolean
+}): Promise<Note> {
+  return req('/notes/', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateNote(id: string, data: Partial<{
+  title: string
+  content: string | null
+  label: string | null
+  color: string
+  is_pinned: boolean
+}>): Promise<Note> {
+  return req(`/notes/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  return req(`/notes/${id}`, { method: 'DELETE' })
+}
+
+export async function toggleNotePin(id: string): Promise<Note> {
+  return req(`/notes/${id}/toggle-pin`, { method: 'POST' })
 }

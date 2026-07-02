@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu, X,
-  CheckSquare, CalendarDays, Timer, ChevronLeft,
+  CheckSquare, CalendarDays, Timer, ChevronLeft, StickyNote,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/to_do', icon: CheckSquare, label: 'Tareas' },
   { href: '/events', icon: CalendarDays, label: 'Eventos' },
   { href: '/focus', icon: Timer, label: 'Focus' },
+  { href: '/notas', icon: StickyNote, label: 'Notas' },
 ]
 
 export default function Sidebar({ hideExternalToggle = false }: { hideExternalToggle?: boolean }) {

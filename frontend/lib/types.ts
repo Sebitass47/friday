@@ -139,6 +139,18 @@ export interface Subtask {
   created_at: string
 }
 
+export interface Note {
+  id: string
+  user_id: string
+  title: string
+  content: string | null
+  label: string | null
+  color: string
+  is_pinned: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Task {
   id: string
   user_id: string

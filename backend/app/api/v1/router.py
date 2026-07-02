@@ -11,6 +11,7 @@ from .endpoints.credit_payments import router as credit_payments_router
 from .endpoints.incomes import router as incomes_router
 from .endpoints.push import router as push_router
 from .endpoints.tasks import router as tasks_router
+from .endpoints.notes import router as notes_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -25,3 +26,4 @@ router.include_router(credit_payments_router)
 router.include_router(incomes_router, prefix="/incomes", tags=["incomes"])
 router.include_router(push_router)
 router.include_router(tasks_router)
+router.include_router(notes_router)

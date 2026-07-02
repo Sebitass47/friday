@@ -107,6 +107,25 @@ Página full-screen de productividad tipo "focus space". Sin sidebar, layout pro
 - Color acento: #6B46E5 (morado FRIDAY)
 - Sin modo claro/oscuro — siempre dark full-screen
 
+### Notas (`/notas`)
+
+Página de notas rápidas con colores y etiquetas. Diseño grid 2 columnas, soporte dark/light mode.
+
+**Funcionalidades:**
+- Crear notas con título, contenido, etiqueta, color de fondo y opción de fijar
+- 6 colores de fondo: rojo, verde, amarillo, morado, azul, rosa (+ default neutro)
+- 5 etiquetas: Trabajo, Personal, Hogar, Finanzas, Ideas
+- Sección "Fijadas" (pin activo, badge rosa) y "Otras"
+- Filtro por etiqueta y búsqueda por texto (cliente)
+- Editar nota: clic en la card abre el formulario con los datos actuales
+- Eliminar: ícono 🗑 con doble-clic (primero click pone rojo 2.5s, segundo confirma)
+- Toggle pin: ícono 📌 top-right de cada card
+- FAB + (gradiente rosa-morado) bottom-right para nueva nota
+- Light mode: fondos claros pastel por color, texto oscuro
+
+**Archivos:**
+- `frontend/app/notas/page.tsx` — página completa (NoteCard + NoteForm inline)
+
 ### Eventos (`/events`)
 
 Lista de eventos tipo calendario. Mismo diseño que `/to_do` pero para cosas con fecha fija (citas, reuniones, etc.).
@@ -135,6 +154,7 @@ incomes.py           GET /incomes/, POST /incomes/, DELETE /incomes/{id}
 credit_payments.py   GET /credit-payments/, POST /credit-payments/
 push.py              GET /push/vapid-public-key, POST /push/subscribe, DELETE /push/unsubscribe
 tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
+notes.py             CRUD /notes/ + POST /{id}/toggle-pin
 ```
 
 Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/auth/login`.
@@ -155,8 +175,9 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `incomes` | ingresos puntuales (no el fijo mensual) |
 | `credit_payments` | registro de pagos de tarjeta por `statement_month/year` |
 | `push_subscriptions` | endpoint VAPID por usuario, para notificaciones push |
+| `notes` | título, contenido, etiqueta, color (string key), is_pinned; FK a users |
 
-Migraciones numeradas `0001`–`0014` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0015` en `backend/alembic/versions/`.
 
 ---
 
@@ -239,6 +260,6 @@ frontend/
 
 Sebastian quiere que FRIDAY sea su app personal completa. Los módulos planeados fuera de finanzas:
 
-- **Mininotas** — notas rápidas tipo sticky notes
+- Lo que se te ocurra a ti, Sebastian 😄
 
 Todo va en el mismo repo/contenedores. No separar en microservicios.

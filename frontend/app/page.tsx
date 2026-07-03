@@ -4,14 +4,14 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
 import {
-  getProjection, getAccounts, getTasks, getNotes,
+  getProjection, getAccounts, getTasks, getNotes, getHabits, toggleHabitLog,
 } from '@/lib/api'
 import type {
-  MonthProjection, Account, Task, Note,
+  MonthProjection, Account, Task, Note, Habit,
 } from '@/lib/types'
 import {
   DollarSign, CheckSquare, CalendarDays, StickyNote,
-  Plus, X, CreditCard, Clock, ChevronRight,
+  Plus, X, CreditCard, Clock, ChevronRight, Target, Check, ChevronLeft,
 } from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,19 +103,20 @@ function SpendingBar({ income, compromisos, gastado, isDark }: { income: number;
   const pGast = Math.min(safe(gastado) / total, Math.max(1 - pComp, 0))
   const pDisp = Math.max(1 - pComp - pGast, 0)
 
-  const greenColor = isDark ? '#A8FF3E' : '#16a34a'
+  const GREEN = '#34D399'
+  const AMBER = '#FBBF24'
 
   return (
     <div className="mt-4">
       <div className="flex h-2.5 rounded-full overflow-hidden gap-0.5">
         {pComp > 0 && (
-          <div style={{ width: `${pComp * 100}%`, background: '#f59e0b', borderRadius: '999px', flexShrink: 0 }} />
+          <div style={{ width: `${pComp * 100}%`, background: AMBER, borderRadius: '999px', flexShrink: 0 }} />
         )}
         {pGast > 0 && (
           <div style={{ width: `${pGast * 100}%`, background: '#6B46E5', borderRadius: '999px', flexShrink: 0 }} />
         )}
         {pDisp > 0 && (
-          <div style={{ width: `${pDisp * 100}%`, background: greenColor, borderRadius: '999px', flexShrink: 0 }} />
+          <div style={{ width: `${pDisp * 100}%`, background: GREEN, borderRadius: '999px', flexShrink: 0 }} />
         )}
         {pComp === 0 && pGast === 0 && pDisp === 0 && (
           <div className="flex-1 rounded-full" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb' }} />
@@ -123,9 +124,9 @@ function SpendingBar({ income, compromisos, gastado, isDark }: { income: number;
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5">
         {[
-          { label: 'Compromisos', pct: pComp, color: '#f59e0b' },
+          { label: 'Compromisos', pct: pComp, color: AMBER },
           { label: 'Gastado', pct: pGast, color: '#6B46E5' },
-          { label: 'Disponible', pct: pDisp, color: greenColor },
+          { label: 'Disponible', pct: pDisp, color: GREEN },
         ].map(({ label, pct, color }) => (
           <div key={label} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
@@ -220,8 +221,15 @@ export default function HomePage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [events, setEvents] = useState<Task[]>([])
   const [notes, setNotes] = useState<Note[]>([])
+  const [habits, setHabits] = useState<Habit[]>([])
+  const [habitWeekStart, setHabitWeekStart] = useState<Date>(() => {
+    const d = new Date(); const day = d.getDay(); const diff = day === 0 ? -6 : 1 - day
+    const mon = new Date(d); mon.setDate(d.getDate() + diff); mon.setHours(0,0,0,0); return mon
+  })
   const [loading, setLoading] = useState(true)
   const [hasIncome, setHasIncome] = useState(true)
+
+  const habitWeekISO = `${habitWeekStart.getFullYear()}-${String(habitWeekStart.getMonth()+1).padStart(2,'0')}-${String(habitWeekStart.getDate()).padStart(2,'0')}`
 
   useEffect(() => {
     Promise.allSettled([
@@ -230,7 +238,8 @@ export default function HomePage() {
       getTasks({ is_event: false }),
       getTasks({ is_event: true }),
       getNotes(),
-    ]).then(([proj, acc, tsk, evt, nts]) => {
+      getHabits(habitWeekISO),
+    ]).then(([proj, acc, tsk, evt, nts, hab]) => {
       if (proj.status === 'fulfilled') {
         setCurrentCycle(proj.value.months[0] ?? null)
       } else {
@@ -240,8 +249,24 @@ export default function HomePage() {
       if (tsk.status === 'fulfilled') setTasks(tsk.value)
       if (evt.status === 'fulfilled') setEvents(evt.value)
       if (nts.status === 'fulfilled') setNotes(nts.value)
+      if (hab.status === 'fulfilled') setHabits(hab.value)
     }).finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    getHabits(habitWeekISO).then(setHabits).catch(() => {})
+  }, [habitWeekISO])
+
+  function toggleHabit(habitId: string, dateISO: string) {
+    setHabits(prev => prev.map(h => {
+      if (h.id !== habitId) return h
+      const done = h.completed_dates.includes(dateISO)
+      const completed_dates = done ? h.completed_dates.filter(d => d !== dateISO) : [...h.completed_dates, dateISO]
+      const weekDays = Array.from({length:7},(_,i)=>{ const d=new Date(habitWeekStart); d.setDate(d.getDate()+i); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
+      return { ...h, completed_dates, week_percentage: Math.round((weekDays.filter(d=>completed_dates.includes(d)).length/7)*100) }
+    }))
+    toggleHabitLog(habitId, dateISO).catch(() => getHabits(habitWeekISO).then(setHabits))
+  }
 
   // ── Derived values from projection ────────────────────────────────────────
 
@@ -354,7 +379,7 @@ export default function HomePage() {
               <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {[
                   { label: 'Ingreso',      value: fmt(incomeAmt),   color: txt(0.85) },
-                  { label: 'Compromisos',  value: fmt(compromisos), color: isDark ? '#fbbf24' : '#b45309' },
+                  { label: 'Compromisos',  value: fmt(compromisos), color: '#FBBF24' },
                   { label: 'Gastado',      value: fmt(gastado),     color: txt(0.55) },
                 ].map(m => (
                   <div key={m.label} className="rounded-xl px-2.5 py-2 sm:px-3 sm:py-2.5" style={subCard}>
@@ -483,6 +508,100 @@ export default function HomePage() {
             </button>
           </GCard>
         </div>
+
+        {/* ── Habits ───────────────────────────────────────────────────────── */}
+        {(loading || habits.length > 0) && (() => {
+          const DAYS_ES = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM']
+          const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+          const weekDates = Array.from({length:7},(_,i)=>{ const d=new Date(habitWeekStart); d.setDate(d.getDate()+i); return d })
+          const today = todayISO()
+          const weekLabel = `${weekDates[0].getDate()} ${MONTHS_ES[weekDates[0].getMonth()]} – ${weekDates[6].getDate()} ${MONTHS_ES[weekDates[6].getMonth()]} ${weekDates[6].getFullYear()}`
+          const toISO = (d:Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+          return (
+            <GCard isDark={isDark}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <SectionTitle isDark={isDark} icon={<Target size={14} />} label="Hábitos" count={habits.length || undefined} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <button onClick={() => setHabitWeekStart(w => { const d=new Date(w); d.setDate(d.getDate()-7); return d })}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
+                      <ChevronLeft size={13} />
+                    </button>
+                    <button onClick={() => setHabitWeekStart(w => { const d=new Date(w); d.setDate(d.getDate()+7); return d })}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                      style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
+                  <button onClick={() => router.push('/habitos')}
+                    className="text-xs flex items-center gap-1 hover:opacity-70 transition-colors"
+                    style={{ color: txtMuted }}>
+                    Ver todos <ChevronRight size={10} />
+                  </button>
+                </div>
+              </div>
+              <p className="text-[10px] mb-3" style={{ color: txtMuted }}>{weekLabel}</p>
+
+              {loading ? (
+                <div className="space-y-2">{[1,2,3].map(i => <div key={i} className={`${shimmer} h-8`} />)}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[420px]">
+                    <thead>
+                      <tr>
+                        <th className="text-left pb-2 pr-3 w-32" />
+                        {weekDates.map((d,i) => {
+                          const iso = toISO(d)
+                          const isToday = iso === today
+                          return (
+                            <th key={i} className="pb-2 px-1 text-center">
+                              <div className="text-[9px] font-bold tracking-widest" style={{ color: isToday ? '#6B46E5' : (isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af') }}>{DAYS_ES[i]}</div>
+                              <div className="text-xs font-medium" style={{ color: isToday ? '#6B46E5' : (isDark ? 'rgba(255,255,255,0.4)' : '#6b7280') }}>{d.getDate()}</div>
+                            </th>
+                          )
+                        })}
+                        <th className="pb-2 px-2 text-center text-[9px] font-bold tracking-widest" style={{ color: isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }}>%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {habits.map(habit => (
+                        <tr key={habit.id} className="border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6' }}>
+                          <td className="py-2.5 pr-3 text-sm font-medium truncate max-w-[120px]" style={{ color: txt(0.85) }}>{habit.name}</td>
+                          {weekDates.map((d,i) => {
+                            const iso = toISO(d)
+                            const done = habit.completed_dates.includes(iso)
+                            const isToday = iso === today
+                            return (
+                              <td key={i} className="py-2.5 px-1 text-center">
+                                <button
+                                  onClick={() => toggleHabit(habit.id, iso)}
+                                  className="w-7 h-7 rounded-xl mx-auto flex items-center justify-center transition-all duration-150"
+                                  style={done
+                                    ? { backgroundColor: habit.color }
+                                    : { border: `2px solid ${isToday ? (isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af') : (isDark ? 'rgba(255,255,255,0.12)' : '#e5e7eb')}` }
+                                  }
+                                >
+                                  {done && <Check size={12} strokeWidth={3} color="white" />}
+                                </button>
+                              </td>
+                            )
+                          })}
+                          <td className="py-2.5 px-2 text-center text-xs font-semibold" style={{ color: habit.week_percentage > 0 ? habit.color : (isDark ? 'rgba(255,255,255,0.2)' : '#d1d5db') }}>
+                            {habit.week_percentage}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </GCard>
+          )
+        })()}
 
         {/* ── Recent notes ──────────────────────────────────────────────────── */}
         {!loading && recentNotes.length > 0 && (

@@ -315,3 +315,50 @@ frontend/
 Sebastian quiere que FRIDAY sea su app personal completa. Todos los módulos planeados están construidos. El siguiente paso es lo que Sebastian decida. 🚀
 
 Todo va en el mismo repo/contenedores. No separar en microservicios.
+
+---
+
+## Deploy en producción — EC2 (PENDIENTE)
+
+**Estado:** infraestructura lista, falta instalar y configurar el servidor.
+
+**Servidor:**
+- Proveedor: AWS EC2
+- IP fija (Elastic IP): `18.216.94.204`
+- OS: Amazon Linux 2023
+- Key pair: Sebastian tiene el archivo `.pem` localmente
+- Usuario SSH: `ec2-user`
+- Conexión: `ssh -i /ruta/al/archivo.pem ec2-user@18.216.94.204`
+
+**Dominio:**
+- `sebitass47.com` en Namecheap
+- DNS ya apunta a `18.216.94.204` (registros A para `@` y `www`)
+- Nameservers: Namecheap BasicDNS (ya no apunta a DigitalOcean)
+
+**Lo que falta hacer en el servidor (en orden):**
+
+1. **Conectarse por SSH** y actualizar el sistema
+2. **Instalar Docker + Docker Compose** (en Amazon Linux 2023: `sudo dnf install docker -y`, plugin compose v2)
+3. **Clonar el repo** de FRIDAY en `/home/ec2-user/FRIDAY`
+4. **Crear el `.env` de producción** con las variables reales (SECRET_KEY, VAPID keys, DB password, etc.)
+5. **Levantar con docker-compose.prod.yml**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`
+6. **Instalar nginx** como reverse proxy (puerto 80/443 → contenedores)
+7. **SSL con Let's Encrypt / Certbot** para `sebitass47.com` y `www.sebitass47.com`
+8. **Correr migraciones**: `docker compose exec backend alembic upgrade head`
+9. **Verificar** que todo funcione en `https://sebitass47.com`
+
+**Variables de entorno necesarias (crear `/home/ec2-user/FRIDAY/.env.prod`):**
+```
+DATABASE_URL=postgresql://friday:PASSWORD@postgres:5432/friday
+SECRET_KEY=<string aleatorio largo>
+VAPID_PRIVATE_KEY=<generar con py_vapid>
+VAPID_PUBLIC_KEY=<generar con py_vapid>
+VAPID_CONTACT_EMAIL=sebastian.dlr47@gmail.com
+REDIS_URL=redis://redis:6379/0
+NEXT_PUBLIC_API_BASE_URL=https://sebitass47.com/api/v1
+```
+
+**Notas importantes:**
+- El Security Group de EC2 ya debe tener puertos 22 (SSH), 80 (HTTP) y 443 (HTTPS) abiertos
+- Añadir swap de 2 GB si es t3.micro (solo 1 GB RAM): `sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`
+- El `docker-compose.prod.yml` ya existe en el repo con la config de producción

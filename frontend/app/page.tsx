@@ -344,8 +344,8 @@ export default function HomePage() {
               {/* Available */}
               <div className="mb-4">
                 <p className="text-xs mb-0.5" style={{ color: txtMuted }}>Disponible este ciclo</p>
-                <p className="text-3xl sm:text-4xl font-bold tabular-nums"
-                  style={{ color: disponible >= 0 ? (isDark ? '#A8FF3E' : '#16a34a') : (isDark ? '#FF4444' : '#dc2626') }}>
+                <p className={`text-3xl sm:text-4xl font-bold tabular-nums ${disponible >= 0 ? (isDark ? 'text-white' : 'text-black') : ''}`}
+                  style={disponible < 0 ? { color: '#FF6B6B' } : {}}>
                   {fmt(disponible)}
                 </p>
               </div>

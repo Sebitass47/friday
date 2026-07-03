@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import ProjectionChart from '@/components/charts/ProjectionChart'
 import SpendingTimelineChart from '@/components/charts/SpendingTimelineChart'
@@ -217,9 +217,20 @@ export default function DashboardPage() {
     setMonthlyIncomeData(inc)
   }
 
+  const autoOpenedRef = useRef(false)
+
   useEffect(() => {
     loadAll().catch(console.error).finally(() => setLoading(false))
   }, [])
+
+  // Auto-open register modal when navigated with ?new=1
+  useEffect(() => {
+    if (loading || autoOpenedRef.current) return
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      autoOpenedRef.current = true
+      openRegister()
+    }
+  }, [loading])
 
   useEffect(() => {
     if (!pushSupported()) return

@@ -16,14 +16,13 @@ import { pushSupported, getRegistration, getCurrentSubscription, subscribePush, 
 import { getPushVapidKey, registerPushSubscription, removePushSubscription } from '@/lib/api'
 
 const NAV = [
-  { href: '/',          icon: Home,          label: 'Inicio' },
-  { href: '/dashboard', icon: LayoutDashboard,label: 'Finanzas' },
-  { href: '/simulador', icon: Sparkles,       label: 'Simulador' },
+  { href: '/',          icon: Home,           label: 'Inicio' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Finanzas' },
   { href: '/to_do',     icon: CheckSquare,    label: 'Tareas' },
   { href: '/events',    icon: CalendarDays,   label: 'Eventos' },
-  { href: '/focus',     icon: Timer,          label: 'Focus' },
-  { href: '/notas',     icon: StickyNote,     label: 'Notas' },
   { href: '/habitos',   icon: Target,         label: 'Hábitos' },
+  { href: '/notas',     icon: StickyNote,     label: 'Notas' },
+  { href: '/focus',     icon: Timer,          label: 'Focus' },
 ]
 
 export default function Sidebar({ hideExternalToggle = false }: { hideExternalToggle?: boolean }) {

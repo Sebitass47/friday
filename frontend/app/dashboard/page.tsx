@@ -12,15 +12,16 @@ import {
   createExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
   getExpenses,
+  simulateProjection,
 } from '@/lib/api'
 import type {
-  ProjectionResponse, InstallmentPurchase, SavingsGoal,
+  ProjectionResponse, SimulationResponse, InstallmentPurchase, SavingsGoal,
   RecurringExpense, User, Account, Expense, MonthlyIncome,
 } from '@/lib/types'
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
   RefreshCw, Plus, X, Pencil, Trash2, CheckCircle2, CalendarDays,
-  Wallet, PiggyBank, Banknote, Zap,
+  Wallet, PiggyBank, Banknote, Zap, Sparkles, AlertTriangle,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { DateInput } from '@/components/ui/date-input'
@@ -150,6 +151,13 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [monthlyIncomeData, setMonthlyIncomeData] = useState<MonthlyIncome | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Simulator state
+  const [simForm, setSimForm] = useState({ name: '', total_amount: 0, monthly_amount: 0, total_installments: 12, start_date: today() })
+  const [simResult, setSimResult] = useState<SimulationResponse | null>(null)
+  const [simBase, setSimBase] = useState<ProjectionResponse | null>(null)
+  const [simLoading, setSimLoading] = useState(false)
+  const [simError, setSimError] = useState('')
 
   const [activeModal, setActiveModal] = useState<ActiveModal>(null)
 
@@ -452,6 +460,19 @@ export default function DashboardPage() {
 
   const cardCls = 'bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-black/[0.08] dark:border-white/[0.08] hover:border-black/[0.14] dark:hover:border-white/[0.14] transition-all shadow-sm'
 
+  async function runSimulation() {
+    if (!simForm.name.trim()) { setSimError('Pon un nombre al producto'); return }
+    if (simForm.monthly_amount <= 0) { setSimError('El pago mensual debe ser mayor a 0'); return }
+    if (simForm.total_installments <= 0) { setSimError('Los meses deben ser mayor a 0'); return }
+    setSimError(''); setSimLoading(true)
+    try {
+      const [b, s] = await Promise.all([getProjection(12), simulateProjection(simForm, 12)])
+      setSimBase(b); setSimResult(s)
+    } catch (e: unknown) { setSimError(e instanceof Error ? e.message : 'Error al simular') }
+    finally { setSimLoading(false) }
+  }
+  function resetSim() { setSimBase(null); setSimResult(null); setSimError('') }
+
   // Billing month helper for register modal
   function getBillingMonth(card: Account): string {
     if (!card.closing_day) return ''
@@ -546,25 +567,6 @@ export default function DashboardPage() {
             monthlyIncome={monthlyIncomeData?.amount ?? Number(projection?.months[0]?.income ?? 0)}
             cycleStartDay={monthlyIncomeData?.cycle_start_day ?? 1}
           />
-        </div>
-
-        {/* Chart */}
-        <div className={`${cardCls} p-6`}>
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-sm font-semibold text-black dark:text-white">Proyección · 12 meses</h2>
-              <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Dinero disponible mes a mes</p>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-black/40 dark:text-white/40">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-[#6B46E5]/70 dark:bg-[#AF9BFF]/70" />Positivo
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: `${CORAL}b3` }} />Déficit
-              </span>
-            </div>
-          </div>
-          {projection && <ProjectionChart months={projection.months} />}
         </div>
 
         {/* Accounts section */}
@@ -867,6 +869,130 @@ export default function DashboardPage() {
           </div>
 
         </div>
+
+        {/* Proyección 12 meses */}
+        <div className={`${cardCls} p-6`}>
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-sm font-semibold text-black dark:text-white">Proyección · 12 meses</h2>
+              <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Dinero disponible mes a mes</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-black/40 dark:text-white/40">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm bg-[#6B46E5]/70 dark:bg-[#AF9BFF]/70" />Positivo
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: `${CORAL}b3` }} />Déficit
+              </span>
+            </div>
+          </div>
+          {projection && <ProjectionChart months={projection.months} />}
+        </div>
+
+        {/* Simulador MSI */}
+        <div className="space-y-4">
+          <div className={`${cardCls} p-6 space-y-4`}>
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} className="text-[#4F8EF7]" />
+              <h2 className="text-sm font-semibold text-black dark:text-white">Simulador · ¿Puedo pagarlo a MSI?</h2>
+            </div>
+
+            {simError && <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{simError}</p>}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">¿Qué quieres comprar?</label>
+                <input value={simForm.name} onChange={e => setSimForm(f => ({ ...f, name: e.target.value }))} onFocus={resetSim}
+                  className={inputCls()} placeholder="Ej. Sony WH-1000XM6, PS5, sillón…" />
+              </div>
+              <div>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Precio total</label>
+                <input type="number" value={simForm.total_amount} onChange={e => setSimForm(f => ({ ...f, total_amount: Number(e.target.value) }))} onFocus={resetSim} className={inputCls()} />
+              </div>
+              <div>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Pago mensual</label>
+                <input type="number" value={simForm.monthly_amount} onChange={e => setSimForm(f => ({ ...f, monthly_amount: Number(e.target.value) }))} onFocus={resetSim} className={inputCls()} />
+              </div>
+              <div>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Número de meses</label>
+                <input type="number" min={1} max={48} value={simForm.total_installments} onChange={e => setSimForm(f => ({ ...f, total_installments: Number(e.target.value) }))} onFocus={resetSim} className={inputCls()} />
+              </div>
+              <div>
+                <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Inicio</label>
+                <DateInput value={simForm.start_date} onChange={v => { setSimForm(f => ({ ...f, start_date: v })); resetSim() }} inputClassName="bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 rounded-xl py-2 text-sm text-black dark:text-white focus:border-[#6B46E5]" />
+              </div>
+            </div>
+
+            {simForm.total_amount > 0 && simForm.total_installments > 0 && (
+              <p className="text-xs text-black/30 dark:text-white/30">
+                {simForm.total_installments} pagos de{' '}
+                <span className="text-[#4F8EF7] font-medium">{fmt(simForm.monthly_amount || simForm.total_amount / simForm.total_installments)}</span>
+                {' '}= {fmt((simForm.monthly_amount || simForm.total_amount / simForm.total_installments) * simForm.total_installments)} total
+              </p>
+            )}
+
+            <button onClick={runSimulation} disabled={simLoading}
+              className={`flex items-center justify-center gap-2 w-full rounded-xl ${ACCENT_BG} text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all`}>
+              <Sparkles size={14} />
+              {simLoading ? 'Calculando…' : '¿Puedo pagarlo?'}
+            </button>
+          </div>
+
+          {simResult && simBase && (() => {
+            const negMonths = simResult.months.filter(m => m.available < 0).length
+            const totalImpact = simResult.impact_summary ?? 0
+            const worstMonth = simResult.months.reduce((w, m) => m.available < (w?.available ?? 0) ? m : w, simResult.months[0])
+            return (
+              <>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className={`${cardCls} p-4 ${negMonths > 0 ? 'border-red-500/30' : ''}`}>
+                    <p className="text-xs text-black/40 dark:text-white/40 mb-2">Meses en déficit</p>
+                    <div className="flex items-center gap-2">
+                      {negMonths > 0 ? <TrendingDown size={18} className="text-red-400" /> : <TrendingUp size={18} className="text-emerald-400" />}
+                      <span className={`text-2xl font-bold ${negMonths > 0 ? 'text-red-400' : 'text-emerald-400'}`}>{negMonths}</span>
+                    </div>
+                    <p className="text-xs text-black/30 dark:text-white/30 mt-1">de los próximos 12 meses</p>
+                  </div>
+                  <div className={`${cardCls} p-4`}>
+                    <p className="text-xs text-black/40 dark:text-white/40 mb-2">Impacto total (12m)</p>
+                    <p className="text-2xl font-bold text-amber-400 tabular-nums">−{fmt(totalImpact)}</p>
+                    <p className="text-xs text-black/30 dark:text-white/30 mt-1">Menos disponible en total</p>
+                  </div>
+                  <div className={`${cardCls} p-4`}>
+                    <p className="text-xs text-black/40 dark:text-white/40 mb-2">Peor mes</p>
+                    <p className={`text-2xl font-bold tabular-nums ${(worstMonth?.available ?? 0) < 0 ? 'text-red-400' : 'text-black dark:text-white'}`}>{fmt(worstMonth?.available ?? 0)}</p>
+                    <p className="text-xs text-black/30 dark:text-white/30 mt-1">{worstMonth?.label}</p>
+                  </div>
+                </div>
+
+                {negMonths > 0 ? (
+                  <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                    <AlertTriangle size={15} className="text-red-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-red-400">Ojo — {negMonths} {negMonths === 1 ? 'mes' : 'meses'} en números rojos</p>
+                      <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Con este MSI tendrías déficit en {negMonths} de los próximos 12 meses.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                    <TrendingUp size={15} className="text-emerald-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-emerald-400">¡Se puede! Todos los meses quedan en positivo</p>
+                      <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Aunque el impacto total es {fmt(totalImpact)}, ningún mes cae en déficit.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className={`${cardCls} p-6`}>
+                  <h3 className="text-sm font-semibold text-black dark:text-white mb-1">Comparación mes a mes</h3>
+                  <p className="text-xs text-black/40 dark:text-white/40 mb-6">Azul = sin este MSI · Naranja = con el MSI</p>
+                  <ProjectionChart months={simBase.months} compareMonths={simResult.months} />
+                </div>
+              </>
+            )
+          })()}
+        </div>
+
       </div>
 
       {/* ── Modals ── */}

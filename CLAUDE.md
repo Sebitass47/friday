@@ -322,13 +322,16 @@ Todo va en el mismo repo/contenedores. No separar en microservicios.
 
 **Estado:** infraestructura lista, falta instalar y configurar el servidor.
 
+**Repositorio GitHub:** `https://github.com/Sebitass47/friday.git`
+
 **Servidor:**
 - Proveedor: AWS EC2
+- Tipo: **t3.small** (2 GB RAM) — NO necesita swap
 - IP fija (Elastic IP): `18.216.94.204`
 - OS: Amazon Linux 2023
-- Key pair: Sebastian tiene el archivo `.pem` localmente
+- Key pair: `\\wsl.localhost\Ubuntu\home\sebitass47\.ssh\friday-key.pem`
 - Usuario SSH: `ec2-user`
-- Conexión: `ssh -i /ruta/al/archivo.pem ec2-user@18.216.94.204`
+- Conexión: `ssh -i ~/.ssh/friday-key.pem ec2-user@18.216.94.204`
 
 **Dominio:**
 - `sebitass47.com` en Namecheap
@@ -360,5 +363,4 @@ NEXT_PUBLIC_API_BASE_URL=https://sebitass47.com/api/v1
 
 **Notas importantes:**
 - El Security Group de EC2 ya debe tener puertos 22 (SSH), 80 (HTTP) y 443 (HTTPS) abiertos
-- Añadir swap de 2 GB si es t3.micro (solo 1 GB RAM): `sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`
 - El `docker-compose.prod.yml` ya existe en el repo con la config de producción

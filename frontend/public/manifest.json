@@ -1,23 +1,28 @@
 {
-  "name": "FRIDAY - Financial Projection",
+  "name": "FRIDAY",
   "short_name": "FRIDAY",
-  "description": "Personal financial projection app",
-  "start_url": "/dashboard",
+  "description": "Tu app personal completa",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0A0A",
-  "theme_color": "#0A0A0A",
+  "theme_color": "#6B46E5",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
     },
     {
-      "src": "/icon-512.svg",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

@@ -184,8 +184,9 @@ def _build_cycle_projection(
         cash_debit_total = _cash_debit_spent_for_cycle(db, user_id, cycle_start, today)
         credit_total = _credit_payments_for_cycle(db, user_id, cycle_start, today)
 
-    # Income is 0 until the cycle actually starts (today < cycle_start)
-    effective_income = income if today >= cycle_start else Decimal("0")
+    # For projections, income is always counted at full value.
+    # The cycle starts precisely when income arrives, so there's no waiting period.
+    effective_income = income
 
     if extra_installment:
         purchase_cycle = _current_cycle_start(extra_installment.start_date, cycle_start_day)

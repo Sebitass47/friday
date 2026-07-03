@@ -173,3 +173,12 @@ export interface Task {
   created_at: string
   updated_at: string
 }
+
+export interface Habit {
+  id: string
+  name: string
+  color: string
+  created_at: string
+  completed_dates: string[]
+  week_percentage: number
+}

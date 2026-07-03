@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu,
   CheckSquare, CalendarDays, Timer, ChevronLeft, StickyNote, Home,
-  Bell, BellOff, Download,
+  Bell, BellOff, Download, Target,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
@@ -23,6 +23,7 @@ const NAV = [
   { href: '/events',    icon: CalendarDays,   label: 'Eventos' },
   { href: '/focus',     icon: Timer,          label: 'Focus' },
   { href: '/notas',     icon: StickyNote,     label: 'Notas' },
+  { href: '/habitos',   icon: Target,         label: 'Hábitos' },
 ]
 
 export default function Sidebar({ hideExternalToggle = false }: { hideExternalToggle?: boolean }) {

@@ -326,3 +326,21 @@ export async function deleteNote(id: string): Promise<void> {
 export async function toggleNotePin(id: string): Promise<Note> {
   return req(`/notes/${id}/toggle-pin`, { method: 'POST' })
 }
+
+// ── Habits ────────────────────────────────────────────────────────────────────
+
+export async function getHabits(weekStart: string): Promise<import('./types').Habit[]> {
+  return req(`/habits/?week_start=${weekStart}`)
+}
+
+export async function createHabit(data: { name: string; color?: string }): Promise<import('./types').Habit> {
+  return req('/habits/', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function deleteHabit(id: string): Promise<void> {
+  return req(`/habits/${id}`, { method: 'DELETE' })
+}
+
+export async function toggleHabitLog(id: string, date: string): Promise<void> {
+  return req(`/habits/${id}/toggle`, { method: 'POST', body: JSON.stringify({ date }) })
+}

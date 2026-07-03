@@ -145,9 +145,27 @@ Página de notas rápidas con colores y etiquetas. Diseño grid 2 columnas, sopo
 **Archivos:**
 - `frontend/app/notas/page.tsx` — página completa (NoteCard + NoteForm inline)
 
+### Hábitos (`/habitos`)
+
+Tracker semanal de hábitos. Tabla tipo grid donde cada fila es un hábito y cada columna es un día de la semana. Navegar entre semanas con flechas.
+
+**Funcionalidades:**
+- Vista semanal (Lun–Dom) con flechas de navegación entre semanas
+- Toggle de completado por día — checkbox redondeado con el color propio del hábito cuando está marcado
+- Cada hábito tiene un color único asignado aleatoriamente al crearse (paleta de 10 colores vivos)
+- Columna `%` con el porcentaje de días completados en la semana actual (color del hábito cuando > 0)
+- Eliminar hábito: clic → rojo 2.5s → segundo clic confirma
+- Input inferior + botón "Agregar" para crear hábito nuevo
+- Cards de resumen debajo de la tabla: total hábitos, completados hoy, promedio semanal, racha máxima
+- Día actual destacado en morado en el header de columnas
+- Soporte dark/light mode, responsive con scroll horizontal en tabla en móvil
+
+**Archivos:**
+- `frontend/app/habitos/page.tsx` — página completa
+
 ### Eventos (`/events`)
 
-Lista de eventos tipo calendario. Mismo diseño que `/to_do` pero para cosas con fecha fija (citas, reuniones, etc.).
+Lista de eventos tipo calendario. Mismo diseño que `/to_do` pero para cosas con fecha fija (citas, reuniones, etc.). **No tiene endpoint propio en el backend** — reutiliza la API de tareas (`/tasks/`) filtrando por `is_event=true`.
 
 **Funcionalidades:**
 - Crear eventos con título, etiqueta, fecha, hora, "Todo el día", ubicación y notas
@@ -174,6 +192,7 @@ credit_payments.py   GET /credit-payments/, POST /credit-payments/
 push.py              GET /push/vapid-public-key, POST /push/subscribe, DELETE /push/unsubscribe
 tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
 notes.py             CRUD /notes/ + POST /{id}/toggle-pin
+habits.py            GET /habits/?week_start=YYYY-MM-DD, POST /habits/, DELETE /habits/{id}, POST /habits/{id}/toggle
 ```
 
 Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/auth/login`.
@@ -195,8 +214,10 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `credit_payments` | registro de pagos de tarjeta por `statement_month/year` |
 | `push_subscriptions` | endpoint VAPID por usuario, para notificaciones push |
 | `notes` | título, contenido, etiqueta, color (string key), is_pinned; FK a users |
+| `habits` | nombre, color (hex), FK a users |
+| `habit_logs` | FK a habits, date (Date); constraint unique (habit_id, date) — un log por hábito por día |
 
-Migraciones numeradas `0001`–`0016` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0017` en `backend/alembic/versions/`.
 
 **Lógica de ciclo financiero:** Toda la proyección y cálculos se basan en ciclos definidos por `cycle_start_day`, no por meses calendario. El ciclo actual corre desde `cycle_start_day` del mes anterior/actual hasta el día antes del siguiente `cycle_start_day`. `MonthProjection` incluye `cycle_start`, `cycle_end` y `cash_debit_spent`. La home page usa `GET /projection/?months=1` en lugar de calcular localmente.
 
@@ -209,8 +230,14 @@ frontend/
 ├── app/
 │   ├── (auth)/login/page.tsx       # Login
 │   ├── (auth)/register/page.tsx    # Registro
+│   ├── page.tsx                    # Home / — dashboard personal central
 │   ├── dashboard/page.tsx          # App principal de finanzas (~1200 líneas)
 │   ├── simulador/page.tsx          # Simulador MSI
+│   ├── to_do/page.tsx              # Tareas
+│   ├── events/page.tsx             # Eventos (reutiliza API de tasks con is_event)
+│   ├── focus/page.tsx              # Espacio Focus (Three.js, Pomodoro, sonidos)
+│   ├── notas/page.tsx              # Notas con colores
+│   ├── habitos/page.tsx            # Tracker semanal de hábitos
 │   ├── layout.tsx                  # Root layout con ThemeProvider
 │   └── globals.css
 ├── components/
@@ -246,6 +273,10 @@ frontend/
 - Siempre `useState<Tipo>(valor)` con genérico explícito
 - Para updates de estado con tipos union nullable: spread directo `setForm({...form, field: val})`, no callback form
 - No `any`
+
+**Tipografía:**
+- Fuente principal: `Space Grotesk` (weights 300–700) — cargada via Google Fonts en `layout.tsx`, aplicada como `font-sans` globalmente
+- Fuente secundaria cargada pero no usada como principal: `Nunito`
 
 **Estilos:**
 - Glassmorphism: `bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl`

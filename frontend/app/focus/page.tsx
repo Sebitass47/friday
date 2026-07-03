@@ -837,7 +837,19 @@ export default function FocusPage() {
   const canvas3DRef = useRef<HTMLCanvasElement | null>(null)
   const cleanupBgRef = useRef<(() => void) | null>(null)
   const audiosRef = useRef<Partial<Record<SoundKey, HTMLAudioElement>>>({})
+  const audioCtxRef = useRef<AudioContext | null>(null)
   const justRanOutRef = useRef(false)
+
+  // Initialize AudioContext on first user interaction (browser requirement)
+  useEffect(() => {
+    const init = () => {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext()
+      }
+    }
+    window.addEventListener('click', init, { once: true })
+    return () => window.removeEventListener('click', init)
+  }, [])
 
   // Sync mutable refs so timer callbacks always read fresh values
   const phaseRef = useRef(phase)

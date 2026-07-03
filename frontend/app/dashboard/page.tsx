@@ -198,13 +198,13 @@ export default function DashboardPage() {
   const [regAccountId, setRegAccountId] = useState('')
   const [regCategory, setRegCategory] = useState('')
   const [regIsMonthly, setRegIsMonthly] = useState(false)
-  const [regIncomeStartDay, setRegIncomeStartDay] = useState(1)
+  const [regCycleStartDay, setRegCycleStartDay] = useState(1)
   const [regSaving, setRegSaving] = useState(false)
   const [regError, setRegError] = useState('')
 
   // Edit monthly income modal
   const [editIncomeAmount, setEditIncomeAmount] = useState('')
-  const [editIncomeStartDay, setEditIncomeStartDay] = useState(1)
+  const [editCycleStartDay, setEditCycleStartDay] = useState(1)
   const [editIncomeSaving, setEditIncomeSaving] = useState(false)
   const [editIncomeError, setEditIncomeError] = useState('')
 
@@ -231,7 +231,7 @@ export default function DashboardPage() {
   function openRegister() {
     setRegAmount(''); setRegDesc(''); setRegMethod('cash'); setRegAccountId(''); setRegCategory('')
     setRegIsMonthly(false)
-    setRegIncomeStartDay(monthlyIncomeData?.income_start_day ?? 1)
+    setRegCycleStartDay(monthlyIncomeData?.cycle_start_day ?? 1)
     setRegError('')
     setActiveModal('register')
   }
@@ -244,7 +244,7 @@ export default function DashboardPage() {
         await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: today(), payment_method: regMethod, category: regCategory || undefined })
       } else {
         await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: today(), category: regCategory || undefined })
-        if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount), regIncomeStartDay)
+        if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount), regCycleStartDay)
       }
       setActiveModal(null)
       const [p, a, ex] = await Promise.all([getProjection(12), getAccounts(), getExpenses()])
@@ -256,7 +256,7 @@ export default function DashboardPage() {
   // Edit monthly income
   function openEditIncome() {
     setEditIncomeAmount(String(monthlyIncomeData?.amount ?? ''))
-    setEditIncomeStartDay(monthlyIncomeData?.income_start_day ?? 1)
+    setEditCycleStartDay(monthlyIncomeData?.cycle_start_day ?? 1)
     setEditIncomeError('')
     setActiveModal('edit-income')
   }
@@ -265,7 +265,7 @@ export default function DashboardPage() {
     if (!editIncomeAmount || isNaN(amount) || amount <= 0) { setEditIncomeError('Ingresa un monto válido'); return }
     setEditIncomeSaving(true); setEditIncomeError('')
     try {
-      const updated = await setMonthlyIncome(amount, editIncomeStartDay)
+      const updated = await setMonthlyIncome(amount, editCycleStartDay)
       setMonthlyIncomeData(updated)
       setActiveModal(null)
       const p = await getProjection(12)
@@ -565,7 +565,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-2xl font-semibold text-black dark:text-white tabular-nums">{fmt(monthlyIncomeData?.amount ?? thisMonth?.income ?? 0)}</p>
               {monthlyIncomeData && (
-                <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">Llega el día {monthlyIncomeData.income_start_day}</p>
+                <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">Ciclo desde el día {monthlyIncomeData.cycle_start_day}</p>
               )}
             </div>
             <div className={`${cardCls} p-5 flex-1`}>
@@ -587,6 +587,7 @@ export default function DashboardPage() {
           <SpendingTimelineChart
             expenses={expenses}
             monthlyIncome={monthlyIncomeData?.amount ?? Number(projection?.months[0]?.income ?? 0)}
+            cycleStartDay={monthlyIncomeData?.cycle_start_day ?? 1}
           />
         </div>
 
@@ -986,15 +987,15 @@ export default function DashboardPage() {
                 </span>
               </button>
               {regIsMonthly && (
-                <FormField label="Día en que recibes el ingreso (1–28)">
+                <FormField label="Día de inicio de tu ciclo financiero (1–31)">
                   <input
-                    type="number" min={1} max={28}
-                    value={regIncomeStartDay}
-                    onChange={e => setRegIncomeStartDay(Math.min(28, Math.max(1, parseInt(e.target.value) || 1)))}
+                    type="number" min={1} max={31}
+                    value={regCycleStartDay}
+                    onChange={e => setRegCycleStartDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
                     className={inputCls()}
                   />
                   <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">
-                    Antes de este día, el ingreso no se contará en "disponible este mes"
+                    Todos los cálculos de ingreso y compromisos arrancan este día cada mes
                   </p>
                 </FormField>
               )}
@@ -1121,7 +1122,7 @@ export default function DashboardPage() {
 
       {/* Edit monthly income */}
       {activeModal === 'edit-income' && (
-        <Modal title="Editar ingreso mensual" onClose={() => setActiveModal(null)}>
+        <Modal title="Ingreso y ciclo financiero" onClose={() => setActiveModal(null)}>
           <FormField label="Monto mensual">
             <input
               type="number" min={0} placeholder="30000"
@@ -1131,15 +1132,16 @@ export default function DashboardPage() {
               autoFocus
             />
           </FormField>
-          <FormField label="Día en que recibes el ingreso (1–28)">
+          <FormField label="Día de inicio de tu ciclo financiero (1–31)">
             <input
-              type="number" min={1} max={28}
-              value={editIncomeStartDay}
-              onChange={e => setEditIncomeStartDay(Math.min(28, Math.max(1, parseInt(e.target.value) || 1)))}
+              type="number" min={1} max={31}
+              value={editCycleStartDay}
+              onChange={e => setEditCycleStartDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 1)))}
               className={inputCls()}
             />
             <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">
-              Antes de este día, el ingreso no se suma al disponible del mes actual
+              Todos los cálculos (ingreso, MSI, recurrentes, proyección) arrancan este día.
+              Si pones 29–31 y el mes no tiene ese día, se usa el último día del mes.
             </p>
           </FormField>
           <FormActions onCancel={() => setActiveModal(null)} onSave={handleEditIncome} saving={editIncomeSaving} saveLabel="Guardar" error={editIncomeError} />

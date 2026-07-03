@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class MonthlyIncomeBase(BaseModel):
     amount: Decimal
-    income_start_day: int = Field(default=1, ge=1, le=28)
+    cycle_start_day: int = Field(default=1, ge=1, le=31)
 
 
 class MonthlyIncomeCreate(MonthlyIncomeBase):
@@ -15,7 +15,7 @@ class MonthlyIncomeCreate(MonthlyIncomeBase):
 
 class MonthlyIncomeUpdate(BaseModel):
     amount: Decimal
-    income_start_day: int = Field(default=1, ge=1, le=28)
+    cycle_start_day: int = Field(default=1, ge=1, le=31)
 
 
 class MonthlyIncomeResponse(MonthlyIncomeBase):

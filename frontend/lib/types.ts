@@ -68,7 +68,7 @@ export interface MonthlyIncome {
   id: string
   user_id: string
   amount: number
-  income_start_day: number
+  cycle_start_day: number
   created_at: string
   updated_at: string
 }
@@ -77,10 +77,13 @@ export interface MonthProjection {
   month: number
   year: number
   label: string
+  cycle_start: string
+  cycle_end: string
   income: number
   recurring_expenses: number
   installments: number
   savings_contributions: number
+  cash_debit_spent: number
   available: number
 }
 

@@ -8,10 +8,13 @@ class MonthProjection(BaseModel):
     month: int
     year: int
     label: str
+    cycle_start: date
+    cycle_end: date
     income: Decimal
     recurring_expenses: Decimal
     installments: Decimal
     savings_contributions: Decimal
+    cash_debit_spent: Decimal
     available: Decimal
 
 

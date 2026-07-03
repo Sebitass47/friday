@@ -12,7 +12,7 @@ class MonthlyIncome(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True)
     amount = Column(Numeric(12, 2), nullable=False)
-    income_start_day = Column(Integer, nullable=False, default=1)
+    cycle_start_day = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

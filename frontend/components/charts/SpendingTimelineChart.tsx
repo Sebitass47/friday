@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import type { Expense } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
 
@@ -10,20 +10,26 @@ const fmt = (n: number) =>
 const fmtShort = (d: Date) =>
   d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
 
-const STORAGE_KEY = 'friday_cycle_start_day'
-
-// ── Period helpers ────────────────────────────────────────────────────────────
+// ── Period helpers ─────────────────────────────────────────────────────────────
 
 interface Period {
-  start: Date   // inclusive
-  end: Date     // inclusive (= start + 30ish days - 1)
+  start: Date
+  end: Date
   label: string
 }
 
+function clampDay(year: number, month: number, day: number): number {
+  return Math.min(day, new Date(year, month + 1, 0).getDate())
+}
+
 function buildPeriod(year: number, month: number, startDay: number): Period {
-  const start = new Date(year, month, startDay)
-  // end = one day before the same startDay next month
-  const end = new Date(year, month + 1, startDay - 1)
+  const actualDay = clampDay(year, month, startDay)
+  const start = new Date(year, month, actualDay)
+  // End = one day before next cycle start
+  const nextMonth = month === 11 ? 0 : month + 1
+  const nextYear = month === 11 ? year + 1 : year
+  const nextActualDay = clampDay(nextYear, nextMonth, startDay)
+  const end = new Date(nextYear, nextMonth, nextActualDay - 1)
   return {
     start,
     end,
@@ -36,24 +42,23 @@ function buildPeriod(year: number, month: number, startDay: number): Period {
 function periodContaining(date: Date, startDay: number): Period {
   const y = date.getFullYear()
   const m = date.getMonth()
-  const d = date.getDate()
-  if (d >= startDay) return buildPeriod(y, m, startDay)
-  // date is before startDay → belongs to the period that started last month
+  const actualDay = clampDay(y, m, startDay)
+  if (date.getDate() >= actualDay) return buildPeriod(y, m, startDay)
   const prevM = m === 0 ? 11 : m - 1
   const prevY = m === 0 ? y - 1 : y
   return buildPeriod(prevY, prevM, startDay)
 }
 
 function prevPeriod(p: Period, startDay: number): Period {
-  const prevStart = new Date(p.start)
-  prevStart.setMonth(prevStart.getMonth() - 1)
-  return buildPeriod(prevStart.getFullYear(), prevStart.getMonth(), startDay)
+  const prevM = p.start.getMonth() === 0 ? 11 : p.start.getMonth() - 1
+  const prevY = p.start.getMonth() === 0 ? p.start.getFullYear() - 1 : p.start.getFullYear()
+  return buildPeriod(prevY, prevM, startDay)
 }
 
 function nextPeriod(p: Period, startDay: number): Period {
-  const nextStart = new Date(p.start)
-  nextStart.setMonth(nextStart.getMonth() + 1)
-  return buildPeriod(nextStart.getFullYear(), nextStart.getMonth(), startDay)
+  const nextM = p.start.getMonth() === 11 ? 0 : p.start.getMonth() + 1
+  const nextY = p.start.getMonth() === 11 ? p.start.getFullYear() + 1 : p.start.getFullYear()
+  return buildPeriod(nextY, nextM, startDay)
 }
 
 function isCurrentPeriod(p: Period): boolean {
@@ -65,47 +70,27 @@ function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / 86400000)
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────────────────
 
 interface Props {
   expenses: Expense[]
   monthlyIncome: number
+  cycleStartDay: number
 }
 
-export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props) {
+export default function SpendingTimelineChart({ expenses, monthlyIncome, cycleStartDay }: Props) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const coral = '#FF6B6B'
 
-  const [cycleStartDay, setCycleStartDay] = useState(1)
-  const [editingCycle, setEditingCycle] = useState(false)
-  const [cycleInput, setCycleInput] = useState('1')
-  const cycleRef = useRef<HTMLInputElement>(null)
-
-  // Load from localStorage once
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const d = parseInt(stored, 10)
-      if (d >= 1 && d <= 28) { setCycleStartDay(d); setCycleInput(String(d)) }
-    }
-  }, [])
-
   const today = new Date()
-  const [period, setPeriod] = useState<Period>(() => periodContaining(today, 1))
+  const [period, setPeriod] = useState<Period>(() => periodContaining(today, cycleStartDay))
 
-  // When cycleStartDay changes, jump to the period containing today
-  useEffect(() => {
+  // When cycleStartDay prop changes, snap to the period containing today
+  const [prevCycleDay, setPrevCycleDay] = useState(cycleStartDay)
+  if (cycleStartDay !== prevCycleDay) {
+    setPrevCycleDay(cycleStartDay)
     setPeriod(periodContaining(today, cycleStartDay))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cycleStartDay])
-
-  function saveCycleDay() {
-    const d = parseInt(cycleInput, 10)
-    if (isNaN(d) || d < 1 || d > 28) return
-    setCycleStartDay(d)
-    localStorage.setItem(STORAGE_KEY, String(d))
-    setEditingCycle(false)
   }
 
   function goBack() { setPeriod(p => prevPeriod(p, cycleStartDay)) }
@@ -117,7 +102,6 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
   const isCurrent = isCurrentPeriod(period)
   const periodDays = daysBetween(period.start, period.end) + 1
 
-  // Filter expenses within this period
   const periodExpenses = useMemo(() =>
     expenses
       .filter(e => {
@@ -127,7 +111,6 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
       .sort((a, b) => a.date.localeCompare(b.date)),
     [expenses, period])
 
-  // Group by offset day within period
   type DayData = { total: number; items: Expense[]; date: Date }
   const byOffset = useMemo(() => {
     const map: Record<number, DayData> = {}
@@ -144,11 +127,8 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
   const totalSpent = periodExpenses.reduce((s, e) => s + Number(e.amount), 0)
   const hasIncome = monthlyIncome > 0
 
-  // Running balance per offset
-  let runBal = hasIncome ? monthlyIncome : 0
   const todayOffset = isCurrent ? Math.min(daysBetween(period.start, today), periodDays - 1) : periodDays - 1
 
-  // Build step-line
   let pathD = ''
   let bal = hasIncome ? monthlyIncome : 0
   const drops: { offset: number; before: number; after: number; data: DayData }[] = []
@@ -161,7 +141,6 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
     }
   }
 
-  // SVG
   const W = 600, H = 170
   const PL = 4, PR = 4, PT = 20, PB = 22
   const chartW = W - PL - PR
@@ -196,7 +175,6 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
 
   const [hoveredOffset, setHoveredOffset] = useState<number | null>(null)
 
-  // Month boundary lines within the period (when period spans 2 calendar months)
   const boundaryOffsets: number[] = []
   if (cycleStartDay > 1) {
     for (let i = 1; i < periodDays; i++) {
@@ -206,7 +184,6 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
     }
   }
 
-  // X-axis tick labels: start, boundary(ies), end
   const xLabels: { offset: number; label: string }[] = [
     { offset: 0, label: String(period.start.getDate()) },
     ...boundaryOffsets.map(o => {
@@ -220,7 +197,6 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
 
   return (
     <div className="w-full">
-      {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1">
           <button onClick={goBack} className="w-6 h-6 flex items-center justify-center rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm">‹</button>
@@ -229,30 +205,9 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Cycle start day setting */}
           <div className="flex items-center gap-1">
-            <span className="text-[9px] text-black/25 dark:text-white/25">Ciclo desde día</span>
-            {editingCycle ? (
-              <input
-                ref={cycleRef}
-                type="number"
-                min={1}
-                max={28}
-                value={cycleInput}
-                onChange={e => setCycleInput(e.target.value)}
-                onBlur={saveCycleDay}
-                onKeyDown={e => { if (e.key === 'Enter') saveCycleDay(); if (e.key === 'Escape') setEditingCycle(false) }}
-                className="w-10 text-[10px] text-center rounded-md border border-black/10 dark:border-white/10 bg-black/[0.03] dark:bg-white/[0.03] text-black dark:text-white outline-none focus:border-[#6B46E5] dark:focus:border-[#AF9BFF] px-1 py-0.5"
-                autoFocus
-              />
-            ) : (
-              <button
-                onClick={() => { setEditingCycle(true); setCycleInput(String(cycleStartDay)) }}
-                className="text-[10px] font-semibold text-[#6B46E5] dark:text-[#AF9BFF] hover:opacity-70 transition-opacity tabular-nums"
-              >
-                {cycleStartDay}
-              </button>
-            )}
+            <span className="text-[9px] text-black/25 dark:text-white/25">Ciclo día</span>
+            <span className="text-[10px] font-semibold text-[#6B46E5] dark:text-[#AF9BFF] tabular-nums">{cycleStartDay}</span>
           </div>
 
           {hasIncome && (
@@ -274,33 +229,25 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
         </div>
       ) : (
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full overflow-visible" style={{ height: '155px' }}>
-          {/* Grid */}
           {[0.25, 0.5, 0.75].map(t => (
             <line key={t} x1={PL} y1={PT + t * chartH} x2={W - PR} y2={PT + t * chartH} stroke={gridS} strokeWidth="1" />
           ))}
 
-          {/* Zero line */}
           {hasIncome && yMin < 0 && (
             <line x1={PL} y1={yOf(0)} x2={W - PR} y2={yOf(0)} stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'} strokeWidth="1" strokeDasharray="4,3" />
           )}
 
-          {/* Calendar month boundary */}
           {boundaryOffsets.map(o => (
             <line key={o} x1={xOf(o)} y1={PT} x2={xOf(o)} y2={H - PB} stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'} strokeWidth="1" strokeDasharray="2,4" />
           ))}
 
-          {/* Area */}
           {areaD && <path d={areaD} fill={coral} opacity="0.04" />}
-
-          {/* Step line */}
           <path d={pathD} fill="none" stroke={coral} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
 
-          {/* Today marker */}
           {isCurrent && (
             <line x1={xOf(todayOffset)} y1={PT} x2={xOf(todayOffset)} y2={H - PB} stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'} strokeWidth="1" strokeDasharray="3,3" />
           )}
 
-          {/* Dots */}
           {drops.map(({ offset, after, data }) => {
             const cx = xOf(offset)
             const dotY = yOf(hasIncome ? after : data.total)
@@ -355,12 +302,10 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome }: Props
             )
           })}
 
-          {/* X-axis labels */}
           {xLabels.map(({ offset, label }) => (
             <text key={offset} x={xOf(offset)} y={H - 6} fontSize="8" fill={tf(0.22)} textAnchor="middle">{label}</text>
           ))}
 
-          {/* Y-axis labels */}
           {hasIncome && (
             <>
               <text x={PL + 2} y={PT + 9} fontSize="8" fill={tf(0.18)}>{fmt(yMax)}</text>

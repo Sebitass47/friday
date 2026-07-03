@@ -186,7 +186,7 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 |---|---|
 | `users` | email + password hash |
 | `accounts` | tipo: `checking / savings / credit_card`; crédito tiene `credit_limit`, `current_balance_used`, `closing_day`, `payment_day` |
-| `monthly_income` | un registro por usuario; tiene `amount` e `income_start_day` (1–28) |
+| `monthly_income` | un registro por usuario; tiene `amount` y `cycle_start_day` (1–31, default 1). Define el inicio del ciclo financiero del usuario. Si pones 29–31 y el mes no tiene ese día, se usa el último día del mes. |
 | `recurring_expenses` | frecuencia: `monthly / weekly / custom` |
 | `installment_purchases` | MSI; `remaining_installments`, `paid_month/paid_year` para control de "ya pagué este mes" |
 | `savings_goals` | `current_amount`, `monthly_contribution`, `contributed_month/year/last_contribution_amount` |
@@ -196,7 +196,9 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `push_subscriptions` | endpoint VAPID por usuario, para notificaciones push |
 | `notes` | título, contenido, etiqueta, color (string key), is_pinned; FK a users |
 
-Migraciones numeradas `0001`–`0015` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0016` en `backend/alembic/versions/`.
+
+**Lógica de ciclo financiero:** Toda la proyección y cálculos se basan en ciclos definidos por `cycle_start_day`, no por meses calendario. El ciclo actual corre desde `cycle_start_day` del mes anterior/actual hasta el día antes del siguiente `cycle_start_day`. `MonthProjection` incluye `cycle_start`, `cycle_end` y `cash_debit_spent`. La home page usa `GET /projection/?months=1` en lugar de calcular localmente.
 
 ---
 

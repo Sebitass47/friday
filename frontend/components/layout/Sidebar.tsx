@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
 import { useSidebar } from './SidebarContext'
+import PlanetIcon from '@/components/ui/PlanetIcon'
 import { pushSupported, getRegistration, getCurrentSubscription, subscribePush, unsubscribePush } from '@/lib/push'
 import { getPushVapidKey, registerPushSubscription, removePushSubscription } from '@/lib/api'
 
@@ -94,20 +95,18 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Brand + collapse button */}
-      <div className="flex items-center justify-between px-5 py-5 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6B46E5] dark:bg-[#AF9BFF]/20 border border-[#6B46E5]/30 dark:border-[#AF9BFF]/30">
-            <span className="text-sm font-bold text-white dark:text-[#AF9BFF]">F</span>
-          </div>
-          <span className="text-base font-semibold text-black dark:text-white tracking-wide">FRIDAY</span>
-        </div>
+      <div className="relative flex flex-col items-center pt-6 pb-4 px-5 border-b border-black/[0.06] dark:border-white/[0.06]">
         <button
           onClick={toggle}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-black/40 dark:text-white/40 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all"
+          className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-lg text-black/30 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all"
           title="Colapsar menú"
         >
           <ChevronLeft size={16} strokeWidth={2} />
         </button>
+        <div className="drop-shadow-[0_0_16px_rgba(107,70,229,0.3)] mb-2">
+          <PlanetIcon size={48} />
+        </div>
+        <span className="text-[11px] font-bold tracking-[0.22em] text-black/70 dark:text-white/70">FRIDAY</span>
       </div>
 
       {/* Nav */}

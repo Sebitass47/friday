@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import PlanetIcon from '@/components/ui/PlanetIcon'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -50,9 +51,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#6B46E5] dark:bg-[#AF9BFF]/15 border border-[#6B46E5]/20 dark:border-[#AF9BFF]/25 mb-4 shadow-lg shadow-[#6B46E5]/20 dark:shadow-[#AF9BFF]/10">
-            <span className="text-xl font-bold text-white dark:text-[#AF9BFF]">F</span>
+          <div className="mb-3 drop-shadow-[0_0_24px_rgba(107,70,229,0.35)]">
+            <PlanetIcon size={72} />
           </div>
+          <span className="text-lg font-bold tracking-[0.18em] text-black dark:text-white mb-3">FRIDAY</span>
           <p className="text-xs text-black/40 dark:text-white/40 mb-1">Bienvenido de vuelta</p>
           <h1 className="text-2xl font-bold text-black dark:text-white">Entra a tu espacio</h1>
         </div>

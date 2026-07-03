@@ -2,13 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu, X,
+  LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu,
   CheckSquare, CalendarDays, Timer, ChevronLeft, StickyNote, Home,
+  Bell, BellOff, Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
 import { useSidebar } from './SidebarContext'
+import { pushSupported, getRegistration, getCurrentSubscription, subscribePush, unsubscribePush } from '@/lib/push'
+import { getPushVapidKey, registerPushSubscription, removePushSubscription } from '@/lib/api'
 
 const NAV = [
   { href: '/',          icon: Home,          label: 'Inicio' },
@@ -25,6 +29,62 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
   const router = useRouter()
   const { theme, toggleTheme } = useTheme()
   const { open, toggle } = useSidebar()
+
+  // Push notifications
+  const [pushSubscribed, setPushSubscribed] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
+
+  useEffect(() => {
+    if (!pushSupported()) return
+    getRegistration().then(() => getCurrentSubscription()).then(sub => {
+      setPushSubscribed(!!sub)
+    }).catch(() => {})
+  }, [])
+
+  async function togglePush() {
+    if (!pushSupported()) { alert('Tu navegador no soporta notificaciones push'); return }
+    setPushLoading(true)
+    try {
+      if (pushSubscribed) {
+        const sub = await getCurrentSubscription()
+        if (sub) {
+          const p256dh = sub.getKey('p256dh')
+          const auth = sub.getKey('auth')
+          await removePushSubscription({
+            endpoint: sub.endpoint,
+            p256dh: p256dh ? btoa(String.fromCharCode(...new Uint8Array(p256dh))) : '',
+            auth: auth ? btoa(String.fromCharCode(...new Uint8Array(auth))) : '',
+          })
+          await unsubscribePush()
+        }
+        setPushSubscribed(false)
+      } else {
+        const vapidKey = await getPushVapidKey()
+        const subData = await subscribePush(vapidKey)
+        if (subData) { await registerPushSubscription(subData); setPushSubscribed(true) }
+      }
+    } catch (e) { console.error('Push toggle error', e) }
+    finally { setPushLoading(false) }
+  }
+
+  // PWA install
+  const [installPrompt, setInstallPrompt] = useState<Event & { prompt: () => Promise<void> } | null>(null)
+  const [installed, setInstalled] = useState(false)
+
+  useEffect(() => {
+    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e as any) }
+    window.addEventListener('beforeinstallprompt', handler)
+    window.addEventListener('appinstalled', () => { setInstalled(true); setInstallPrompt(null) })
+    // If already running as standalone, mark as installed
+    if (window.matchMedia('(display-mode: standalone)').matches) setInstalled(true)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  async function handleInstall() {
+    if (!installPrompt) return
+    await installPrompt.prompt()
+    setInstallPrompt(null)
+  }
 
   function logout() {
     localStorage.removeItem('token')
@@ -80,6 +140,34 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
 
       {/* Bottom */}
       <div className="border-t border-black/[0.06] dark:border-white/[0.06] p-3 space-y-1">
+        {/* Push notifications */}
+        {pushSupported() && (
+          <button
+            onClick={togglePush}
+            disabled={pushLoading}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border disabled:opacity-50',
+              pushSubscribed
+                ? 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF] border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
+                : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border-transparent'
+            )}
+          >
+            {pushSubscribed ? <Bell size={17} strokeWidth={2} /> : <BellOff size={17} strokeWidth={2} />}
+            {pushSubscribed ? 'Notificaciones activas' : 'Activar notificaciones'}
+          </button>
+        )}
+
+        {/* PWA install */}
+        {!installed && installPrompt && (
+          <button
+            onClick={handleInstall}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black/50 dark:text-white/50 transition-all hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border border-transparent"
+          >
+            <Download size={17} strokeWidth={2} />
+            Instalar app
+          </button>
+        )}
+
         <button
           onClick={toggleTheme}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-black/50 dark:text-white/50 transition-all hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border border-transparent"

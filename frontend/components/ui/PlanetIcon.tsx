@@ -7,15 +7,16 @@ export default function PlanetIcon({ size = 40, className = '' }: Props) {
   const u = `pi${size}`
   const cx = size / 2
   const cy = size / 2
-  const pR = size * 0.285
+  const pR = size * 0.26   // slightly smaller planet → more room for rings
   const angle = -16
 
-  // 3 rings with clearly distinct ry so they're visibly separate
-  // [rx, ry, strokeWidth, backOpacity, frontOpacity, backColor, frontColor]
-  const rings: [number, number, number, number, number, string, string][] = [
-    [size * 0.46, size * 0.095, size * 0.018, 0.50, 0.75, '#2e1580', '#4a22b8'],
-    [size * 0.46, size * 0.130, size * 0.013, 0.60, 0.85, '#3d1a99', '#6030cc'],  // brightest
-    [size * 0.46, size * 0.165, size * 0.010, 0.35, 0.55, '#251270', '#3a1fa0'],
+  // 3 Saturn rings with clear gaps between them
+  // ry values: 0.08 / 0.14 / 0.20 → gap of 0.06*size between each
+  // strokeWidth intentionally thin so the gap stays visible
+  const rings = [
+    { ry: size * 0.082, sw: size * 0.022, bOp: 0.45, fOp: 0.70, bClr: '#2d1680', fClr: '#4820b0' },
+    { ry: size * 0.140, sw: size * 0.028, bOp: 0.60, fOp: 0.88, bClr: '#3d1a99', fClr: '#6535d8' }, // brightest
+    { ry: size * 0.198, sw: size * 0.018, bOp: 0.35, fOp: 0.55, bClr: '#221068', fClr: '#3a1fa0' },
   ]
 
   return (
@@ -34,37 +35,35 @@ export default function PlanetIcon({ size = 40, className = '' }: Props) {
           <stop offset="100%" stopColor="#5b21b6" />
         </radialGradient>
         <radialGradient id={`${u}-s`} cx="30%" cy="22%" r="42%">
-          <stop offset="0%"   stopColor="rgba(255,255,255,0.70)" />
+          <stop offset="0%"   stopColor="rgba(255,255,255,0.72)" />
           <stop offset="50%"  stopColor="rgba(255,255,255,0.10)" />
           <stop offset="100%" stopColor="rgba(255,255,255,0)" />
         </radialGradient>
-        {/* Clip lower half → front arcs appear on top of planet */}
         <clipPath id={`${u}-f`}>
           <rect x={0} y={cy} width={size} height={size} />
         </clipPath>
       </defs>
 
-      {/* Back ring arcs (planet will cover their center portion) */}
-      {rings.map(([rx, ry, sw, backOp, , backColor], i) => (
-        <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry}
-          fill="none" stroke={backColor} strokeWidth={sw}
+      {/* Back ring arcs (planet will cover center, showing only sides) */}
+      {rings.map(({ ry, sw, bOp, bClr }, i) => (
+        <ellipse key={i} cx={cx} cy={cy} rx={size * 0.47} ry={ry}
+          fill="none" stroke={bClr} strokeWidth={sw}
           transform={`rotate(${angle} ${cx} ${cy})`}
-          opacity={backOp}
+          opacity={bOp}
         />
       ))}
 
-      {/* Planet sphere */}
+      {/* Planet */}
       <circle cx={cx} cy={cy} r={pR} fill={`url(#${u}-g)`} />
-      {/* Specular highlight */}
       <circle cx={cx} cy={cy} r={pR} fill={`url(#${u}-s)`} />
 
-      {/* Front ring arcs (clipped to lower half, drawn on top of planet) */}
-      {rings.map(([rx, ry, sw, , frontOp, , frontColor], i) => (
-        <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry}
-          fill="none" stroke={frontColor} strokeWidth={sw * 1.15}
+      {/* Front ring arcs (lower half only → appear in front of planet) */}
+      {rings.map(({ ry, sw, fOp, fClr }, i) => (
+        <ellipse key={i} cx={cx} cy={cy} rx={size * 0.47} ry={ry}
+          fill="none" stroke={fClr} strokeWidth={sw * 1.1}
           transform={`rotate(${angle} ${cx} ${cy})`}
           clipPath={`url(#${u}-f)`}
-          opacity={frontOp}
+          opacity={fOp}
         />
       ))}
     </svg>

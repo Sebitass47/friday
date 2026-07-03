@@ -32,9 +32,9 @@ const pct = (cur: number, tot: number) => Math.min(100, Math.round((cur / tot) *
 const today = () => new Date().toISOString().split('T')[0]
 
 const ACCENT = 'text-[#6B46E5] dark:text-[#AF9BFF]'
-const ACCENT_BG = 'bg-[#6B46E5] dark:bg-[#AF9BFF]'
-const ACCENT_BG_SOFT = 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10'
-const ACCENT_BORDER = 'border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
+const ACCENT_BG = 'bg-[#6B46E5]'
+const ACCENT_BG_SOFT = 'bg-[#6B46E5]/10'
+const ACCENT_BORDER = 'border-[#6B46E5]/20'
 const CORAL = '#FF6B6B'
 
 type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | 'edit-income' | null

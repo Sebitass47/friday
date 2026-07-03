@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import type { MonthProjection } from '@/lib/types'
-import { useTheme } from '@/components/ThemeProvider'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
@@ -14,10 +13,8 @@ interface Props {
 
 export default function ProjectionChart({ months, compareMonths }: Props) {
   const [hovered, setHovered] = useState<number | null>(null)
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
 
-  const accent = isDark ? '#AF9BFF' : '#6B46E5'
+  const accent = '#6B46E5'
   const coral = '#FF6B6B'
 
   const allValues = [

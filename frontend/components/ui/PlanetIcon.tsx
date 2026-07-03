@@ -7,17 +7,17 @@ export default function PlanetIcon({ size = 40, className = '' }: Props) {
   const u = `pi${size}`
   const cx = size / 2
   const cy = size / 2
-  const pR = size * 0.26   // slightly smaller planet → more room for rings
-  const angle = -16
+  const pR = size * 0.27
+  const angle = -18
 
-  // 3 Saturn rings with clear gaps between them
-  // ry values: 0.08 / 0.14 / 0.20 → gap of 0.06*size between each
-  // strokeWidth intentionally thin so the gap stays visible
+  // All rings share the same ry/rx ratio → they look co-planar (same flat disc)
+  // The gap between rings comes from different rx, not different ry
+  const FLAT = 0.19  // ry = rx * FLAT
   const rings = [
-    { ry: size * 0.082, sw: size * 0.022, bOp: 0.45, fOp: 0.70, bClr: '#2d1680', fClr: '#4820b0' },
-    { ry: size * 0.140, sw: size * 0.028, bOp: 0.60, fOp: 0.88, bClr: '#3d1a99', fClr: '#6535d8' }, // brightest
-    { ry: size * 0.198, sw: size * 0.018, bOp: 0.35, fOp: 0.55, bClr: '#221068', fClr: '#3a1fa0' },
-  ]
+    { rx: size * 0.355, sw: size * 0.019, bOp: 0.48, fOp: 0.72 },
+    { rx: size * 0.415, sw: size * 0.026, bOp: 0.62, fOp: 0.92 }, // main bright ring
+    { rx: size * 0.470, sw: size * 0.016, bOp: 0.36, fOp: 0.56 },
+  ].map(r => ({ ...r, ry: r.rx * FLAT }))
 
   return (
     <svg
@@ -44,10 +44,10 @@ export default function PlanetIcon({ size = 40, className = '' }: Props) {
         </clipPath>
       </defs>
 
-      {/* Back ring arcs (planet will cover center, showing only sides) */}
-      {rings.map(({ ry, sw, bOp, bClr }, i) => (
-        <ellipse key={i} cx={cx} cy={cy} rx={size * 0.47} ry={ry}
-          fill="none" stroke={bClr} strokeWidth={sw}
+      {/* Back arcs — planet will cover the center portion */}
+      {rings.map(({ rx, ry, sw, bOp }, i) => (
+        <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry}
+          fill="none" stroke="#6030c8" strokeWidth={sw}
           transform={`rotate(${angle} ${cx} ${cy})`}
           opacity={bOp}
         />
@@ -57,10 +57,10 @@ export default function PlanetIcon({ size = 40, className = '' }: Props) {
       <circle cx={cx} cy={cy} r={pR} fill={`url(#${u}-g)`} />
       <circle cx={cx} cy={cy} r={pR} fill={`url(#${u}-s)`} />
 
-      {/* Front ring arcs (lower half only → appear in front of planet) */}
-      {rings.map(({ ry, sw, fOp, fClr }, i) => (
-        <ellipse key={i} cx={cx} cy={cy} rx={size * 0.47} ry={ry}
-          fill="none" stroke={fClr} strokeWidth={sw * 1.1}
+      {/* Front arcs — clipped to lower half, drawn on top of planet */}
+      {rings.map(({ rx, ry, sw, fOp }, i) => (
+        <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry}
+          fill="none" stroke="#a080ff" strokeWidth={sw * 1.1}
           transform={`rotate(${angle} ${cx} ${cy})`}
           clipPath={`url(#${u}-f)`}
           opacity={fOp}

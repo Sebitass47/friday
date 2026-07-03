@@ -51,10 +51,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="mb-1 drop-shadow-[0_0_32px_rgba(124,58,237,0.45)]">
+          <div className="mb-2 drop-shadow-[0_0_32px_rgba(124,58,237,0.45)]">
             <PlanetIcon size={88} />
           </div>
-          <span className="text-3xl font-black tracking-tight text-black dark:text-white mb-4" style={{ fontFamily: 'Nunito, sans-serif' }}>friday</span>
+          <span className="text-3xl font-black tracking-tight text-black dark:text-white mb-8" style={{ fontFamily: 'Nunito, sans-serif' }}>friday</span>
           <p className="text-xs text-black/40 dark:text-white/40 mb-1">Bienvenido de vuelta</p>
           <h1 className="text-2xl font-bold text-black dark:text-white">Entra a tu espacio</h1>
         </div>

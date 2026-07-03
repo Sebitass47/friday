@@ -46,9 +46,6 @@ export default function PlanetIcon({ size = 40, className = '' }: Props) {
         </clipPath>
       </defs>
 
-      {/* Subtle ambient glow */}
-      <ellipse cx={cx} cy={cy} rx={pR * 1.6} ry={pR * 1.6} fill="#6d28d9" opacity="0.14" />
-
       {/* Back rings (drawn before planet — planet covers them) */}
       {rings.map(([ry, sw, backOp], i) => (
         <ellipse key={i} cx={cx} cy={cy} rx={ringRx} ry={ry}

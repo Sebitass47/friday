@@ -486,8 +486,15 @@ export default function ToDoPage() {
 
   async function handleToggle(id: string) {
     const updated = await toggleTaskComplete(id)
-    setTasks(ts => ts.map(t => t.id === id ? updated : t))
-    if (panelTask?.id === id) setPanelTask(updated)
+    if (updated.is_completed) {
+      // Remove from list after a brief moment so the check animation is visible
+      setTasks(ts => ts.map(t => t.id === id ? updated : t))
+      if (panelTask?.id === id) { setPanelTask(updated); setTimeout(closePanel, 400) }
+      setTimeout(() => setTasks(ts => ts.filter(t => t.id !== id)), 400)
+    } else {
+      setTasks(ts => ts.map(t => t.id === id ? updated : t))
+      if (panelTask?.id === id) setPanelTask(updated)
+    }
   }
 
   async function handleStar(id: string, current: boolean) {
@@ -496,7 +503,7 @@ export default function ToDoPage() {
   }
 
   async function refreshAndSync(taskId: string) {
-    const all = await getTasks({ is_event: false })
+    const all = await getTasks({ is_event: false, label: filterLabel ?? undefined, search: search || undefined })
     setTasks(all)
     const found = all.find(t => t.id === taskId)
     if (found) setPanelTask({ ...found })

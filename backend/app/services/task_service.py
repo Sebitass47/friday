@@ -30,6 +30,10 @@ def get_tasks(
         q = q.filter(Task.due_date <= date_to)
     if search:
         q = q.filter(Task.title.ilike(f"%{search}%"))
+    else:
+        # Only hide completed tasks when not doing a search or date range lookup
+        if not date_from and not date_to:
+            q = q.filter(Task.is_completed == False)
     return q.order_by(Task.due_date.asc().nullslast(), Task.created_at.desc()).all()
 
 

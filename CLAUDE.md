@@ -56,21 +56,22 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 
 **Secciones:**
 - Spending Timeline Chart — SVG paso a paso de gastos del mes, navegable por períodos, `cycleStartDay` guardado en localStorage (`friday_cycle_start_day`)
-- Proyección 12 meses — `ProjectionChart.tsx`, gráfica de barras SVG pura
 - Tarjetas de crédito — badge de uso con color dinámico (≤33% morado, 33–66% ámbar, >66% rojo), botón "Pagar este mes" que abre modal con monto y nuevo saldo
 - MSI (Meses Sin Intereses) — CRUD completo, botón "Liquidar"
 - Metas de ahorro — CRUD completo, botón "Ahorré este mes" (modal con monto editable)
 - Gastos recurrentes — CRUD completo
 - Cuentas — CRUD completo (débito, ahorro, crédito)
+- Proyección 12 meses — `ProjectionChart.tsx`, gráfica de barras SVG pura (al fondo de la página)
+- Simulador MSI — integrado al fondo, después de la proyección (ya no es página separada)
 
 **Registrar transacción** (botón "Registrar" en header + FAB flotante `QuickTransactionFAB.tsx`):
 - Gasto: efectivo / débito / crédito, categoría opcional
 - Ingreso puntual: descripción, monto, categoría
 - Toggle "¿Es tu ingreso mensual fijo?" → guarda en `monthly_income` con `income_start_day`
 
-### Simulador (`/simulador`)
+### Simulador (sección dentro de `/dashboard`)
 
-Página standalone. Simula el impacto de una compra a MSI en los próximos 12 meses. Llama a `POST /projection/simulate/`.
+Ya no es una página separada. Vive al final de la página de Finanzas, debajo de la Proyección 12 meses. Simula el impacto de una compra a MSI en los próximos 12 meses. Llama a `POST /projection/simulate/`.
 
 ### Tareas (`/to_do`)
 
@@ -233,7 +234,7 @@ frontend/
 │   ├── (auth)/register/page.tsx    # Registro
 │   ├── page.tsx                    # Home / — dashboard personal central
 │   ├── dashboard/page.tsx          # App principal de finanzas (~1200 líneas)
-│   ├── simulador/page.tsx          # Simulador MSI
+│   ├── simulador/page.tsx          # Simulador MSI (página legacy, el simulador ya vive en /dashboard)
 │   ├── to_do/page.tsx              # Tareas
 │   ├── events/page.tsx             # Eventos (reutiliza API de tasks con is_event)
 │   ├── focus/page.tsx              # Espacio Focus (Three.js, Pomodoro, sonidos)

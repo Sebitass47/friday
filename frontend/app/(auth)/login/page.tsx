@@ -54,7 +54,7 @@ export default function LoginPage() {
           <div className="mb-2 drop-shadow-[0_0_32px_rgba(124,58,237,0.45)]">
             <PlanetIcon size={88} />
           </div>
-          <span className="text-3xl font-black tracking-tight text-black dark:text-white mb-8" style={{ fontFamily: 'Nunito, sans-serif' }}>friday</span>
+          <span className="text-3xl tracking-tight text-black dark:text-white mb-8" style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}>friday</span>
           <p className="text-xs text-black/40 dark:text-white/40 mb-1">Bienvenido de vuelta</p>
           <h1 className="text-2xl font-bold text-black dark:text-white">Entra a tu espacio</h1>
         </div>

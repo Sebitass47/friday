@@ -100,7 +100,7 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
           <div className="drop-shadow-[0_0_12px_rgba(124,58,237,0.4)]">
             <PlanetIcon size={30} />
           </div>
-          <span className="text-xl font-black tracking-tight text-black dark:text-white leading-none" style={{ fontFamily: 'Nunito, sans-serif' }}>friday</span>
+          <span className="text-xl tracking-tight text-black dark:text-white leading-none" style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}>friday</span>
         </div>
         <button
           onClick={toggle}

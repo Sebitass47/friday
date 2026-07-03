@@ -95,18 +95,20 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Brand + collapse button */}
-      <div className="relative flex flex-col items-center pt-6 pb-4 px-5 border-b border-black/[0.06] dark:border-white/[0.06]">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <div className="drop-shadow-[0_0_12px_rgba(124,58,237,0.4)]">
+            <PlanetIcon size={30} />
+          </div>
+          <span className="text-xl font-black tracking-tight text-black dark:text-white leading-none" style={{ fontFamily: 'Nunito, sans-serif' }}>friday</span>
+        </div>
         <button
           onClick={toggle}
-          className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-lg text-black/30 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-black/30 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white transition-all"
           title="Colapsar menú"
         >
           <ChevronLeft size={16} strokeWidth={2} />
         </button>
-        <div className="drop-shadow-[0_0_16px_rgba(107,70,229,0.3)] mb-2">
-          <PlanetIcon size={48} />
-        </div>
-        <span className="text-[11px] font-bold tracking-[0.22em] text-black/70 dark:text-white/70">FRIDAY</span>
       </div>
 
       {/* Nav */}

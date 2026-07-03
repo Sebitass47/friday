@@ -19,6 +19,20 @@ def check_payment_due_dates():
         db.close()
 
 
+@celery.task(name="app.tasks.check_habit_reminders")
+def check_habit_reminders(hour: int):
+    """Send habit progress push notifications at the given hour (15, 18, 21)."""
+    from app.services.push_service import check_and_notify_habits
+    db = SessionLocal()
+    try:
+        check_and_notify_habits(db, hour)
+        logger.info("Habit reminders check completed for hour %s", hour)
+    except Exception as e:
+        logger.error("Error in check_habit_reminders: %s", e)
+    finally:
+        db.close()
+
+
 @celery.task(name="app.tasks.check_task_reminders")
 def check_task_reminders():
     """Send push notifications for due todos and upcoming events."""

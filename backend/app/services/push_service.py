@@ -38,6 +38,55 @@ def send_push(subscription, title: str, body: str) -> bool:
         return True
 
 
+def check_and_notify_habits(db: Session, hour: int) -> None:
+    """Send a habit progress push to every user who still has pending habits today."""
+    from app.models.habit import Habit, HabitLog
+    from app.models.push_subscription import PushSubscription
+    from datetime import datetime, timezone
+    import pytz
+
+    tz = pytz.timezone("America/Mexico_City")
+    today = datetime.now(tz).date()
+
+    # All users that have at least one push subscription
+    user_ids = [row[0] for row in db.query(PushSubscription.user_id).distinct().all()]
+
+    messages = {
+        15: ("¡Ey! 🌞", "Te faltan {n} hábito{s} hoy — todavía hay tiempo 💪"),
+        18: ("Oye... 🟡", "{n} hábito{s} pendiente{s} — no dejes para mañana 😬"),
+        21: ("Último aviso 🌙", "Son las 9pm y aún te faltan {n} hábito{s}. ¡Tú puedes! 🔥"),
+    }
+    title_tpl, body_tpl = messages.get(hour, ("FRIDAY 🎯", "Te faltan {n} hábito{s} para hoy"))
+
+    for user_id in user_ids:
+        habits = db.query(Habit).filter(Habit.user_id == user_id).all()
+        if not habits:
+            continue
+
+        completed_ids = {
+            row[0]
+            for row in db.query(HabitLog.habit_id)
+            .filter(HabitLog.habit_id.in_([h.id for h in habits]), HabitLog.date == today)
+            .all()
+        }
+        pending = [h for h in habits if h.id not in completed_ids]
+        n = len(pending)
+        if n == 0:
+            continue
+
+        s = "s" if n > 1 else ""
+        title = title_tpl
+        body = body_tpl.format(n=n, s=s)
+
+        subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
+        for sub in subs:
+            alive = send_push(sub, title, body)
+            if not alive:
+                db.delete(sub)
+
+    db.commit()
+
+
 def check_and_notify_upcoming_payments(db: Session) -> None:
     """Run daily: notify users whose credit cards are due in 3 days."""
     from app.models.account import Account

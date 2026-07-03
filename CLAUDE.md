@@ -159,6 +159,7 @@ Tracker semanal de hábitos. Tabla tipo grid donde cada fila es un hábito y cad
 - Cards de resumen debajo de la tabla: total hábitos, completados hoy, promedio semanal, racha máxima
 - Día actual destacado en morado en el header de columnas
 - Soporte dark/light mode, responsive con scroll horizontal en tabla en móvil
+- Push notifications motivacionales a las 15:00, 18:00 y 21:00 (hora México) indicando cuántos hábitos faltan para ese día
 
 **Archivos:**
 - `frontend/app/habitos/page.tsx` — página completa

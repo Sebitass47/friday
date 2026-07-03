@@ -15,6 +15,21 @@ celery.conf.beat_schedule = {
         "task": "app.tasks.check_task_reminders",
         "schedule": crontab(minute="*/5"),  # every 5 minutes
     },
+    "check-habit-reminders-15": {
+        "task": "app.tasks.check_habit_reminders",
+        "schedule": crontab(hour=15, minute=0),
+        "kwargs": {"hour": 15},
+    },
+    "check-habit-reminders-18": {
+        "task": "app.tasks.check_habit_reminders",
+        "schedule": crontab(hour=18, minute=0),
+        "kwargs": {"hour": 18},
+    },
+    "check-habit-reminders-21": {
+        "task": "app.tasks.check_habit_reminders",
+        "schedule": crontab(hour=21, minute=0),
+        "kwargs": {"hour": 21},
+    },
 }
 celery.conf.timezone = "America/Mexico_City"
 celery.conf.task_serializer = "json"

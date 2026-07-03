@@ -26,4 +26,6 @@ node_modules/
 .vscode/
 
 # Claude local settings
-.claude/settings.local.json
+.claude/
+CLAUDE.md
+images_ref/

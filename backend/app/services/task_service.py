@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
@@ -181,10 +181,14 @@ def get_pending_event_reminders(db: Session) -> List[Task]:
 
 
 def _event_due_dt(task: Task) -> Optional[datetime]:
+    import pytz
     if not task.due_date:
         return None
+    tz = pytz.timezone("America/Mexico_City")
     if task.due_time:
         naive = datetime.combine(task.due_date, task.due_time)
+        return tz.localize(naive).astimezone(timezone.utc)
     else:
-        naive = datetime.combine(task.due_date, datetime.min.time().replace(hour=9))
-    return naive.replace(tzinfo=timezone.utc)
+        # All-day events: anchor to 9:00 AM Mexico City time
+        local_dt = tz.localize(datetime.combine(task.due_date, time(9, 0)))
+        return local_dt.astimezone(timezone.utc)

@@ -20,3 +20,4 @@ jobs:
             sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
             sleep 15
             sudo docker compose exec -T backend alembic upgrade head
+            sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx

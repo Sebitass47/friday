@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -25,7 +26,7 @@ export default function LoginPage() {
       formData.append('password', password)
 
       const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/v1'
-      const response = await fetch(`${BASE}/auth/login`, {
+      const response = await fetch(`${BASE}/auth/login?remember_me=${rememberMe}`, {
         method: 'POST',
         body: formData,
       })
@@ -99,6 +100,18 @@ export default function LoginPage() {
                 </span>
               </div>
             </div>
+
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <div
+                onClick={() => setRememberMe(!rememberMe)}
+                className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${rememberMe ? 'bg-[#6B46E5] dark:bg-[#AF9BFF] border-[#6B46E5] dark:border-[#AF9BFF]' : 'border-black/20 dark:border-white/20 bg-transparent'}`}
+              >
+                {rememberMe && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+              </div>
+              <span onClick={() => setRememberMe(!rememberMe)} className="text-xs text-black/50 dark:text-white/50">
+                Recordar este dispositivo (30 días)
+              </span>
+            </label>
 
             <button
               type="submit" disabled={isLoading}

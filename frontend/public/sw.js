@@ -8,11 +8,12 @@ self.addEventListener('push', function (event) {
   const title = payload.title || 'FRIDAY'
   const options = {
     body: payload.body || '',
-    icon: payload.icon || '/icon-192.svg',
-    badge: '/icon-192.svg',
-    tag: 'friday-payment',
+    icon: payload.icon || '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: payload.tag || ('friday-' + Date.now()),
     requireInteraction: false,
     vibrate: [200, 100, 200],
+    data: { url: payload.url || '/' },
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
@@ -20,12 +21,16 @@ self.addEventListener('push', function (event) {
 
 self.addEventListener('notificationclick', function (event) {
   event.notification.close()
+  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/'
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
       for (const client of clientList) {
-        if (client.url.includes('/dashboard') && 'focus' in client) return client.focus()
+        if ('focus' in client) {
+          client.navigate(targetUrl)
+          return client.focus()
+        }
       }
-      if (clients.openWindow) return clients.openWindow('/dashboard')
+      if (clients.openWindow) return clients.openWindow(targetUrl)
     })
   )
 })

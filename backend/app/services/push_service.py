@@ -10,10 +10,9 @@ VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIMS = {"sub": f"mailto:{os.getenv('VAPID_CONTACT_EMAIL', 'admin@localhost')}"}
 
 
-def send_push(subscription, title: str, body: str) -> bool:
+def send_push(subscription, title: str, body: str, url: str = "/", tag: str = "friday") -> bool:
     """Send a push notification to a single subscription. Returns False if subscription is gone."""
     from pywebpush import webpush, WebPushException
-    from app.models.push_subscription import PushSubscription
 
     if not VAPID_PRIVATE_KEY:
         logger.warning("VAPID_PRIVATE_KEY not set — push skipped")
@@ -25,14 +24,13 @@ def send_push(subscription, title: str, body: str) -> bool:
                 "endpoint": subscription.endpoint,
                 "keys": {"p256dh": subscription.p256dh, "auth": subscription.auth},
             },
-            data=json.dumps({"title": title, "body": body, "icon": "/icon-192.svg"}),
+            data=json.dumps({"title": title, "body": body, "icon": "/icon-192.png", "url": url, "tag": tag}),
             vapid_private_key=VAPID_PRIVATE_KEY,
             vapid_claims=VAPID_CLAIMS,
         )
         return True
     except Exception as e:
         logger.error("Push send error: %s", e)
-        # 410 = subscription expired/unsubscribed by browser
         if hasattr(e, 'response') and e.response is not None and e.response.status_code == 410:
             return False
         return True
@@ -80,7 +78,7 @@ def check_and_notify_habits(db: Session, hour: int) -> None:
 
         subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
         for sub in subs:
-            alive = send_push(sub, title, body)
+            alive = send_push(sub, title, body, url="/habitos", tag=f"habitos-{hour}")
             if not alive:
                 db.delete(sub)
 
@@ -104,6 +102,8 @@ def check_and_notify_upcoming_payments(db: Session) -> None:
                 sub,
                 title=f"💳 Pago en 3 días · {card.name}",
                 body=f"Tu tarjeta vence el día {card.payment_day}. No se te olvide pagar 💸",
+                url="/dashboard",
+                tag=f"pago-{card.id}",
             )
             if not alive:
                 db.delete(sub)

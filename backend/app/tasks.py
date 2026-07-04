@@ -59,7 +59,7 @@ def check_task_reminders():
                 and now < reminder_dt
             ):
                 for sub in subs:
-                    alive = send_push(sub, f"🔔 Mañana: {task.title}", "Tienes una tarea para mañana")
+                    alive = send_push(sub, f"🔔 Mañana: {task.title}", "Tienes una tarea para mañana", url="/to_do", tag=f"todo-pre-{task.id}")
                     if not alive:
                         db.delete(sub)
                 task.reminded_day_before = True
@@ -67,7 +67,7 @@ def check_task_reminders():
             # Main notification
             if not task.reminded_main and reminder_dt and now >= reminder_dt:
                 for sub in subs:
-                    alive = send_push(sub, f"✅ {task.title}", task.notes or "Es hora de esta tarea")
+                    alive = send_push(sub, f"✅ {task.title}", task.notes or "Es hora de esta tarea", url="/to_do", tag=f"todo-{task.id}")
                     if not alive:
                         db.delete(sub)
                 task.reminded_main = True
@@ -81,21 +81,21 @@ def check_task_reminders():
 
             if not task.reminded_3d and now >= due_dt - timedelta(days=3):
                 for sub in subs:
-                    alive = send_push(sub, f"📅 En 3 días: {task.title}", f"El {task.due_date.strftime('%d/%m')} {'a las ' + task.due_time.strftime('%H:%M') if task.due_time else ''}")
+                    alive = send_push(sub, f"📅 En 3 días: {task.title}", f"El {task.due_date.strftime('%d/%m')} {'a las ' + task.due_time.strftime('%H:%M') if task.due_time else ''}", url="/events", tag=f"event-3d-{task.id}")
                     if not alive:
                         db.delete(sub)
                 task.reminded_3d = True
 
             if not task.reminded_1d and now >= due_dt - timedelta(days=1):
                 for sub in subs:
-                    alive = send_push(sub, f"📅 Mañana: {task.title}", f"{'A las ' + task.due_time.strftime('%H:%M') if task.due_time else 'Todo el día'}")
+                    alive = send_push(sub, f"📅 Mañana: {task.title}", f"{'A las ' + task.due_time.strftime('%H:%M') if task.due_time else 'Todo el día'}", url="/events", tag=f"event-1d-{task.id}")
                     if not alive:
                         db.delete(sub)
                 task.reminded_1d = True
 
             if not task.reminded_1h and now >= due_dt - timedelta(hours=1):
                 for sub in subs:
-                    alive = send_push(sub, f"⏰ En 1 hora: {task.title}", task.location or "")
+                    alive = send_push(sub, f"⏰ En 1 hora: {task.title}", task.location or "", url="/events", tag=f"event-1h-{task.id}")
                     if not alive:
                         db.delete(sub)
                 task.reminded_1h = True

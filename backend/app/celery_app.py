@@ -4,7 +4,7 @@ from celery.schedules import crontab
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
-celery = Celery("friday", broker=REDIS_URL, backend=REDIS_URL)
+celery = Celery("friday", broker=REDIS_URL, backend=REDIS_URL, include=["app.tasks"])
 
 celery.conf.beat_schedule = {
     "check-payment-due-dates": {

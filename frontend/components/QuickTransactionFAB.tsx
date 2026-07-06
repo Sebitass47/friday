@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CategorySelector } from '@/components/ui/category-selector'
 import { createExpense, createIncome, getAccounts } from '@/lib/api'
 import type { Account } from '@/lib/types'
 
@@ -56,7 +57,7 @@ export default function QuickTransactionFAB() {
 
   const handleSubmitExpense = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!expenseName || !expenseAmount) return
+    if (!expenseName || !expenseAmount || !category) return
 
     setLoading(true)
     try {
@@ -261,14 +262,8 @@ export default function QuickTransactionFAB() {
                   )}
 
                   <div className="grid gap-1.5">
-                    <Label htmlFor="category" className="text-xs text-gray-400">Categoría (opcional)</Label>
-                    <Input
-                      id="category"
-                      value={category}
-                      onChange={e => setCategory(e.target.value)}
-                      placeholder="Ej: Alimentación"
-                      className="h-9 bg-[#0A0A0A] text-sm"
-                    />
+                    <Label className="text-xs text-gray-400">Categoría</Label>
+                    <CategorySelector value={category} onChange={setCategory} required />
                   </div>
 
                   <div className="mt-2 flex gap-2">
@@ -282,7 +277,7 @@ export default function QuickTransactionFAB() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={loading || !expenseName || !expenseAmount || ((paymentMethod !== 'cash') && !accountId)}
+                      disabled={loading || !expenseName || !expenseAmount || !category || ((paymentMethod !== 'cash') && !accountId)}
                       className="flex-1 h-9 bg-white text-black hover:bg-white/90 text-xs font-medium"
                     >
                       {loading ? 'Guardando...' : 'Guardar'}

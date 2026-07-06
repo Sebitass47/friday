@@ -24,6 +24,7 @@ from app.models.recurring_expense import RecurringExpense
 from app.models.installment_purchase import InstallmentPurchase
 from app.models.savings_goal import SavingsGoal
 from app.models.monthly_income import MonthlyIncome
+from app.models.category import UserCategory
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

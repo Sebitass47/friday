@@ -13,6 +13,7 @@ from .endpoints.push import router as push_router
 from .endpoints.tasks import router as tasks_router
 from .endpoints.notes import router as notes_router
 from .endpoints.habits import router as habits_router
+from .endpoints.categories import router as categories_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -29,3 +30,4 @@ router.include_router(push_router)
 router.include_router(tasks_router)
 router.include_router(notes_router)
 router.include_router(habits_router)
+router.include_router(categories_router)

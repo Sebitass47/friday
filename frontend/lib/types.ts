@@ -174,6 +174,16 @@ export interface Task {
   updated_at: string
 }
 
+export interface CustomCategory {
+  id: string
+  name: string
+}
+
+export interface CategoriesResponse {
+  default: string[]
+  custom: CustomCategory[]
+}
+
 export interface Habit {
   id: string
   name: string

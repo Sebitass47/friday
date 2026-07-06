@@ -1,7 +1,8 @@
 import type {
   User, Account, RecurringExpense, InstallmentPurchase,
   SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse,
-  Expense, CreditPayment, Income, Task, Subtask, Note
+  Expense, CreditPayment, Income, Task, Subtask, Note,
+  CategoriesResponse, CustomCategory,
 } from './types'
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/v1'
@@ -343,4 +344,18 @@ export async function deleteHabit(id: string): Promise<void> {
 
 export async function toggleHabitLog(id: string, date: string): Promise<void> {
   return req(`/habits/${id}/toggle`, { method: 'POST', body: JSON.stringify({ date }) })
+}
+
+// ── Categories ────────────────────────────────────────────────────────────────
+
+export async function getCategories(): Promise<CategoriesResponse> {
+  return req('/categories/')
+}
+
+export async function createCategory(name: string): Promise<CustomCategory> {
+  return req('/categories/', { method: 'POST', body: JSON.stringify({ name }) })
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  return req(`/categories/${id}`, { method: 'DELETE' })
 }

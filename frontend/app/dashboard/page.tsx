@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import ProjectionChart from '@/components/charts/ProjectionChart'
 import SpendingTimelineChart from '@/components/charts/SpendingTimelineChart'
+import CategorySpendingChart from '@/components/charts/CategorySpendingChart'
+import { CategorySelector } from '@/components/ui/category-selector'
 import {
   getProjection, getInstallmentPurchases, getSavingsGoals, getMe,
   getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense,
@@ -245,6 +247,7 @@ export default function DashboardPage() {
 
   async function handleRegister() {
     if (!regAmount || !regDesc) { setRegError('Completa monto y descripción'); return }
+    if (regMode === 'expense' && !regCategory) { setRegError('Selecciona una categoría'); return }
     setRegSaving(true); setRegError('')
     try {
       if (regMode === 'expense') {
@@ -568,6 +571,27 @@ export default function DashboardPage() {
             cycleStartDay={monthlyIncomeData?.cycle_start_day ?? 1}
           />
         </div>
+
+        {/* Category spending chart */}
+        {projection && (() => {
+          const thisMonth = projection.months[0]
+          const cycleExpenses = expenses.filter(e => e.date >= thisMonth.cycle_start && e.date <= thisMonth.cycle_end)
+          const withCategory = cycleExpenses.filter(e => e.category)
+          if (withCategory.length === 0) return null
+          return (
+            <div className={`${cardCls} p-5`}>
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-black dark:text-white">Gastos por categoría</h2>
+                <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Ciclo actual · solo categorías con gasto</p>
+              </div>
+              <CategorySpendingChart
+                expenses={cycleExpenses}
+                cycleStart={thisMonth.cycle_start}
+                cycleEnd={thisMonth.cycle_end}
+              />
+            </div>
+          )
+        })()}
 
         {/* Accounts section */}
         {accounts.length > 0 && (
@@ -1056,8 +1080,12 @@ export default function DashboardPage() {
             </>
           )}
 
-          <FormField label="Categoría (opcional)">
-            <input placeholder="Alimentación, Transporte…" value={regCategory} onChange={e => setRegCategory(e.target.value)} className={inputCls()} />
+          <FormField label={regMode === 'expense' ? 'Categoría' : 'Categoría (opcional)'}>
+            <CategorySelector
+              value={regCategory}
+              onChange={setRegCategory}
+              required={regMode === 'expense'}
+            />
           </FormField>
 
           {regMode === 'income' && (

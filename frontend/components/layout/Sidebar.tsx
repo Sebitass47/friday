@@ -36,8 +36,14 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
   const [pushLoading, setPushLoading] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testLoading, setTestLoading] = useState(false)
+  const [isIosNonPwa, setIsIosNonPwa] = useState(false)
 
   useEffect(() => {
+    // Detect iOS Safari outside PWA — push only works when installed to home screen
+    const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true
+    setIsIosNonPwa(ios && !standalone)
+
     if (!pushSupported()) return
     getRegistration().then(() => getCurrentSubscription()).then(sub => {
       setPushSubscribed(!!sub)
@@ -162,7 +168,17 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
       {/* Bottom */}
       <div className="border-t border-black/[0.06] dark:border-white/[0.06] p-3 space-y-1">
         {/* Push notifications */}
-        {pushSupported() && (
+        {isIosNonPwa ? (
+          <div className="px-3 py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06]">
+            <p className="text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <Bell size={13} />
+              Notificaciones en iOS
+            </p>
+            <p className="text-[11px] text-black/50 dark:text-white/40 mt-1 leading-relaxed">
+              Agrega FRIDAY a tu pantalla de inicio: <span className="font-medium">Compartir → Agregar a inicio</span>. Luego actívalas desde la app instalada.
+            </p>
+          </div>
+        ) : pushSupported() && (
           <div className="space-y-1">
             <div className="flex items-center gap-1">
               <button

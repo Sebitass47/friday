@@ -11,6 +11,8 @@ self.addEventListener('push', function (event) {
     icon: payload.icon || '/icon-192.png',
     badge: '/icon-192.png',
     tag: payload.tag || ('friday-' + Date.now()),
+    renotify: true,   // always alert even if same tag replaces an existing notification
+    silent: false,
     requireInteraction: false,
     vibrate: [200, 100, 200],
     data: { url: payload.url || '/' },

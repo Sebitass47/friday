@@ -70,7 +70,15 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
       } else {
         const vapidKey = await getPushVapidKey()
         const subData = await subscribePush(vapidKey)
-        if (subData) { await registerPushSubscription(subData); setPushSubscribed(true) }
+        if (subData) {
+          await registerPushSubscription(subData)
+          setPushSubscribed(true)
+          // Send a welcome test so the user sees what notifications look like
+          try {
+            const res = await testPushNotification()
+            if (res.delivered === 0) setTestResult('❌ Activadas pero la prueba no llegó — revisa permisos')
+          } catch { /* silent, non-critical */ }
+        }
       }
     } catch (e) { console.error('Push toggle error', e) }
     finally { setPushLoading(false) }
@@ -180,31 +188,19 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
           </div>
         ) : pushSupported() && (
           <div className="space-y-1">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={togglePush}
-                disabled={pushLoading}
-                className={cn(
-                  'flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border disabled:opacity-50',
-                  pushSubscribed
-                    ? 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF] border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
-                    : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border-transparent'
-                )}
-              >
-                {pushSubscribed ? <Bell size={17} strokeWidth={2} /> : <BellOff size={17} strokeWidth={2} />}
-                {pushSubscribed ? 'Notificaciones activas' : 'Activar notificaciones'}
-              </button>
-              {pushSubscribed && (
-                <button
-                  onClick={sendTestPush}
-                  disabled={testLoading}
-                  title="Enviar notificación de prueba"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-[10px] font-bold text-[#6B46E5] dark:text-[#AF9BFF] bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 border border-[#6B46E5]/20 dark:border-[#AF9BFF]/20 hover:opacity-80 transition-opacity disabled:opacity-40 shrink-0"
-                >
-                  {testLoading ? '…' : '▶'}
-                </button>
+            <button
+              onClick={togglePush}
+              disabled={pushLoading}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border disabled:opacity-50',
+                pushSubscribed
+                  ? 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF] border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
+                  : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border-transparent'
               )}
-            </div>
+            >
+              {pushSubscribed ? <Bell size={17} strokeWidth={2} /> : <BellOff size={17} strokeWidth={2} />}
+              {pushSubscribed ? 'Notificaciones activas' : 'Activar notificaciones'}
+            </button>
             {testResult && (
               <p className="text-[11px] px-3 py-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] text-black/60 dark:text-white/50">
                 {testResult}

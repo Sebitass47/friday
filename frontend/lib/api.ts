@@ -223,6 +223,12 @@ export async function registerPushSubscription(data: { endpoint: string; p256dh:
 export async function removePushSubscription(data: { endpoint: string; p256dh: string; auth: string }): Promise<void> {
   return req('/push/unsubscribe', { method: 'DELETE', body: JSON.stringify(data) })
 }
+export async function testPushNotification(): Promise<{ total: number; delivered: number; dead_removed: number; detail: { endpoint_tail: string; delivered: boolean }[] }> {
+  return req('/push/test', { method: 'POST' })
+}
+export async function debugPushSubscriptions(): Promise<{ subscription_count: number; vapid_private_configured: boolean; vapid_public_configured: boolean; vapid_public_key_tail: string | null; vapid_contact: string; subscriptions: { id: string; endpoint_tail: string; created_at: string }[] }> {
+  return req('/push/debug')
+}
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────
 

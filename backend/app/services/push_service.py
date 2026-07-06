@@ -11,13 +11,14 @@ VAPID_CLAIMS = {"sub": f"mailto:{os.getenv('VAPID_CONTACT_EMAIL', 'admin@localho
 
 
 def send_push(subscription, title: str, body: str, url: str = "/", tag: str = "friday") -> bool:
-    """Send a push notification to a single subscription. Returns False if subscription is gone."""
+    """Send a push notification to a single subscription. Returns False if subscription should be deleted."""
     from pywebpush import webpush, WebPushException
 
     if not VAPID_PRIVATE_KEY:
         logger.warning("VAPID_PRIVATE_KEY not set — push skipped")
         return True
 
+    endpoint_short = subscription.endpoint[-40:] if subscription.endpoint else "?"
     try:
         webpush(
             subscription_info={
@@ -28,11 +29,25 @@ def send_push(subscription, title: str, body: str, url: str = "/", tag: str = "f
             vapid_private_key=VAPID_PRIVATE_KEY,
             vapid_claims=VAPID_CLAIMS,
         )
+        logger.info("Push sent OK → ...%s | %s", endpoint_short, title)
+        return True
+    except WebPushException as e:
+        status = None
+        if hasattr(e, 'response') and e.response is not None:
+            status = e.response.status_code
+            try:
+                body_text = e.response.text[:200]
+            except Exception:
+                body_text = ""
+            logger.error("Push WebPushException HTTP %s → ...%s | %s", status, endpoint_short, body_text)
+        else:
+            logger.error("Push WebPushException (no response) → ...%s | %s", endpoint_short, e)
+        # 404 and 410 both mean the subscription is gone
+        if status in (404, 410):
+            return False
         return True
     except Exception as e:
-        logger.error("Push send error: %s", e)
-        if hasattr(e, 'response') and e.response is not None and e.response.status_code == 410:
-            return False
+        logger.error("Push unexpected error → ...%s | %s", endpoint_short, e, exc_info=True)
         return True
 
 

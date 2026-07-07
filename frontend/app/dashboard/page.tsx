@@ -968,8 +968,15 @@ export default function DashboardPage() {
               <p className="text-xs text-black/30 dark:text-white/30 py-4 text-center">Sin gastos recurrentes</p>
             ) : (
               <>
-                <div className="space-y-2">
-                  {recurring.slice(0, 5).map(e => (
+                <div
+                  className="space-y-2 overflow-y-auto pr-1"
+                  style={{
+                    maxHeight: '11rem',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(255,107,107,0.25) transparent',
+                  }}
+                >
+                  {recurring.map(e => (
                     <div key={e.id} className="group flex items-center justify-between">
                       <span className="text-xs text-black dark:text-white truncate max-w-[55%]">{e.name}</span>
                       <div className="flex items-center gap-1.5">
@@ -979,9 +986,6 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
-                  {recurring.length > 5 && (
-                    <p className="text-xs text-black/30 dark:text-white/30 text-center pt-1">+{recurring.length - 5} más</p>
-                  )}
                 </div>
                 <div className="mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
                   <span className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wide">Mensual</span>

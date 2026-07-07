@@ -208,8 +208,8 @@ export default function DashboardPage() {
   const [regSaving, setRegSaving] = useState(false)
   const [regError, setRegError] = useState('')
 
-  // Category expenses modal
-  const [categoryModal, setCategoryModal] = useState<{ name: string; expenses: Expense[] } | null>(null)
+  // Recent expenses modal
+  const [showAllExpenses, setShowAllExpenses] = useState(false)
   // Edit expense modal
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [editExpSaving, setEditExpSaving] = useState(false)
@@ -301,16 +301,7 @@ export default function DashboardPage() {
         account_id: editExpAccountId || undefined,
         category: editExpCategory || null,
       })
-      const updated = await getExpenses()
-      setExpenses(updated)
-      if (categoryModal) {
-        const newItems = updated.filter(e =>
-          (e.category?.trim() || 'Sin categoría') === categoryModal.name &&
-          e.date >= (projection?.months[0].cycle_start ?? '') &&
-          e.date <= (projection?.months[0].cycle_end ?? '')
-        )
-        setCategoryModal({ ...categoryModal, expenses: newItems })
-      }
+      setExpenses(await getExpenses())
       setEditingExpense(null)
     } catch { setEditExpError('Error al guardar') }
     finally { setEditExpSaving(false) }
@@ -319,17 +310,7 @@ export default function DashboardPage() {
   async function handleDeleteExpense(id: string) {
     if (!confirm('¿Eliminar este gasto?')) return
     await deleteExpense(id)
-    const updated = await getExpenses()
-    setExpenses(updated)
-    if (categoryModal) {
-      const newItems = updated.filter(e =>
-        (e.category?.trim() || 'Sin categoría') === categoryModal.name &&
-        e.date >= (projection?.months[0].cycle_start ?? '') &&
-        e.date <= (projection?.months[0].cycle_end ?? '')
-      )
-      if (newItems.length === 0) setCategoryModal(null)
-      else setCategoryModal({ ...categoryModal, expenses: newItems })
-    }
+    setExpenses(await getExpenses())
     setEditingExpense(null)
   }
 
@@ -643,10 +624,55 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Recent expenses card */}
+        {expenses.length > 0 && (() => {
+          const sorted = [...expenses].sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
+          const recent = sorted.slice(0, 10)
+          const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : 'Crédito'
+          return (
+            <div className={`${cardCls} p-5`}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-black dark:text-white">Gastos recientes</h2>
+                  <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Últimos {recent.length} registrados</p>
+                </div>
+                <button
+                  onClick={() => setShowAllExpenses(true)}
+                  className={`text-xs font-medium px-2.5 py-1.5 rounded-lg ${ACCENT_BG_SOFT} ${ACCENT} transition-opacity hover:opacity-80`}
+                >
+                  Ver todos
+                </button>
+              </div>
+              <div className="space-y-1">
+                {recent.map(exp => (
+                  <button
+                    key={exp.id}
+                    onClick={() => openEditExpense(exp)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-black dark:text-white truncate">{exp.name}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">{exp.date} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
+                    <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Category spending chart */}
         {projection && (() => {
           const thisMonth = projection.months[0]
-          const cycleExpenses = expenses.filter(e => e.date >= thisMonth.cycle_start && e.date <= thisMonth.cycle_end)
+          const cycleExpenses = expenses.filter(e => {
+            if (e.payment_method === 'credit' && e.credit_statement_month && e.credit_statement_year) {
+              const stmtDate = `${e.credit_statement_year}-${String(e.credit_statement_month).padStart(2, '0')}-01`
+              return stmtDate >= thisMonth.cycle_start && stmtDate <= thisMonth.cycle_end
+            }
+            return e.date >= thisMonth.cycle_start && e.date <= thisMonth.cycle_end
+          })
           const withCategory = cycleExpenses.filter(e => e.category)
           if (withCategory.length === 0) return null
           return (
@@ -655,12 +681,10 @@ export default function DashboardPage() {
                 <h2 className="text-sm font-semibold text-black dark:text-white">Gastos por categoría</h2>
                 <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Ciclo actual · solo categorías con gasto</p>
               </div>
-              <p className="text-[11px] text-black/30 dark:text-white/30 mb-3">Toca una barra para ver y editar los gastos</p>
               <CategorySpendingChart
                 expenses={cycleExpenses}
                 cycleStart={thisMonth.cycle_start}
                 cycleEnd={thisMonth.cycle_end}
-                onCategoryClick={(name, exps) => setCategoryModal({ name, expenses: exps })}
               />
             </div>
           )
@@ -1455,27 +1479,40 @@ export default function DashboardPage() {
         </Modal>
       )}
 
-      {/* Category expenses list modal */}
-      {categoryModal && !editingExpense && (
-        <Modal title={categoryModal.name} subtitle={`${categoryModal.expenses.length} gasto${categoryModal.expenses.length !== 1 ? 's' : ''}`} onClose={() => setCategoryModal(null)}>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-            {categoryModal.expenses
-              .slice()
-              .sort((a, b) => b.date.localeCompare(a.date))
-              .map(exp => (
-                <button
-                  key={exp.id}
-                  onClick={() => openEditExpense(exp)}
-                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] hover:border-[#6B46E5]/40 dark:hover:border-[#AF9BFF]/40 hover:bg-[#6B46E5]/5 transition-all text-left"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-black dark:text-white truncate">{exp.name}</p>
-                    <p className="text-[11px] text-black/40 dark:text-white/40 mt-0.5">{exp.date} · {exp.payment_method === 'cash' ? 'Efectivo' : exp.payment_method === 'debit' ? 'Débito' : 'Crédito'}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
-                </button>
-              ))}
-          </div>
+      {/* All expenses modal (last 30 days) */}
+      {showAllExpenses && !editingExpense && (
+        <Modal
+          title="Todos los gastos"
+          subtitle="Últimos 30 días · toca uno para editar"
+          onClose={() => setShowAllExpenses(false)}
+        >
+          {(() => {
+            const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30)
+            const cutoffStr = cutoff.toISOString().split('T')[0]
+            const filtered = [...expenses]
+              .filter(e => e.date >= cutoffStr)
+              .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
+            const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : 'Crédito'
+            if (filtered.length === 0) return <p className="text-sm text-black/40 dark:text-white/40 text-center py-6">Sin gastos en los últimos 30 días</p>
+            return (
+              <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+                {filtered.map(exp => (
+                  <button
+                    key={exp.id}
+                    onClick={() => openEditExpense(exp)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-black dark:text-white truncate">{exp.name}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">{exp.date} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
+                    <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
+                  </button>
+                ))}
+              </div>
+            )
+          })()}
         </Modal>
       )}
 

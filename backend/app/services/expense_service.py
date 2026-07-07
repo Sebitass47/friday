@@ -126,6 +126,9 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
         account.balance = (account.balance or 0) - diff
 
     update_data = expense_update.dict(exclude_unset=True)
+    # 'expense_date' is the Pydantic field name for the 'date' column
+    if 'expense_date' in update_data:
+        update_data['date'] = update_data.pop('expense_date')
     for key, value in update_data.items():
         setattr(db_expense, key, value)
 

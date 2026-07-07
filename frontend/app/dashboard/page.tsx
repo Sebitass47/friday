@@ -199,6 +199,7 @@ export default function DashboardPage() {
   const [regMode, setRegMode] = useState<'expense' | 'income'>('expense')
   const [regAmount, setRegAmount] = useState('')
   const [regDesc, setRegDesc] = useState('')
+  const [regDate, setRegDate] = useState(today())
   const [regMethod, setRegMethod] = useState<'cash' | 'debit' | 'credit'>('cash')
   const [regAccountId, setRegAccountId] = useState('')
   const [regCategory, setRegCategory] = useState('')
@@ -238,7 +239,7 @@ export default function DashboardPage() {
   }, [loading])
 
   function openRegister() {
-    setRegAmount(''); setRegDesc(''); setRegMethod('cash'); setRegAccountId(''); setRegCategory('')
+    setRegAmount(''); setRegDesc(''); setRegDate(today()); setRegMethod('cash'); setRegAccountId(''); setRegCategory('')
     setRegIsMonthly(false)
     setRegCycleStartDay(monthlyIncomeData?.cycle_start_day ?? 1)
     setRegError('')
@@ -251,9 +252,9 @@ export default function DashboardPage() {
     setRegSaving(true); setRegError('')
     try {
       if (regMode === 'expense') {
-        await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: today(), payment_method: regMethod, category: regCategory || undefined })
+        await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: regDate, payment_method: regMethod, category: regCategory || undefined })
       } else {
-        await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: today(), category: regCategory || undefined })
+        await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: regDate, category: regCategory || undefined })
         if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount), regCycleStartDay)
       }
       setActiveModal(null)
@@ -1042,6 +1043,10 @@ export default function DashboardPage() {
 
           <FormField label="Descripción">
             <input placeholder="Ej. Súper de la semana" value={regDesc} onChange={e => setRegDesc(e.target.value)} className={inputCls()} />
+          </FormField>
+
+          <FormField label="Fecha">
+            <input type="date" value={regDate} onChange={e => setRegDate(e.target.value)} className={inputCls()} />
           </FormField>
 
           {regMode === 'expense' && (

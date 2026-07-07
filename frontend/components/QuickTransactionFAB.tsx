@@ -18,16 +18,20 @@ export default function QuickTransactionFAB() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(false)
 
+  const todayStr = () => new Date().toISOString().split('T')[0]
+
   // Expense form
   const [accountId, setAccountId] = useState('')
   const [expenseName, setExpenseName] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
+  const [expenseDate, setExpenseDate] = useState(todayStr())
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debit' | 'credit'>('cash')
   const [category, setCategory] = useState('')
 
   // Income form
   const [incomeDescription, setIncomeDescription] = useState('')
   const [incomeAmount, setIncomeAmount] = useState('')
+  const [incomeDate, setIncomeDate] = useState(todayStr())
   const [incomeCategory, setIncomeCategory] = useState('')
 
   useEffect(() => {
@@ -49,9 +53,11 @@ export default function QuickTransactionFAB() {
     setAccountId('')
     setExpenseName('')
     setExpenseAmount('')
+    setExpenseDate(todayStr())
     setCategory('')
     setIncomeDescription('')
     setIncomeAmount('')
+    setIncomeDate(todayStr())
     setIncomeCategory('')
   }
 
@@ -65,7 +71,7 @@ export default function QuickTransactionFAB() {
         account_id: accountId,
         name: expenseName,
         amount: parseFloat(expenseAmount),
-        date: new Date().toISOString().split('T')[0],
+        date: expenseDate,
         payment_method: paymentMethod,
         category: category || undefined,
       })
@@ -88,7 +94,7 @@ export default function QuickTransactionFAB() {
       await createIncome({
         description: incomeDescription,
         amount: parseFloat(incomeAmount),
-        date: new Date().toISOString().split('T')[0],
+        date: incomeDate,
         category: incomeCategory || undefined,
       })
       handleClose()
@@ -217,6 +223,18 @@ export default function QuickTransactionFAB() {
                   </div>
 
                   <div className="grid gap-1.5">
+                    <Label htmlFor="exp-date" className="text-xs text-gray-400">Fecha</Label>
+                    <Input
+                      id="exp-date"
+                      type="date"
+                      value={expenseDate}
+                      onChange={e => setExpenseDate(e.target.value)}
+                      className="h-9 bg-[#0A0A0A] text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid gap-1.5">
                     <Label htmlFor="payment-method" className="text-xs text-gray-400">Método de pago</Label>
                     <Select value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
                       <SelectTrigger id="payment-method" className="h-9 bg-[#0A0A0A] text-sm">
@@ -310,6 +328,18 @@ export default function QuickTransactionFAB() {
                       value={incomeAmount}
                       onChange={e => setIncomeAmount(e.target.value)}
                       placeholder="0.00"
+                      className="h-9 bg-[#0A0A0A] text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="inc-date" className="text-xs text-gray-400">Fecha</Label>
+                    <Input
+                      id="inc-date"
+                      type="date"
+                      value={incomeDate}
+                      onChange={e => setIncomeDate(e.target.value)}
                       className="h-9 bg-[#0A0A0A] text-sm"
                       required
                     />

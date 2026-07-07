@@ -11,9 +11,9 @@ import {
   getRecurringExpenses, createRecurringExpense, updateRecurringExpense, deleteRecurringExpense,
   createInstallmentPurchase, updateInstallmentPurchase, deleteInstallmentPurchase, liquidateMsi,
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
-  createExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
+  createExpense, updateExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
-  getExpenses,
+  getExpenses, deleteExpense,
   simulateProjection,
 } from '@/lib/api'
 import type {
@@ -208,6 +208,19 @@ export default function DashboardPage() {
   const [regSaving, setRegSaving] = useState(false)
   const [regError, setRegError] = useState('')
 
+  // Category expenses modal
+  const [categoryModal, setCategoryModal] = useState<{ name: string; expenses: Expense[] } | null>(null)
+  // Edit expense modal
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [editExpSaving, setEditExpSaving] = useState(false)
+  const [editExpError, setEditExpError] = useState('')
+  const [editExpDesc, setEditExpDesc] = useState('')
+  const [editExpAmount, setEditExpAmount] = useState('')
+  const [editExpDate, setEditExpDate] = useState('')
+  const [editExpMethod, setEditExpMethod] = useState<'cash' | 'debit' | 'credit'>('cash')
+  const [editExpAccountId, setEditExpAccountId] = useState('')
+  const [editExpCategory, setEditExpCategory] = useState('')
+
   // Edit monthly income modal
   const [editIncomeAmount, setEditIncomeAmount] = useState('')
   const [editCycleStartDay, setEditCycleStartDay] = useState(1)
@@ -263,6 +276,63 @@ export default function DashboardPage() {
     } catch { setRegError('Error al guardar') }
     finally { setRegSaving(false) }
   }
+
+  function openEditExpense(exp: Expense) {
+    setEditingExpense(exp)
+    setEditExpDesc(exp.name)
+    setEditExpAmount(String(exp.amount))
+    setEditExpDate(exp.date)
+    setEditExpMethod(exp.payment_method)
+    setEditExpAccountId(exp.account_id ?? '')
+    setEditExpCategory(exp.category ?? '')
+    setEditExpError('')
+  }
+
+  async function handleUpdateExpense() {
+    if (!editingExpense || !editExpDesc || !editExpAmount) { setEditExpError('Completa descripción y monto'); return }
+    if (!editExpCategory) { setEditExpError('Selecciona una categoría'); return }
+    setEditExpSaving(true); setEditExpError('')
+    try {
+      await updateExpense(editingExpense.id, {
+        name: editExpDesc,
+        amount: parseFloat(editExpAmount),
+        date: editExpDate,
+        payment_method: editExpMethod,
+        account_id: editExpAccountId || undefined,
+        category: editExpCategory || null,
+      })
+      const updated = await getExpenses()
+      setExpenses(updated)
+      if (categoryModal) {
+        const newItems = updated.filter(e =>
+          (e.category?.trim() || 'Sin categoría') === categoryModal.name &&
+          e.date >= (projection?.months[0].cycle_start ?? '') &&
+          e.date <= (projection?.months[0].cycle_end ?? '')
+        )
+        setCategoryModal({ ...categoryModal, expenses: newItems })
+      }
+      setEditingExpense(null)
+    } catch { setEditExpError('Error al guardar') }
+    finally { setEditExpSaving(false) }
+  }
+
+  async function handleDeleteExpense(id: string) {
+    if (!confirm('¿Eliminar este gasto?')) return
+    await deleteExpense(id)
+    const updated = await getExpenses()
+    setExpenses(updated)
+    if (categoryModal) {
+      const newItems = updated.filter(e =>
+        (e.category?.trim() || 'Sin categoría') === categoryModal.name &&
+        e.date >= (projection?.months[0].cycle_start ?? '') &&
+        e.date <= (projection?.months[0].cycle_end ?? '')
+      )
+      if (newItems.length === 0) setCategoryModal(null)
+      else setCategoryModal({ ...categoryModal, expenses: newItems })
+    }
+    setEditingExpense(null)
+  }
+
 
   // Edit monthly income
   function openEditIncome() {
@@ -585,10 +655,12 @@ export default function DashboardPage() {
                 <h2 className="text-sm font-semibold text-black dark:text-white">Gastos por categoría</h2>
                 <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Ciclo actual · solo categorías con gasto</p>
               </div>
+              <p className="text-[11px] text-black/30 dark:text-white/30 mb-3">Toca una barra para ver y editar los gastos</p>
               <CategorySpendingChart
                 expenses={cycleExpenses}
                 cycleStart={thisMonth.cycle_start}
                 cycleEnd={thisMonth.cycle_end}
+                onCategoryClick={(name, exps) => setCategoryModal({ name, expenses: exps })}
               />
             </div>
           )
@@ -1380,6 +1452,112 @@ export default function DashboardPage() {
             saveLabel="Confirmar pago"
             error={payCardError}
           />
+        </Modal>
+      )}
+
+      {/* Category expenses list modal */}
+      {categoryModal && !editingExpense && (
+        <Modal title={categoryModal.name} subtitle={`${categoryModal.expenses.length} gasto${categoryModal.expenses.length !== 1 ? 's' : ''}`} onClose={() => setCategoryModal(null)}>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {categoryModal.expenses
+              .slice()
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .map(exp => (
+                <button
+                  key={exp.id}
+                  onClick={() => openEditExpense(exp)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] hover:border-[#6B46E5]/40 dark:hover:border-[#AF9BFF]/40 hover:bg-[#6B46E5]/5 transition-all text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-black dark:text-white truncate">{exp.name}</p>
+                    <p className="text-[11px] text-black/40 dark:text-white/40 mt-0.5">{exp.date} · {exp.payment_method === 'cash' ? 'Efectivo' : exp.payment_method === 'debit' ? 'Débito' : 'Crédito'}</p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
+                </button>
+              ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit expense modal */}
+      {editingExpense && (
+        <Modal
+          title="Editar gasto"
+          subtitle={editingExpense.name}
+          onClose={() => setEditingExpense(null)}
+        >
+          <FormField label="Descripción">
+            <input value={editExpDesc} onChange={e => setEditExpDesc(e.target.value)} className={inputCls()} />
+          </FormField>
+
+          <FormField label="Monto">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-black/40 dark:text-white/40">$</span>
+              <input type="number" step="0.01" value={editExpAmount} onChange={e => setEditExpAmount(e.target.value)} className={`${inputCls()} pl-7 text-xl font-bold`} />
+            </div>
+          </FormField>
+
+          <FormField label="Fecha">
+            <input type="date" value={editExpDate} onChange={e => setEditExpDate(e.target.value)} className={inputCls()} />
+          </FormField>
+
+          <FormField label="Método de pago">
+            <div className="flex gap-2">
+              {(['credit', 'cash', 'debit'] as const).map(m => (
+                <button key={m} type="button" onClick={() => setEditExpMethod(m)}
+                  className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${editExpMethod === m ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}>
+                  {m === 'credit' ? 'Tarjeta' : m === 'cash' ? 'Efectivo' : 'Transf.'}
+                </button>
+              ))}
+            </div>
+          </FormField>
+
+          {editExpMethod !== 'cash' && accounts.length > 0 && (
+            <FormField label={editExpMethod === 'credit' ? 'Tarjeta' : 'Cuenta'}>
+              <CustomSelect
+                value={editExpAccountId}
+                onChange={setEditExpAccountId}
+                placeholder="Sin cuenta"
+                options={[
+                  { value: '', label: 'Sin cuenta' },
+                  ...accounts
+                    .filter(a => editExpMethod === 'credit' ? a.account_type === 'credit_card' : a.account_type !== 'credit_card')
+                    .map(a => ({ value: a.id, label: a.name }))
+                ]}
+              />
+            </FormField>
+          )}
+
+          <FormField label="Categoría">
+            <CategorySelector value={editExpCategory} onChange={setEditExpCategory} required />
+          </FormField>
+
+          {editExpError && <p className="text-xs text-red-400">{editExpError}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => handleDeleteExpense(editingExpense.id)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-400/30 text-red-400 hover:bg-red-400/10 text-xs font-medium transition-all"
+            >
+              <Trash2 size={12} /> Eliminar
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingExpense(null)}
+              className="flex-1 py-2 rounded-xl border border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 text-xs font-medium hover:border-black/20 dark:hover:border-white/20 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleUpdateExpense}
+              disabled={editExpSaving}
+              className="flex-1 py-2 rounded-xl bg-[#6B46E5] dark:bg-[#AF9BFF] text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
+            >
+              {editExpSaving ? 'Guardando…' : 'Guardar'}
+            </button>
+          </div>
         </Modal>
       )}
 

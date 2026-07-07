@@ -7,27 +7,29 @@ interface CategorySpendingChartProps {
   expenses: Expense[]
   cycleStart: string
   cycleEnd: string
+  onCategoryClick?: (category: string, expenses: Expense[]) => void
 }
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
 
-export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd }: CategorySpendingChartProps) {
+export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd, onCategoryClick }: CategorySpendingChartProps) {
   const [tooltip, setTooltip] = useState<{ name: string; amount: number; mx: number; my: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const cycleExpenses = expenses.filter(e => e.date >= cycleStart && e.date <= cycleEnd)
 
-  const map = new Map<string, number>()
+  const map = new Map<string, { amount: number; items: Expense[] }>()
   for (const e of cycleExpenses) {
     const cat = e.category?.trim() || 'Sin categoría'
-    map.set(cat, (map.get(cat) ?? 0) + Number(e.amount))
+    const prev = map.get(cat) ?? { amount: 0, items: [] }
+    map.set(cat, { amount: prev.amount + Number(e.amount), items: [...prev.items, e] })
   }
 
   if (map.size === 0) return null
 
   const rows = Array.from(map.entries())
-    .map(([name, amount]) => ({ name, amount }))
+    .map(([name, { amount, items }]) => ({ name, amount, items }))
     .sort((a, b) => b.amount - a.amount)
 
   const max = rows[0].amount
@@ -90,10 +92,11 @@ export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd }
                 width={barW}
                 height={BAR_HEIGHT - 8}
                 rx={4}
-                className="fill-[#6B46E5] dark:fill-[#AF9BFF] opacity-75 transition-opacity cursor-pointer"
+                className="fill-[#6B46E5] dark:fill-[#AF9BFF] opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
                 onMouseEnter={e => handleBarEnter(e, row)}
                 onMouseMove={handleBarMove}
                 onMouseLeave={() => setTooltip(null)}
+                onClick={() => { setTooltip(null); onCategoryClick?.(row.name, row.items) }}
               />
 
               {/* Value label at bar tip — shown outside if bar is long enough */}

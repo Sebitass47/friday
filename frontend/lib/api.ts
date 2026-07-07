@@ -175,6 +175,16 @@ export async function createExpense(data: {
 }): Promise<Expense> {
   return req('/expenses/', { method: 'POST', body: JSON.stringify(data) })
 }
+export async function updateExpense(id: string, data: {
+  account_id?: string
+  name?: string
+  amount?: number
+  date?: string
+  payment_method?: 'cash' | 'debit' | 'credit'
+  category?: string | null
+}): Promise<Expense> {
+  return req(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
 export async function deleteExpense(id: string): Promise<void> {
   return req(`/expenses/${id}`, { method: 'DELETE' })
 }

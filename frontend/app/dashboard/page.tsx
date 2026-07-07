@@ -62,6 +62,8 @@ const ACCOUNT_EMPTY: AccountForm = {
   credit_limit: null, current_balance_used: null, closing_day: null, payment_day: null,
 }
 
+const fmtDate = (iso: string) => iso ? iso.split('-').reverse().join('/') : ''
+
 function inputCls() {
   return 'w-full bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#6B46E5] dark:focus:border-[#AF9BFF] transition-colors'
 }
@@ -652,7 +654,7 @@ export default function DashboardPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-black dark:text-white truncate">{exp.name}</p>
-                      <p className="text-[11px] text-black/30 dark:text-white/30">{exp.date} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">{fmtDate(exp.date)} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
                     </div>
                     <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
                     <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
@@ -1142,7 +1144,7 @@ export default function DashboardPage() {
           </FormField>
 
           <FormField label="Fecha">
-            <input type="date" value={regDate} onChange={e => setRegDate(e.target.value)} className={inputCls()} />
+            <DateInput value={regDate} onChange={setRegDate} inputClassName={inputCls()} />
           </FormField>
 
           {regMode === 'expense' && (
@@ -1504,7 +1506,7 @@ export default function DashboardPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-black dark:text-white truncate">{exp.name}</p>
-                      <p className="text-[11px] text-black/30 dark:text-white/30">{exp.date} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">{fmtDate(exp.date)} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
                     </div>
                     <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
                     <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
@@ -1535,7 +1537,7 @@ export default function DashboardPage() {
           </FormField>
 
           <FormField label="Fecha">
-            <input type="date" value={editExpDate} onChange={e => setEditExpDate(e.target.value)} className={inputCls()} />
+            <DateInput value={editExpDate} onChange={setEditExpDate} inputClassName={inputCls()} />
           </FormField>
 
           <FormField label="Método de pago">

@@ -5,6 +5,7 @@ import { Plus, Receipt, ArrowDownCircle, DollarSign, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DateInput } from '@/components/ui/date-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CategorySelector } from '@/components/ui/category-selector'
 import { createExpense, createIncome, getAccounts } from '@/lib/api'
@@ -224,13 +225,10 @@ export default function QuickTransactionFAB() {
 
                   <div className="grid gap-1.5">
                     <Label htmlFor="exp-date" className="text-xs text-gray-400">Fecha</Label>
-                    <Input
-                      id="exp-date"
-                      type="date"
+                    <DateInput
                       value={expenseDate}
-                      onChange={e => setExpenseDate(e.target.value)}
-                      className="h-9 bg-[#0A0A0A] text-sm"
-                      required
+                      onChange={setExpenseDate}
+                      inputClassName="h-9 bg-[#0A0A0A] text-sm pl-8"
                     />
                   </div>
 
@@ -335,13 +333,10 @@ export default function QuickTransactionFAB() {
 
                   <div className="grid gap-1.5">
                     <Label htmlFor="inc-date" className="text-xs text-gray-400">Fecha</Label>
-                    <Input
-                      id="inc-date"
-                      type="date"
+                    <DateInput
                       value={incomeDate}
-                      onChange={e => setIncomeDate(e.target.value)}
-                      className="h-9 bg-[#0A0A0A] text-sm"
-                      required
+                      onChange={setIncomeDate}
+                      inputClassName="h-9 bg-[#0A0A0A] text-sm pl-8"
                     />
                   </div>
 

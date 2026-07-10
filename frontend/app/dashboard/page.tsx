@@ -929,8 +929,8 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-1 shrink-0 ml-2">
                           <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">{fmt(Number(item.monthly_amount))}/mes</span>
-                          <button onClick={() => openEditMsi(item)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil size={11} /></button>
-                          <button onClick={() => deleteMsi(item.id)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 size={11} /></button>
+                          <button onClick={() => openEditMsi(item)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                          <button onClick={() => deleteMsi(item.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
                         </div>
                       </div>
                       <div className="h-1 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
@@ -987,8 +987,8 @@ export default function DashboardPage() {
                         <span className="text-xs font-medium text-black dark:text-white truncate max-w-[50%]">{g.name}</span>
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-semibold text-black/60 dark:text-white/60 tabular-nums">{progress}%</span>
-                          <button onClick={() => openEditGoal(g)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil size={11} /></button>
-                          <button onClick={() => deleteGoal(g.id)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 size={11} /></button>
+                          <button onClick={() => openEditGoal(g)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                          <button onClick={() => deleteGoal(g.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
                         </div>
                       </div>
                       <div className="h-1 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
@@ -1055,8 +1055,8 @@ export default function DashboardPage() {
                       <span className="text-xs text-black dark:text-white truncate max-w-[55%]">{e.name}</span>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-semibold text-black/70 dark:text-white/70 tabular-nums">{fmt(Number(e.amount))}</span>
-                        <button onClick={() => openEditRec(e)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil size={11} /></button>
-                        <button onClick={() => deleteRec(e.id)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 size={11} /></button>
+                        <button onClick={() => openEditRec(e)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                        <button onClick={() => deleteRec(e.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
                       </div>
                     </div>
                   ))}

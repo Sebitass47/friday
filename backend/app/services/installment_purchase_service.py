@@ -89,7 +89,7 @@ def mark_paid_this_month(db: Session, purchase_id: UUID, user_id: UUID) -> Optio
     db_purchase.remaining_installments = db_purchase.remaining_installments - 1
 
     if db_purchase.account_id:
-        account = db.query(Account).filter(Account.id == db_purchase.account_id).first()
+        account = db.query(Account).filter(Account.id == db_purchase.account_id, Account.user_id == user_id).first()
         if account:
             _adjust_card_balance(account, -db_purchase.monthly_amount)
 
@@ -108,7 +108,7 @@ def liquidate(db: Session, purchase_id: UUID, user_id: UUID) -> Optional[Install
     db_purchase.remaining_installments = 0
 
     if db_purchase.account_id:
-        account = db.query(Account).filter(Account.id == db_purchase.account_id).first()
+        account = db.query(Account).filter(Account.id == db_purchase.account_id, Account.user_id == user_id).first()
         if account:
             _adjust_card_balance(account, -remaining_total)
 

@@ -111,7 +111,7 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
         return None
 
     # Get account for potential balance updates
-    account = db.query(Account).filter(Account.id == db_expense.account_id).first()
+    account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first()
 
     # If amount changed and it's a credit expense, update balances
     if expense_update.amount and expense_update.amount != db_expense.amount and db_expense.payment_method == PaymentMethod.CREDIT:
@@ -143,7 +143,7 @@ def delete_expense(db: Session, expense_id: UUID, user_id: UUID) -> bool:
     if not db_expense:
         return False
 
-    account = db.query(Account).filter(Account.id == db_expense.account_id).first()
+    account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first()
 
     # Refund balance
     if db_expense.payment_method == PaymentMethod.CREDIT:

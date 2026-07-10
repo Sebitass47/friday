@@ -38,6 +38,7 @@ def create_credit_payment(db: Session, payment: CreditPaymentCreate, user_id: UU
 
     # Mark expenses in this statement as paid
     paid_expenses = db.query(Expense).filter(
+        Expense.user_id == user_id,
         Expense.account_id == payment.account_id,
         Expense.payment_method == PaymentMethod.CREDIT,
         Expense.credit_statement_month == payment.statement_month,
@@ -104,7 +105,7 @@ def delete_credit_payment(db: Session, payment_id: UUID, user_id: UUID) -> bool:
     if not db_payment:
         return False
 
-    account = db.query(Account).filter(Account.id == db_payment.account_id).first()
+    account = db.query(Account).filter(Account.id == db_payment.account_id, Account.user_id == db_payment.user_id).first()
 
     # Refund the credit
     account.current_balance_used = (account.current_balance_used or 0) + db_payment.amount_paid
@@ -113,6 +114,7 @@ def delete_credit_payment(db: Session, payment_id: UUID, user_id: UUID) -> bool:
 
     # Mark expenses as unpaid
     expenses = db.query(Expense).filter(
+        Expense.user_id == db_payment.user_id,
         Expense.account_id == db_payment.account_id,
         Expense.payment_method == PaymentMethod.CREDIT,
         Expense.credit_statement_month == db_payment.statement_month,

@@ -141,8 +141,8 @@ export async function contributeGoal(id: string, amount: number): Promise<Saving
 export async function getMonthlyIncome(): Promise<MonthlyIncome> {
   return req('/monthly-income/')
 }
-export async function setMonthlyIncome(amount: number, cycle_start_day = 1): Promise<MonthlyIncome> {
-  return req('/monthly-income/', { method: 'PUT', body: JSON.stringify({ amount, cycle_start_day }) })
+export async function setMonthlyIncome(amount: number, cycle_start_day = 1, account_id?: string | null): Promise<MonthlyIncome> {
+  return req('/monthly-income/', { method: 'PUT', body: JSON.stringify({ amount, cycle_start_day, account_id: account_id || null }) })
 }
 
 // ── Projection ────────────────────────────────────────────────────────────────
@@ -214,6 +214,7 @@ export async function createIncome(data: {
   amount: number
   date: string
   category?: string
+  account_id?: string | null
 }): Promise<Income> {
   return req('/incomes/', { method: 'POST', body: JSON.stringify(data) })
 }

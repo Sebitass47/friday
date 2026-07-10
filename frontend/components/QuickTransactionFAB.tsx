@@ -34,6 +34,7 @@ export default function QuickTransactionFAB() {
   const [incomeAmount, setIncomeAmount] = useState('')
   const [incomeDate, setIncomeDate] = useState(todayStr())
   const [incomeCategory, setIncomeCategory] = useState('')
+  const [incomeAccountId, setIncomeAccountId] = useState('')
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('new') === '1') {
@@ -42,7 +43,7 @@ export default function QuickTransactionFAB() {
   }, [])
 
   useEffect(() => {
-    if (open && mode === 'expense') {
+    if (open && (mode === 'expense' || mode === 'income')) {
       getAccounts().then(setAccounts).catch(console.error)
     }
   }, [open, mode])
@@ -60,6 +61,7 @@ export default function QuickTransactionFAB() {
     setIncomeAmount('')
     setIncomeDate(todayStr())
     setIncomeCategory('')
+    setIncomeAccountId('')
   }
 
   const handleSubmitExpense = async (e: React.FormEvent) => {
@@ -97,6 +99,7 @@ export default function QuickTransactionFAB() {
         amount: parseFloat(incomeAmount),
         date: incomeDate,
         category: incomeCategory || undefined,
+        account_id: incomeAccountId || null,
       })
       handleClose()
       window.location.reload()
@@ -339,6 +342,32 @@ export default function QuickTransactionFAB() {
                       inputClassName="h-9 bg-[#0A0A0A] text-sm pl-8"
                     />
                   </div>
+
+                  {accounts.length > 0 && (
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="inc-account" className="text-xs text-gray-400">Cuenta (opcional)</Label>
+                      <Select value={incomeAccountId} onValueChange={setIncomeAccountId}>
+                        <SelectTrigger id="inc-account" className="h-9 bg-[#0A0A0A] text-sm">
+                          <SelectValue placeholder="Sin cuenta (cuenta para disponible)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sin cuenta</SelectItem>
+                          {accounts
+                            .filter(a => a.account_type !== 'credit_card')
+                            .map(a => (
+                              <SelectItem key={a.id} value={a.id}>
+                                {a.name} {a.account_type === 'savings' ? '· Ahorro' : '· Débito'}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {incomeAccountId && accounts.find(a => a.id === incomeAccountId)?.account_type === 'savings' && (
+                        <p className="text-[11px] text-amber-500 bg-amber-500/10 rounded-md px-2 py-1">
+                          Cuenta de ahorro — no se refleja en el disponible del mes
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid gap-1.5">
                     <Label htmlFor="inc-category" className="text-xs text-gray-400">Categoría (opcional)</Label>

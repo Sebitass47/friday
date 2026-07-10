@@ -11,6 +11,8 @@ from app.services.installment_purchase_service import get_active_installment_pur
 from app.services.savings_goal_service import get_savings_goals
 from app.models.recurring_expense import ExpenseFrequency
 from app.models.expense import Expense
+from app.models.income import Income
+from app.models.account import AccountType
 from app.models.enums import PaymentMethod
 from app.models.credit_payment import CreditPayment
 from app.schemas.projection import (
@@ -133,6 +135,35 @@ def _savings_cost_for_cycle(goals, cycle_start: date, cycle_end: date, today: da
     return total
 
 
+def _monthly_income_counts(income_record) -> bool:
+    """Returns False only when the monthly income is explicitly assigned to a savings account."""
+    if income_record is None or income_record.account is None:
+        return True
+    return income_record.account.account_type != AccountType.SAVINGS
+
+
+def _extra_income_for_cycle(
+    db: Session, user_id: UUID, cycle_start: date, cycle_end: date
+) -> Decimal:
+    """Sum of point incomes in this cycle that are NOT in a savings account."""
+    from sqlalchemy.orm import joinedload
+    incomes = (
+        db.query(Income)
+        .options(joinedload(Income.account))
+        .filter(
+            Income.user_id == user_id,
+            Income.date >= cycle_start,
+            Income.date <= cycle_end,
+        )
+        .all()
+    )
+    total = Decimal("0")
+    for inc in incomes:
+        if inc.account is None or inc.account.account_type == AccountType.CHECKING:
+            total += Decimal(str(inc.amount))
+    return total
+
+
 def _cash_debit_spent_for_cycle(
     db: Session, user_id: UUID, cycle_start: date, cycle_end: date
 ) -> Decimal:
@@ -170,6 +201,7 @@ def _build_cycle_projection(
     installments,
     savings_goals,
     today: date,
+    monthly_income_counts: bool = True,
     extra_installment: Optional[SimulateInstallmentRequest] = None,
 ) -> MonthProjection:
     is_current = cycle_start <= today <= cycle_end
@@ -180,13 +212,13 @@ def _build_cycle_projection(
 
     credit_total = Decimal("0")
     cash_debit_total = Decimal("0")
+    extra_income = Decimal("0")
     if is_current:
         cash_debit_total = _cash_debit_spent_for_cycle(db, user_id, cycle_start, today)
         credit_total = _credit_payments_for_cycle(db, user_id, cycle_start, today)
+        extra_income = _extra_income_for_cycle(db, user_id, cycle_start, today)
 
-    # For projections, income is always counted at full value.
-    # The cycle starts precisely when income arrives, so there's no waiting period.
-    effective_income = income
+    effective_income = income if monthly_income_counts else Decimal("0")
 
     if extra_installment:
         purchase_cycle = _current_cycle_start(extra_installment.start_date, cycle_start_day)
@@ -197,7 +229,7 @@ def _build_cycle_projection(
         if 0 <= cycles_elapsed < extra_installment.total_installments:
             inst_total += extra_installment.monthly_amount
 
-    available = effective_income - rec_total - inst_total - sav_total - credit_total - cash_debit_total
+    available = effective_income + extra_income - rec_total - inst_total - sav_total - credit_total - cash_debit_total
 
     return MonthProjection(
         month=cycle_start.month,
@@ -220,6 +252,7 @@ def calculate_projection(db: Session, user_id: UUID, months: int = 12) -> Projec
     income_record = get_monthly_income(db, user_id)
     income = income_record.amount if income_record else Decimal("0")
     cycle_start_day = income_record.cycle_start_day if income_record else 1
+    mi_counts = _monthly_income_counts(income_record)
 
     recurring = get_recurring_expenses(db, user_id)
     installments = get_active_installment_purchases(db, user_id)
@@ -231,7 +264,7 @@ def calculate_projection(db: Session, user_id: UUID, months: int = 12) -> Projec
         cycle_start, cycle_end = _nth_cycle_bounds(i, today, cycle_start_day)
         result.append(_build_cycle_projection(
             db, user_id, cycle_start, cycle_end,
-            income, cycle_start_day, recurring, installments, goals, today,
+            income, cycle_start_day, recurring, installments, goals, today, mi_counts,
         ))
 
     return ProjectionResponse(months=result, total_months=months)
@@ -246,6 +279,7 @@ def simulate_projection(
     income_record = get_monthly_income(db, user_id)
     income = income_record.amount if income_record else Decimal("0")
     cycle_start_day = income_record.cycle_start_day if income_record else 1
+    mi_counts = _monthly_income_counts(income_record)
 
     recurring = get_recurring_expenses(db, user_id)
     installments = get_active_installment_purchases(db, user_id)
@@ -257,7 +291,7 @@ def simulate_projection(
         cycle_start, cycle_end = _nth_cycle_bounds(i, today, cycle_start_day)
         result.append(_build_cycle_projection(
             db, user_id, cycle_start, cycle_end,
-            income, cycle_start_day, recurring, installments, goals, today, simulation,
+            income, cycle_start_day, recurring, installments, goals, today, mi_counts, simulation,
         ))
 
     sim_purchase_cycle = _current_cycle_start(simulation.start_date, cycle_start_day)

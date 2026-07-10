@@ -67,6 +67,7 @@ export interface SavingsGoal {
 export interface MonthlyIncome {
   id: string
   user_id: string
+  account_id: string | null
   amount: number
   cycle_start_day: number
   created_at: string
@@ -126,6 +127,7 @@ export interface CreditPayment {
 export interface Income {
   id: string
   user_id: string
+  account_id: string | null
   description: string
   amount: number
   date: string

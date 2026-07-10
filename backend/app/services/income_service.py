@@ -17,6 +17,7 @@ def get_income(db: Session, user_id: UUID, income_id: UUID) -> Income | None:
 def create_income(db: Session, user_id: UUID, income: IncomeCreate) -> Income:
     db_income = Income(
         user_id=user_id,
+        account_id=income.account_id,
         description=income.description,
         amount=income.amount,
         date=income.income_date,
@@ -41,6 +42,8 @@ def update_income(db: Session, user_id: UUID, income_id: UUID, income: IncomeUpd
         db_income.date = income.income_date
     if income.category is not None:
         db_income.category = income.category
+    if income.account_id is not None:
+        db_income.account_id = income.account_id
 
     db.commit()
     db.refresh(db_income)

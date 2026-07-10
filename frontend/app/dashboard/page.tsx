@@ -204,6 +204,7 @@ export default function DashboardPage() {
   const [regDate, setRegDate] = useState(today())
   const [regMethod, setRegMethod] = useState<'cash' | 'debit' | 'credit'>('cash')
   const [regAccountId, setRegAccountId] = useState('')
+  const [regIncomeAccountId, setRegIncomeAccountId] = useState('')
   const [regCategory, setRegCategory] = useState('')
   const [regIsMonthly, setRegIsMonthly] = useState(false)
   const [regCycleStartDay, setRegCycleStartDay] = useState(1)
@@ -226,6 +227,7 @@ export default function DashboardPage() {
   // Edit monthly income modal
   const [editIncomeAmount, setEditIncomeAmount] = useState('')
   const [editCycleStartDay, setEditCycleStartDay] = useState(1)
+  const [editIncomeAccountId, setEditIncomeAccountId] = useState('')
   const [editIncomeSaving, setEditIncomeSaving] = useState(false)
   const [editIncomeError, setEditIncomeError] = useState('')
 
@@ -254,7 +256,7 @@ export default function DashboardPage() {
   }, [loading])
 
   function openRegister() {
-    setRegAmount(''); setRegDesc(''); setRegDate(today()); setRegMethod('cash'); setRegAccountId(''); setRegCategory('')
+    setRegAmount(''); setRegDesc(''); setRegDate(today()); setRegMethod('cash'); setRegAccountId(''); setRegIncomeAccountId(''); setRegCategory('')
     setRegIsMonthly(false)
     setRegCycleStartDay(monthlyIncomeData?.cycle_start_day ?? 1)
     setRegError('')
@@ -269,8 +271,8 @@ export default function DashboardPage() {
       if (regMode === 'expense') {
         await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: regDate, payment_method: regMethod, category: regCategory || undefined })
       } else {
-        await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: regDate, category: regCategory || undefined })
-        if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount), regCycleStartDay)
+        await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: regDate, category: regCategory || undefined, account_id: regIncomeAccountId || null })
+        if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount), regCycleStartDay, regIncomeAccountId || null)
       }
       setActiveModal(null)
       const [p, a, ex] = await Promise.all([getProjection(12), getAccounts(), getExpenses()])
@@ -321,6 +323,7 @@ export default function DashboardPage() {
   function openEditIncome() {
     setEditIncomeAmount(String(monthlyIncomeData?.amount ?? ''))
     setEditCycleStartDay(monthlyIncomeData?.cycle_start_day ?? 1)
+    setEditIncomeAccountId(monthlyIncomeData?.account_id ?? '')
     setEditIncomeError('')
     setActiveModal('edit-income')
   }
@@ -329,7 +332,7 @@ export default function DashboardPage() {
     if (!editIncomeAmount || isNaN(amount) || amount <= 0) { setEditIncomeError('Ingresa un monto válido'); return }
     setEditIncomeSaving(true); setEditIncomeError('')
     try {
-      const updated = await setMonthlyIncome(amount, editCycleStartDay)
+      const updated = await setMonthlyIncome(amount, editCycleStartDay, editIncomeAccountId || null)
       setMonthlyIncomeData(updated)
       setActiveModal(null)
       const p = await getProjection(12)
@@ -1187,6 +1190,27 @@ export default function DashboardPage() {
             </>
           )}
 
+          {regMode === 'income' && accounts.filter(a => a.account_type !== 'credit_card').length > 0 && (
+            <FormField label="Cuenta">
+              <CustomSelect
+                value={regIncomeAccountId}
+                onChange={setRegIncomeAccountId}
+                placeholder="Sin cuenta (cuenta para disponible)"
+                options={[
+                  { value: '', label: 'Sin cuenta' },
+                  ...accounts
+                    .filter(a => a.account_type !== 'credit_card')
+                    .map(a => ({ value: a.id, label: `${a.name} · ${a.account_type === 'savings' ? 'Ahorro' : 'Débito'}` }))
+                ]}
+              />
+              {regIncomeAccountId && accounts.find(a => a.id === regIncomeAccountId)?.account_type === 'savings' && (
+                <p className="text-[11px] text-amber-500 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                  Cuenta de ahorro — no se refleja en el disponible del mes
+                </p>
+              )}
+            </FormField>
+          )}
+
           <FormField label={regMode === 'expense' ? 'Categoría' : 'Categoría (opcional)'}>
             <CategorySelector
               value={regCategory}
@@ -1350,6 +1374,26 @@ export default function DashboardPage() {
               autoFocus
             />
           </FormField>
+          {accounts.filter(a => a.account_type !== 'credit_card').length > 0 && (
+            <FormField label="Cuenta donde recibes tu ingreso">
+              <CustomSelect
+                value={editIncomeAccountId}
+                onChange={setEditIncomeAccountId}
+                placeholder="Sin cuenta (cuenta para disponible)"
+                options={[
+                  { value: '', label: 'Sin cuenta' },
+                  ...accounts
+                    .filter(a => a.account_type !== 'credit_card')
+                    .map(a => ({ value: a.id, label: `${a.name} · ${a.account_type === 'savings' ? 'Ahorro' : 'Débito'}` }))
+                ]}
+              />
+              {editIncomeAccountId && accounts.find(a => a.id === editIncomeAccountId)?.account_type === 'savings' && (
+                <p className="text-[11px] text-amber-500 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                  Cuenta de ahorro — este ingreso no se refleja en el disponible del mes
+                </p>
+              )}
+            </FormField>
+          )}
           <FormField label="Día de inicio de tu ciclo financiero (1–31)">
             <input
               type="number" min={1} max={31}

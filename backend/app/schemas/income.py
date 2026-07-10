@@ -12,6 +12,7 @@ class IncomeBase(BaseModel):
     amount: Decimal = Field(..., description="Monto del ingreso")
     income_date: date = Field(..., description="Fecha del ingreso", alias="date")
     category: Optional[str] = Field(None, description="Categoría del ingreso")
+    account_id: Optional[UUID] = Field(None, description="Cuenta donde se recibe el ingreso")
 
 
 class IncomeCreate(IncomeBase):
@@ -23,6 +24,7 @@ class IncomeUpdate(BaseModel):
     amount: Optional[Decimal] = None
     income_date: Optional[date] = Field(None, alias="date")
     category: Optional[str] = None
+    account_id: Optional[UUID] = None
 
 
 class IncomeResponse(IncomeBase):

@@ -12,6 +12,7 @@ class Income(Base):
 
     id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id = Column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    account_id = Column(PG_UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     description = Column(String, nullable=False)
     amount = Column(Numeric(12, 2), nullable=False)
     date = Column(Date, nullable=False)
@@ -20,5 +21,5 @@ class Income(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Relationships
     user = relationship("User", back_populates="incomes")
+    account = relationship("Account")

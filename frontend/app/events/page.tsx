@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { getTasks, createTask, updateTask, deleteTask } from '@/lib/api'
-import type { Task } from '@/lib/types'
+import { getTasks, createTask, updateTask, deleteTask, getMe } from '@/lib/api'
+import type { Task, User } from '@/lib/types'
 import { Search, Plus, X, Trash2, MapPin, Clock, Calendar, AlarmClock, CalendarDays, History, ChevronDown, ChevronUp } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
 import { cn } from '@/lib/utils'
@@ -290,6 +290,7 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function EventsPage() {
+  const [me, setMe] = useState<User | null>(null)
   const [allEvents, setAllEvents] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -299,6 +300,8 @@ export default function EventsPage() {
   const [panelEvent, setPanelEvent] = useState<Task | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+
+  useEffect(() => { getMe().then(setMe).catch(() => {}) }, [])
 
   const load = useCallback(async () => {
     try {
@@ -364,7 +367,7 @@ export default function EventsPage() {
             <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between shadow-[0_8px_32px_rgba(107,70,229,0.35)]">
               <div>
                 <p className="text-[12px] font-bold text-purple-200/80 uppercase tracking-widest mb-1">{dateLabel}</p>
-                <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, Sebastián! 👍</h1>
+                <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, {me?.full_name?.split(' ')[0] ?? ''}! 👍</h1>
                 <p className="text-[15px] font-semibold text-purple-200/80 mt-1">
                   {upcoming.length === 0
                     ? 'Sin eventos próximos'

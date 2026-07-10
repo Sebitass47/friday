@@ -6,9 +6,9 @@ import { CustomSelect } from '@/components/ui/custom-select'
 import { DateInput } from '@/components/ui/date-input'
 import {
   getTasks, createTask, updateTask, deleteTask, toggleTaskComplete,
-  createSubtask, updateSubtask, deleteSubtask,
+  createSubtask, updateSubtask, deleteSubtask, getMe,
 } from '@/lib/api'
-import type { Task } from '@/lib/types'
+import type { Task, User } from '@/lib/types'
 import { Search, Star, Plus, X, Trash2, Check, RotateCcw, AlarmClock, Calendar, CheckSquare, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -438,6 +438,7 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ToDoPage() {
+  const [me, setMe] = useState<User | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -446,6 +447,8 @@ export default function ToDoPage() {
   const [panelTask, setPanelTask] = useState<Task | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+
+  useEffect(() => { getMe().then(setMe).catch(() => {}) }, [])
 
   const load = useCallback(async () => {
     try {
@@ -547,7 +550,7 @@ export default function ToDoPage() {
             <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between shadow-[0_8px_32px_rgba(107,70,229,0.35)]">
               <div>
                 <p className="text-[12px] font-bold text-purple-200/80 uppercase tracking-widest mb-1">{dateLabel}</p>
-                <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, Sebastián! 👍</h1>
+                <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, {me?.full_name?.split(' ')[0] ?? ''}! 👍</h1>
                 <p className="text-[15px] font-semibold text-purple-200/80 mt-1">
                   {pending === 0 ? 'Todas las tareas de hoy completadas 🎉' : `Te quedan ${pending} tareas para hoy`}
                 </p>

@@ -4,10 +4,10 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
 import {
-  getProjection, getAccounts, getTasks, getNotes, getHabits, toggleHabitLog,
+  getProjection, getAccounts, getTasks, getNotes, getHabits, toggleHabitLog, getMe,
 } from '@/lib/api'
 import type {
-  MonthProjection, Account, Task, Note, Habit,
+  MonthProjection, Account, Task, Note, Habit, User,
 } from '@/lib/types'
 import {
   DollarSign, CheckSquare, CalendarDays, StickyNote,
@@ -216,6 +216,7 @@ export default function HomePage() {
   const isDark = useIsDark()
   const router = useRouter()
 
+  const [me, setMe] = useState<User | null>(null)
   const [currentCycle, setCurrentCycle] = useState<MonthProjection | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
@@ -232,6 +233,7 @@ export default function HomePage() {
   const habitWeekISO = `${habitWeekStart.getFullYear()}-${String(habitWeekStart.getMonth()+1).padStart(2,'0')}-${String(habitWeekStart.getDate()).padStart(2,'0')}`
 
   useEffect(() => {
+    getMe().then(setMe).catch(() => {})
     Promise.allSettled([
       getProjection(1),
       getAccounts(),
@@ -338,7 +340,7 @@ export default function HomePage() {
           <h1 className="text-2xl sm:text-3xl font-bold mt-0.5" style={{ color: txt(1) }}>
             {greeting()},{' '}
             <span style={{ background: 'linear-gradient(135deg,#FF6B9D,#6B46E5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Sebastian
+              {me?.full_name?.split(' ')[0] ?? ''}
             </span>{' '}👋
           </h1>
         </div>

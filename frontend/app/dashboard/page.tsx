@@ -43,7 +43,7 @@ type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | 'edit
 
 const MSI_EMPTY = { name: '', total_amount: 0, monthly_amount: 0, total_installments: 12, remaining_installments: 12, start_date: today(), account_id: null as string | null, is_new_charge: true }
 const GOAL_EMPTY = { name: '', target_amount: 0, current_amount: 0, monthly_contribution: 0 }
-const REC_EMPTY = { name: '', amount: 0, frequency: 'monthly' as RecurringExpense['frequency'], interval_days: null as number | null }
+const REC_EMPTY = { name: '', amount: '' as string | number, frequency: 'monthly' as RecurringExpense['frequency'], interval_days: null as number | null }
 
 interface AccountForm {
   name: string
@@ -474,11 +474,13 @@ export default function DashboardPage() {
   }
   async function saveRec() {
     if (!recForm.name.trim()) { setRecError('El nombre es requerido'); return }
-    if (recForm.amount <= 0) { setRecError('El monto debe ser mayor a 0'); return }
+    const recAmount = Number(recForm.amount)
+    if (!recAmount || recAmount <= 0) { setRecError('El monto debe ser mayor a 0'); return }
     setRecSaving(true); setRecError('')
     try {
-      if (recForm.id) await updateRecurringExpense(recForm.id, recForm)
-      else await createRecurringExpense(recForm)
+      const payload = { ...recForm, amount: recAmount }
+      if (recForm.id) await updateRecurringExpense(recForm.id, payload)
+      else await createRecurringExpense(payload)
       setRecurring(await getRecurringExpenses()); setActiveModal(null)
     } catch (e: unknown) { setRecError(e instanceof Error ? e.message : 'Error') }
     finally { setRecSaving(false) }
@@ -1406,7 +1408,7 @@ export default function DashboardPage() {
             <input value={recForm.name} onChange={e => setRecForm(f => ({ ...f, name: e.target.value }))} placeholder="Renta, Netflix, Gym…" className={inputCls()} />
           </FormField>
           <FormField label="Monto">
-            <input type="number" value={recForm.amount} onChange={e => setRecForm(f => ({ ...f, amount: Number(e.target.value) }))} className={inputCls()} />
+            <input type="number" value={recForm.amount === 0 && typeof recForm.amount === 'number' ? '' : recForm.amount} placeholder="0.00" onChange={e => setRecForm(f => ({ ...f, amount: e.target.value === '' ? '' : Number(e.target.value) }))} className={inputCls()} />
           </FormField>
           <FormField label="Frecuencia">
             <CustomSelect

@@ -218,6 +218,15 @@ export async function createIncome(data: {
 }): Promise<Income> {
   return req('/incomes/', { method: 'POST', body: JSON.stringify(data) })
 }
+export async function updateIncome(id: string, data: {
+  description?: string
+  amount?: number
+  date?: string
+  category?: string | null
+  account_id?: string | null
+}): Promise<Income> {
+  return req(`/incomes/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+}
 export async function deleteIncome(id: string): Promise<void> {
   return req(`/incomes/${id}`, { method: 'DELETE' })
 }

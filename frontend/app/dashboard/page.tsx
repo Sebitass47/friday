@@ -13,7 +13,7 @@ import {
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
   createExpense, updateExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
-  getExpenses, deleteExpense, getIncomes,
+  getExpenses, deleteExpense, getIncomes, updateIncome, deleteIncome,
   simulateProjection,
 } from '@/lib/api'
 import type {
@@ -225,6 +225,16 @@ export default function DashboardPage() {
   const [editExpAccountId, setEditExpAccountId] = useState('')
   const [editExpCategory, setEditExpCategory] = useState('')
 
+  // Edit point income modal
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null)
+  const [editPtIncDesc, setEditPtIncDesc] = useState('')
+  const [editPtIncAmount, setEditPtIncAmount] = useState('')
+  const [editPtIncDate, setEditPtIncDate] = useState('')
+  const [editPtIncAccountId, setEditPtIncAccountId] = useState('')
+  const [editPtIncCategory, setEditPtIncCategory] = useState('')
+  const [editPtIncSaving, setEditPtIncSaving] = useState(false)
+  const [editPtIncError, setEditPtIncError] = useState('')
+
   // Edit monthly income modal
   const [editIncomeAmount, setEditIncomeAmount] = useState('')
   const [editCycleStartDay, setEditCycleStartDay] = useState(1)
@@ -324,6 +334,43 @@ export default function DashboardPage() {
     setEditingExpense(null)
   }
 
+
+  // Edit point income
+  function openEditIncome_pt(inc: Income) {
+    setEditingIncome(inc)
+    setEditPtIncDesc(inc.description)
+    setEditPtIncAmount(String(inc.amount))
+    setEditPtIncDate(inc.date)
+    setEditPtIncAccountId(inc.account_id ?? '')
+    setEditPtIncCategory(inc.category ?? '')
+    setEditPtIncError('')
+  }
+
+  async function handleUpdateIncome() {
+    if (!editingIncome || !editPtIncDesc || !editPtIncAmount) { setEditPtIncError('Completa descripción y monto'); return }
+    setEditPtIncSaving(true); setEditPtIncError('')
+    try {
+      await updateIncome(editingIncome.id, {
+        description: editPtIncDesc,
+        amount: parseFloat(editPtIncAmount),
+        date: editPtIncDate,
+        account_id: editPtIncAccountId || null,
+        category: editPtIncCategory || null,
+      })
+      const [updInc, updAcc] = await Promise.all([getIncomes(), getAccounts()])
+      setIncomes(updInc); setAccounts(updAcc)
+      setEditingIncome(null)
+    } catch { setEditPtIncError('Error al guardar') }
+    finally { setEditPtIncSaving(false) }
+  }
+
+  async function handleDeleteIncome(id: string) {
+    if (!confirm('¿Eliminar este ingreso?')) return
+    await deleteIncome(id)
+    const [updInc, updAcc] = await Promise.all([getIncomes(), getAccounts()])
+    setIncomes(updInc); setAccounts(updAcc)
+    setEditingIncome(null)
+  }
 
   // Edit monthly income
   function openEditIncome() {
@@ -645,10 +692,10 @@ export default function DashboardPage() {
           const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : m === 'savings' ? 'Ahorro' : 'Crédito'
           type Movement =
             | { kind: 'expense'; id: string; name: string; date: string; created_at: string; amount: number; payment_method: string; category: string | null; data: Expense }
-            | { kind: 'income'; id: string; name: string; date: string; created_at: string; amount: number; category: string | null }
+            | { kind: 'income'; id: string; name: string; date: string; created_at: string; amount: number; category: string | null; incData: Income }
           const movements: Movement[] = [
             ...expenses.map(e => ({ kind: 'expense' as const, id: e.id, name: e.name, date: e.date, created_at: e.created_at, amount: Number(e.amount), payment_method: e.payment_method, category: e.category, data: e })),
-            ...incomes.map(i => ({ kind: 'income' as const, id: i.id, name: i.description, date: i.date, created_at: i.created_at, amount: Number(i.amount), category: i.category })),
+            ...incomes.map(i => ({ kind: 'income' as const, id: i.id, name: i.description, date: i.date, created_at: i.created_at, amount: Number(i.amount), category: i.category, incData: i })),
           ]
           const recent = movements.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)).slice(0, 10)
           return (
@@ -669,7 +716,7 @@ export default function DashboardPage() {
                 {recent.map(mov => (
                   <button
                     key={`${mov.kind}-${mov.id}`}
-                    onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : undefined}
+                    onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : openEditIncome_pt(mov.incData)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
                   >
                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#A8FF3E]'}`} />
@@ -684,7 +731,7 @@ export default function DashboardPage() {
                     <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#A8FF3E]'}`}>
                       {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
                     </span>
-                    {mov.kind === 'expense' && <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />}
+                    <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
                   </button>
                 ))}
               </div>
@@ -1661,6 +1708,69 @@ export default function DashboardPage() {
               className="flex-1 py-2 rounded-xl bg-[#6B46E5] dark:bg-[#AF9BFF] text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
             >
               {editExpSaving ? 'Guardando…' : 'Guardar'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Edit point income modal */}
+      {editingIncome && (
+        <Modal title="Editar ingreso" subtitle={editingIncome.description} onClose={() => setEditingIncome(null)}>
+          <FormField label="Descripción">
+            <input value={editPtIncDesc} onChange={e => setEditPtIncDesc(e.target.value)} className={inputCls()} />
+          </FormField>
+
+          <FormField label="Monto">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-black/40 dark:text-white/40">$</span>
+              <input type="number" step="0.01" value={editPtIncAmount} onChange={e => setEditPtIncAmount(e.target.value)} className={`${inputCls()} pl-7 text-xl font-bold`} />
+            </div>
+          </FormField>
+
+          <FormField label="Fecha">
+            <DateInput value={editPtIncDate} onChange={setEditPtIncDate} inputClassName={inputCls()} />
+          </FormField>
+
+          {accounts.filter(a => a.account_type !== 'credit_card').length > 0 && (
+            <FormField label="Cuenta">
+              <CustomSelect
+                value={editPtIncAccountId}
+                onChange={setEditPtIncAccountId}
+                placeholder="Sin cuenta"
+                options={[
+                  { value: '', label: 'Sin cuenta' },
+                  ...accounts
+                    .filter(a => a.account_type !== 'credit_card')
+                    .map(a => ({ value: a.id, label: `${a.name} · ${a.account_type === 'savings' ? 'Ahorro' : 'Débito'}` }))
+                ]}
+              />
+              {accounts.find(a => a.id === editPtIncAccountId)?.account_type === 'savings' && (
+                <p className="text-[11px] text-amber-500 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                  Cuenta de ahorro — no se refleja en el disponible del mes
+                </p>
+              )}
+            </FormField>
+          )}
+
+          <FormField label="Categoría (opcional)">
+            <input value={editPtIncCategory} onChange={e => setEditPtIncCategory(e.target.value)} placeholder="Ej: Bono, Extra…" className={inputCls()} />
+          </FormField>
+
+          {editPtIncError && <p className="text-xs text-red-400">{editPtIncError}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => handleDeleteIncome(editingIncome.id)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-400/30 text-red-400 hover:bg-red-400/10 text-xs font-medium transition-all"
+            >
+              <Trash2 size={12} /> Eliminar
+            </button>
+            <button type="button" onClick={() => setEditingIncome(null)} className="flex-1 py-2 rounded-xl border border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 text-xs font-medium hover:border-black/20 dark:hover:border-white/20 transition-all">
+              Cancelar
+            </button>
+            <button type="button" onClick={handleUpdateIncome} disabled={editPtIncSaving} className="flex-1 py-2 rounded-xl bg-[#6B46E5] dark:bg-[#AF9BFF] text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50">
+              {editPtIncSaving ? 'Guardando…' : 'Guardar'}
             </button>
           </div>
         </Modal>

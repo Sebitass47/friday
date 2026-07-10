@@ -13,12 +13,12 @@ import {
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
   createExpense, updateExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
-  getExpenses, deleteExpense,
+  getExpenses, deleteExpense, getIncomes,
   simulateProjection,
 } from '@/lib/api'
 import type {
   ProjectionResponse, SimulationResponse, InstallmentPurchase, SavingsGoal,
-  RecurringExpense, User, Account, Expense, MonthlyIncome,
+  RecurringExpense, User, Account, Expense, MonthlyIncome, Income,
 } from '@/lib/types'
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
@@ -153,6 +153,7 @@ export default function DashboardPage() {
   const [recurring, setRecurring] = useState<RecurringExpense[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [incomes, setIncomes] = useState<Income[]>([])
   const [monthlyIncomeData, setMonthlyIncomeData] = useState<MonthlyIncome | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -232,12 +233,14 @@ export default function DashboardPage() {
   const [editIncomeError, setEditIncomeError] = useState('')
 
   async function loadAll() {
-    const [u, p, m, g, r, a, ex, inc] = await Promise.all([
+    const [u, p, m, g, r, a, ex, ptInc, monthInc] = await Promise.all([
       getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses(), getAccounts(), getExpenses(),
+      getIncomes(),
       getMonthlyIncome().catch(() => null),
     ])
     setUser(u); setProjection(p); setMsi(m); setGoals(g); setRecurring(r); setAccounts(a); setExpenses(ex)
-    setMonthlyIncomeData(inc)
+    setIncomes(ptInc)
+    setMonthlyIncomeData(monthInc)
   }
 
   const autoOpenedRef = useRef(false)
@@ -637,16 +640,22 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Recent expenses card */}
-        {expenses.length > 0 && (() => {
-          const sorted = [...expenses].sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
-          const recent = sorted.slice(0, 10)
+        {/* Recent movements card */}
+        {(expenses.length > 0 || incomes.length > 0) && (() => {
           const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : m === 'savings' ? 'Ahorro' : 'Crédito'
+          type Movement =
+            | { kind: 'expense'; id: string; name: string; date: string; created_at: string; amount: number; payment_method: string; category: string | null; data: Expense }
+            | { kind: 'income'; id: string; name: string; date: string; created_at: string; amount: number; category: string | null }
+          const movements: Movement[] = [
+            ...expenses.map(e => ({ kind: 'expense' as const, id: e.id, name: e.name, date: e.date, created_at: e.created_at, amount: Number(e.amount), payment_method: e.payment_method, category: e.category, data: e })),
+            ...incomes.map(i => ({ kind: 'income' as const, id: i.id, name: i.description, date: i.date, created_at: i.created_at, amount: Number(i.amount), category: i.category })),
+          ]
+          const recent = movements.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)).slice(0, 10)
           return (
             <div className={`${cardCls} p-5`}>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Gastos recientes</h2>
+                  <h2 className="text-sm font-semibold text-black dark:text-white">Movimientos recientes</h2>
                   <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Últimos {recent.length} registrados</p>
                 </div>
                 <button
@@ -657,18 +666,25 @@ export default function DashboardPage() {
                 </button>
               </div>
               <div className="space-y-1">
-                {recent.map(exp => (
+                {recent.map(mov => (
                   <button
-                    key={exp.id}
-                    onClick={() => openEditExpense(exp)}
+                    key={`${mov.kind}-${mov.id}`}
+                    onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : undefined}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
                   >
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#A8FF3E]'}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-black dark:text-white truncate">{exp.name}</p>
-                      <p className="text-[11px] text-black/30 dark:text-white/30">{fmtDate(exp.date)} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
+                      <p className="text-sm text-black dark:text-white truncate">{mov.name}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">
+                        {fmtDate(mov.date)}
+                        {mov.kind === 'expense' ? ` · ${pmLabel(mov.payment_method)}` : ' · Ingreso'}
+                        {mov.category ? ` · ${mov.category}` : ''}
+                      </p>
                     </div>
-                    <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
-                    <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
+                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#A8FF3E]'}`}>
+                      {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
+                    </span>
+                    {mov.kind === 'expense' && <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />}
                   </button>
                 ))}
               </div>
@@ -1164,23 +1180,6 @@ export default function DashboardPage() {
 
           {regMode === 'expense' && (
             <>
-              <FormField label="Pago con">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setRegAccountId('')}
-                    className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${!regAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
-                  >
-                    Efectivo
-                  </button>
-                  <button
-                    onClick={() => { if (!regAccountId && accounts.length > 0) setRegAccountId(accounts[0].id) }}
-                    className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${regAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
-                  >
-                    Tarjeta / Cuenta
-                  </button>
-                </div>
-              </FormField>
-
               {accounts.length > 0 && (
                 <FormField label="Cuenta">
                   <CustomSelect
@@ -1606,25 +1605,6 @@ export default function DashboardPage() {
 
           <FormField label="Fecha">
             <DateInput value={editExpDate} onChange={setEditExpDate} inputClassName={inputCls()} />
-          </FormField>
-
-          <FormField label="Pago con">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => { setEditExpAccountId(''); setEditExpMethod('cash') }}
-                className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${!editExpAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
-              >
-                Efectivo
-              </button>
-              <button
-                type="button"
-                onClick={() => { if (!editExpAccountId && accounts.length > 0) setEditExpAccountId(accounts[0].id) }}
-                className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${editExpAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
-              >
-                Tarjeta / Cuenta
-              </button>
-            </div>
           </FormField>
 
           {accounts.length > 0 && (

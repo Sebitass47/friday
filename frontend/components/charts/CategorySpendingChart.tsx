@@ -10,12 +10,24 @@ interface CategorySpendingChartProps {
   onCategoryClick?: (category: string, expenses: Expense[]) => void
 }
 
+const PALETTE = [
+  '#818CF8', // indigo
+  '#34D399', // emerald
+  '#F472B6', // pink
+  '#FBBF24', // amber
+  '#22D3EE', // cyan
+  '#A78BFA', // violet
+  '#F87171', // red
+  '#4ADE80', // green
+  '#FB923C', // orange
+  '#38BDF8', // sky
+]
+
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
 
 export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd, onCategoryClick }: CategorySpendingChartProps) {
-  const [tooltip, setTooltip] = useState<{ name: string; amount: number; mx: number; my: number } | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [hovered, setHovered] = useState<string | null>(null)
 
   const cycleExpenses = expenses.filter(e => e.date >= cycleStart && e.date <= cycleEnd)
 
@@ -33,110 +45,42 @@ export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd, 
     .sort((a, b) => b.amount - a.amount)
 
   const max = rows[0].amount
-  const BAR_HEIGHT = 22
-  const GAP = 10
-  const LABEL_WIDTH = 108
-  const BAR_MAX_WIDTH = 300
-  const chartH = rows.length * (BAR_HEIGHT + GAP) - GAP
-
-  function handleBarEnter(e: React.MouseEvent, row: { name: string; amount: number }) {
-    const rect = containerRef.current!.getBoundingClientRect()
-    setTooltip({ name: row.name, amount: row.amount, mx: e.clientX - rect.left, my: e.clientY - rect.top })
-  }
-
-  function handleBarMove(e: React.MouseEvent) {
-    if (!tooltip) return
-    const rect = containerRef.current!.getBoundingClientRect()
-    setTooltip(t => t ? { ...t, mx: e.clientX - rect.left, my: e.clientY - rect.top } : null)
-  }
+  const total = rows.reduce((s, r) => s + r.amount, 0)
 
   return (
-    <div ref={containerRef} className="relative" onMouseLeave={() => setTooltip(null)}>
-      <svg
-        width="100%"
-        viewBox={`0 0 ${LABEL_WIDTH + BAR_MAX_WIDTH + 4} ${chartH}`}
-        className="overflow-visible"
-      >
-        {rows.map((row, i) => {
-          const barW = Math.max(6, (row.amount / max) * BAR_MAX_WIDTH)
-          const y = i * (BAR_HEIGHT + GAP)
-          const barX = LABEL_WIDTH
-
-          return (
-            <g key={row.name}>
-              {/* Category label */}
-              <text
-                x={LABEL_WIDTH - 10}
-                y={y + BAR_HEIGHT / 2 + 4}
-                textAnchor="end"
-                className="fill-black/50 dark:fill-white/40"
-                style={{ fontSize: 11, fontFamily: 'inherit' }}
-              >
-                {row.name.length > 14 ? row.name.slice(0, 13) + '…' : row.name}
-              </text>
-
-              {/* Bar track (subtle background) */}
-              <rect
-                x={barX}
-                y={y + 4}
-                width={BAR_MAX_WIDTH}
-                height={BAR_HEIGHT - 8}
-                rx={4}
-                className="fill-black/[0.04] dark:fill-white/[0.04]"
+    <div className="space-y-2">
+      {rows.map((row, i) => {
+        const pct = Math.max(4, (row.amount / max) * 100)
+        const color = PALETTE[i % PALETTE.length]
+        const isHovered = hovered === row.name
+        return (
+          <div
+            key={row.name}
+            className="group cursor-pointer"
+            onMouseEnter={() => setHovered(row.name)}
+            onMouseLeave={() => setHovered(null)}
+            onClick={() => onCategoryClick?.(row.name, row.items)}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] text-black/50 dark:text-white/50 truncate max-w-[140px]">{row.name}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10px] text-black/30 dark:text-white/30">{((row.amount / total) * 100).toFixed(0)}%</span>
+                <span className="text-[11px] font-semibold tabular-nums" style={{ color }}>{fmt(row.amount)}</span>
+              </div>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${pct}%`,
+                  backgroundColor: color,
+                  opacity: isHovered ? 1 : 0.7,
+                }}
               />
-
-              {/* Bar fill — 4px rounded data-end, square at baseline per spec */}
-              <rect
-                x={barX}
-                y={y + 4}
-                width={barW}
-                height={BAR_HEIGHT - 8}
-                rx={4}
-                className="fill-[#6B46E5] dark:fill-[#AF9BFF] opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
-                onMouseEnter={e => handleBarEnter(e, row)}
-                onMouseMove={handleBarMove}
-                onMouseLeave={() => setTooltip(null)}
-                onClick={() => { setTooltip(null); onCategoryClick?.(row.name, row.items) }}
-              />
-
-              {/* Value label at bar tip — shown outside if bar is long enough */}
-              {barW > 60 && (
-                <text
-                  x={barX + barW - 6}
-                  y={y + BAR_HEIGHT / 2 + 4}
-                  textAnchor="end"
-                  className="fill-white/80 dark:fill-black/70"
-                  style={{ fontSize: 10, fontFamily: 'inherit', fontWeight: 600 }}
-                >
-                  {fmt(row.amount)}
-                </text>
-              )}
-              {barW <= 60 && (
-                <text
-                  x={barX + barW + 6}
-                  y={y + BAR_HEIGHT / 2 + 4}
-                  textAnchor="start"
-                  className="fill-black/40 dark:fill-white/30"
-                  style={{ fontSize: 10, fontFamily: 'inherit' }}
-                >
-                  {fmt(row.amount)}
-                </text>
-              )}
-            </g>
-          )
-        })}
-      </svg>
-
-      {/* Tooltip */}
-      {tooltip && (
-        <div
-          className="pointer-events-none absolute z-10 bg-white dark:bg-[#1C1C1C] border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 shadow-lg text-xs whitespace-nowrap"
-          style={{ left: tooltip.mx, top: tooltip.my, transform: 'translate(-50%, -120%)' }}
-        >
-          <p className="font-semibold text-black dark:text-white">{tooltip.name}</p>
-          <p className="text-[#6B46E5] dark:text-[#AF9BFF] font-bold mt-0.5">{fmt(tooltip.amount)}</p>
-        </div>
-      )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

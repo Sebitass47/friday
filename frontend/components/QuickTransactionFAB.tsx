@@ -245,27 +245,7 @@ export default function QuickTransactionFAB() {
                     />
                   </div>
 
-                  <div className="grid gap-1.5">
-                    <Label className="text-xs text-gray-400">Pago con</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setAccountId(''); }}
-                        className={`h-9 rounded-lg border text-sm font-medium transition-all ${!accountId ? 'border-[#6B46E5] bg-[#6B46E5]/10 text-[#AF9BFF]' : 'border-white/10 text-white/40 hover:border-white/20'}`}
-                      >
-                        Efectivo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { if (!accountId && accounts.length > 0) setAccountId(accounts[0].id) }}
-                        className={`h-9 rounded-lg border text-sm font-medium transition-all ${accountId ? 'border-[#6B46E5] bg-[#6B46E5]/10 text-[#AF9BFF]' : 'border-white/10 text-white/40 hover:border-white/20'}`}
-                      >
-                        Tarjeta / Cuenta
-                      </button>
-                    </div>
-                  </div>
-
-                  {accountId !== undefined && accounts.length > 0 && (
+                  {accounts.length > 0 && (
                     <div className="grid gap-1.5">
                       <Label htmlFor="account" className="text-xs text-gray-400">Cuenta</Label>
                       <Select value={accountId} onValueChange={v => setAccountId(v)}>

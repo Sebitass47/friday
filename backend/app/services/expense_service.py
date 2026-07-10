@@ -57,7 +57,7 @@ def create_expense(db: Session, expense: ExpenseCreate, user_id: UUID) -> Expens
             account.current_balance_used = (account.current_balance_used or 0) + expense.amount
             if account.credit_limit:
                 account.available_credit = account.credit_limit - account.current_balance_used
-        elif expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH):
+        elif expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
             account.balance = (account.balance or 0) - expense.amount
 
     db.add(db_expense)
@@ -120,8 +120,8 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
         if account.credit_limit:
             account.available_credit = account.credit_limit - account.current_balance_used
 
-    # Similar logic for debit/cash
-    if expense_update.amount and expense_update.amount != db_expense.amount and db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH):
+    # Similar logic for debit/cash/savings
+    if expense_update.amount and expense_update.amount != db_expense.amount and db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
         diff = expense_update.amount - db_expense.amount
         account.balance = (account.balance or 0) - diff
 
@@ -150,7 +150,7 @@ def delete_expense(db: Session, expense_id: UUID, user_id: UUID) -> bool:
         account.current_balance_used = (account.current_balance_used or 0) - db_expense.amount
         if account.credit_limit:
             account.available_credit = account.credit_limit - account.current_balance_used
-    elif db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH):
+    elif db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
         account.balance = (account.balance or 0) + db_expense.amount
 
     db.delete(db_expense)

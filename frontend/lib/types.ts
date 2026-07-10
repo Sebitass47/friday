@@ -104,7 +104,7 @@ export interface Expense {
   name: string
   amount: number
   date: string
-  payment_method: 'cash' | 'debit' | 'credit'
+  payment_method: 'cash' | 'debit' | 'credit' | 'savings'
   category: string | null
   credit_statement_month: number | null
   credit_statement_year: number | null

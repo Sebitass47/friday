@@ -170,7 +170,7 @@ export async function createExpense(data: {
   name: string
   amount: number
   date: string
-  payment_method: 'cash' | 'debit' | 'credit'
+  payment_method: 'cash' | 'debit' | 'credit' | 'savings'
   category?: string
 }): Promise<Expense> {
   return req('/expenses/', { method: 'POST', body: JSON.stringify(data) })
@@ -180,7 +180,7 @@ export async function updateExpense(id: string, data: {
   name?: string
   amount?: number
   date?: string
-  payment_method?: 'cash' | 'debit' | 'credit'
+  payment_method?: 'cash' | 'debit' | 'credit' | 'savings'
   category?: string | null
 }): Promise<Expense> {
   return req(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) })

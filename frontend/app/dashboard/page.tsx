@@ -202,7 +202,7 @@ export default function DashboardPage() {
   const [regAmount, setRegAmount] = useState('')
   const [regDesc, setRegDesc] = useState('')
   const [regDate, setRegDate] = useState(today())
-  const [regMethod, setRegMethod] = useState<'cash' | 'debit' | 'credit'>('cash')
+  const [regMethod, setRegMethod] = useState<'cash' | 'debit' | 'credit' | 'savings'>('cash')
   const [regAccountId, setRegAccountId] = useState('')
   const [regIncomeAccountId, setRegIncomeAccountId] = useState('')
   const [regCategory, setRegCategory] = useState('')
@@ -220,7 +220,7 @@ export default function DashboardPage() {
   const [editExpDesc, setEditExpDesc] = useState('')
   const [editExpAmount, setEditExpAmount] = useState('')
   const [editExpDate, setEditExpDate] = useState('')
-  const [editExpMethod, setEditExpMethod] = useState<'cash' | 'debit' | 'credit'>('cash')
+  const [editExpMethod, setEditExpMethod] = useState<'cash' | 'debit' | 'credit' | 'savings'>('cash')
   const [editExpAccountId, setEditExpAccountId] = useState('')
   const [editExpCategory, setEditExpCategory] = useState('')
 
@@ -269,10 +269,13 @@ export default function DashboardPage() {
     setRegSaving(true); setRegError('')
     try {
       if (regMode === 'expense') {
-        await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: regDate, payment_method: regMethod, category: regCategory || undefined })
+        await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: regDate, payment_method: derivedRegMethod, category: regCategory || undefined })
       } else {
-        await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: regDate, category: regCategory || undefined, account_id: regIncomeAccountId || null })
-        if (regIsMonthly) await setMonthlyIncome(parseFloat(regAmount), regCycleStartDay, regIncomeAccountId || null)
+        if (!regIsMonthly) {
+          await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: regDate, category: regCategory || undefined, account_id: regIncomeAccountId || null })
+        } else {
+          await setMonthlyIncome(parseFloat(regAmount), regCycleStartDay, regIncomeAccountId || null)
+        }
       }
       setActiveModal(null)
       const [p, a, ex] = await Promise.all([getProjection(12), getAccounts(), getExpenses()])
@@ -542,8 +545,13 @@ export default function DashboardPage() {
     return new Date(y, m, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
   }
   const selectedRegCard = accounts.find(a => a.id === regAccountId)
-  const billingMonth = regMethod === 'credit' && selectedRegCard?.account_type === 'credit_card'
+  const billingMonth = selectedRegCard?.account_type === 'credit_card'
     ? getBillingMonth(selectedRegCard) : ''
+  const derivedRegMethod: 'cash' | 'debit' | 'credit' | 'savings' = !regAccountId
+    ? 'cash'
+    : selectedRegCard?.account_type === 'credit_card' ? 'credit'
+    : selectedRegCard?.account_type === 'savings' ? 'savings'
+    : 'debit'
 
   return (
     <AppLayout>
@@ -633,7 +641,7 @@ export default function DashboardPage() {
         {expenses.length > 0 && (() => {
           const sorted = [...expenses].sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
           const recent = sorted.slice(0, 10)
-          const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : 'Crédito'
+          const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : m === 'savings' ? 'Ahorro' : 'Crédito'
           return (
             <div className={`${cardCls} p-5`}>
               <div className="flex items-center justify-between mb-4">
@@ -1156,33 +1164,45 @@ export default function DashboardPage() {
 
           {regMode === 'expense' && (
             <>
-              <FormField label="Método de pago">
+              <FormField label="Pago con">
                 <div className="flex gap-2">
-                  {(['credit', 'cash', 'debit'] as const).map(m => (
-                    <button key={m} onClick={() => setRegMethod(m)}
-                      className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${regMethod === m ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}>
-                      {m === 'credit' ? 'Tarjeta' : m === 'cash' ? 'Efectivo' : 'Transf.'}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setRegAccountId('')}
+                    className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${!regAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
+                  >
+                    Efectivo
+                  </button>
+                  <button
+                    onClick={() => { if (!regAccountId && accounts.length > 0) setRegAccountId(accounts[0].id) }}
+                    className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${regAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
+                  >
+                    Tarjeta / Cuenta
+                  </button>
                 </div>
               </FormField>
 
-              {regMethod !== 'cash' && accounts.length > 0 && (
-                <FormField label={regMethod === 'credit' ? 'Tarjeta' : 'Cuenta'}>
+              {accounts.length > 0 && (
+                <FormField label="Cuenta">
                   <CustomSelect
                     value={regAccountId}
                     onChange={setRegAccountId}
-                    placeholder="Selecciona"
+                    placeholder="Sin cuenta (efectivo)"
                     options={[
-                      { value: '', label: 'Sin cuenta' },
-                      ...accounts
-                        .filter(a => regMethod === 'credit' ? a.account_type === 'credit_card' : a.account_type !== 'credit_card')
-                        .map(a => ({ value: a.id, label: a.name }))
+                      { value: '', label: 'Sin cuenta (efectivo)' },
+                      ...accounts.map(a => ({
+                        value: a.id,
+                        label: `${a.name} · ${a.account_type === 'credit_card' ? 'Crédito' : a.account_type === 'savings' ? 'Ahorro' : 'Débito'}`
+                      }))
                     ]}
                   />
                   {billingMonth && (
                     <p className="text-[11px] text-[#6B46E5] dark:text-[#AF9BFF] bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 rounded-lg px-2.5 py-1.5 mt-1.5">
                       Se cobra en el estado de: <span className="font-semibold capitalize">{billingMonth}</span>
+                    </p>
+                  )}
+                  {selectedRegCard?.account_type === 'savings' && (
+                    <p className="text-[11px] text-amber-500 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                      Cuenta de ahorro — no se descuenta del disponible del mes
                     </p>
                   )}
                 </FormField>
@@ -1542,7 +1562,7 @@ export default function DashboardPage() {
             const filtered = [...expenses]
               .filter(e => e.date >= cutoffStr)
               .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
-            const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : 'Crédito'
+            const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : m === 'savings' ? 'Ahorro' : 'Crédito'
             if (filtered.length === 0) return <p className="text-sm text-black/40 dark:text-white/40 text-center py-6">Sin gastos en los últimos 30 días</p>
             return (
               <div className="space-y-1 max-h-[60vh] overflow-y-auto">
@@ -1588,30 +1608,48 @@ export default function DashboardPage() {
             <DateInput value={editExpDate} onChange={setEditExpDate} inputClassName={inputCls()} />
           </FormField>
 
-          <FormField label="Método de pago">
+          <FormField label="Pago con">
             <div className="flex gap-2">
-              {(['credit', 'cash', 'debit'] as const).map(m => (
-                <button key={m} type="button" onClick={() => setEditExpMethod(m)}
-                  className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${editExpMethod === m ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}>
-                  {m === 'credit' ? 'Tarjeta' : m === 'cash' ? 'Efectivo' : 'Transf.'}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => { setEditExpAccountId(''); setEditExpMethod('cash') }}
+                className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${!editExpAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
+              >
+                Efectivo
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (!editExpAccountId && accounts.length > 0) setEditExpAccountId(accounts[0].id) }}
+                className={`flex-1 py-2 text-xs font-medium rounded-xl border transition-all ${editExpAccountId ? `${ACCENT_BG_SOFT} ${ACCENT} ${ACCENT_BORDER}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20'}`}
+              >
+                Tarjeta / Cuenta
+              </button>
             </div>
           </FormField>
 
-          {editExpMethod !== 'cash' && accounts.length > 0 && (
-            <FormField label={editExpMethod === 'credit' ? 'Tarjeta' : 'Cuenta'}>
+          {accounts.length > 0 && (
+            <FormField label="Cuenta">
               <CustomSelect
                 value={editExpAccountId}
-                onChange={setEditExpAccountId}
-                placeholder="Sin cuenta"
+                onChange={v => {
+                  setEditExpAccountId(v)
+                  const acc = accounts.find(a => a.id === v)
+                  setEditExpMethod(!v ? 'cash' : acc?.account_type === 'credit_card' ? 'credit' : acc?.account_type === 'savings' ? 'savings' : 'debit')
+                }}
+                placeholder="Sin cuenta (efectivo)"
                 options={[
-                  { value: '', label: 'Sin cuenta' },
-                  ...accounts
-                    .filter(a => editExpMethod === 'credit' ? a.account_type === 'credit_card' : a.account_type !== 'credit_card')
-                    .map(a => ({ value: a.id, label: a.name }))
+                  { value: '', label: 'Sin cuenta (efectivo)' },
+                  ...accounts.map(a => ({
+                    value: a.id,
+                    label: `${a.name} · ${a.account_type === 'credit_card' ? 'Crédito' : a.account_type === 'savings' ? 'Ahorro' : 'Débito'}`
+                  }))
                 ]}
               />
+              {accounts.find(a => a.id === editExpAccountId)?.account_type === 'savings' && (
+                <p className="text-[11px] text-amber-500 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                  Cuenta de ahorro — no se descuenta del disponible del mes
+                </p>
+              )}
             </FormField>
           )}
 

@@ -26,7 +26,7 @@ export default function QuickTransactionFAB() {
   const [expenseName, setExpenseName] = useState('')
   const [expenseAmount, setExpenseAmount] = useState('')
   const [expenseDate, setExpenseDate] = useState(todayStr())
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debit' | 'credit'>('cash')
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'debit' | 'credit' | 'savings'>('cash')
   const [category, setCategory] = useState('')
 
   // Income form
@@ -71,11 +71,11 @@ export default function QuickTransactionFAB() {
     setLoading(true)
     try {
       await createExpense({
-        account_id: accountId,
+        account_id: accountId || undefined,
         name: expenseName,
         amount: parseFloat(expenseAmount),
         date: expenseDate,
-        payment_method: paymentMethod,
+        payment_method: derivedPaymentMethod,
         category: category || undefined,
       })
       handleClose()
@@ -113,6 +113,16 @@ export default function QuickTransactionFAB() {
 
   const selectedAccount = accounts.find(a => a.id === accountId)
 
+  // Derive payment_method from selected account type
+  function getPaymentMethod(acc: typeof selectedAccount): 'cash' | 'debit' | 'credit' | 'savings' {
+    if (!acc) return 'cash'
+    if (acc.account_type === 'credit_card') return 'credit'
+    if (acc.account_type === 'savings') return 'savings'
+    return 'debit'
+  }
+
+  const derivedPaymentMethod = accountId ? getPaymentMethod(selectedAccount) : 'cash'
+
   function getBillingMonth(card: typeof selectedAccount): string {
     if (!card || !card.closing_day) return ''
     const today = new Date()
@@ -125,7 +135,7 @@ export default function QuickTransactionFAB() {
     return new Date(year, month, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
   }
 
-  const billingMonth = paymentMethod === 'credit' && selectedAccount?.account_type === 'credit_card'
+  const billingMonth = selectedAccount?.account_type === 'credit_card'
     ? getBillingMonth(selectedAccount)
     : ''
 
@@ -236,45 +246,50 @@ export default function QuickTransactionFAB() {
                   </div>
 
                   <div className="grid gap-1.5">
-                    <Label htmlFor="payment-method" className="text-xs text-gray-400">Método de pago</Label>
-                    <Select value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
-                      <SelectTrigger id="payment-method" className="h-9 bg-[#0A0A0A] text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Efectivo</SelectItem>
-                        <SelectItem value="debit">Débito</SelectItem>
-                        <SelectItem value="credit">Crédito</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs text-gray-400">Pago con</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setAccountId(''); }}
+                        className={`h-9 rounded-lg border text-sm font-medium transition-all ${!accountId ? 'border-[#6B46E5] bg-[#6B46E5]/10 text-[#AF9BFF]' : 'border-white/10 text-white/40 hover:border-white/20'}`}
+                      >
+                        Efectivo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { if (!accountId && accounts.length > 0) setAccountId(accounts[0].id) }}
+                        className={`h-9 rounded-lg border text-sm font-medium transition-all ${accountId ? 'border-[#6B46E5] bg-[#6B46E5]/10 text-[#AF9BFF]' : 'border-white/10 text-white/40 hover:border-white/20'}`}
+                      >
+                        Tarjeta / Cuenta
+                      </button>
+                    </div>
                   </div>
 
-                  {(paymentMethod === 'debit' || paymentMethod === 'credit') && (
+                  {accountId !== undefined && accounts.length > 0 && (
                     <div className="grid gap-1.5">
-                      <Label htmlFor="account" className="text-xs text-gray-400">
-                        {paymentMethod === 'credit' ? 'Tarjeta' : 'Cuenta'}
-                      </Label>
-                      <Select value={accountId} onValueChange={setAccountId}>
+                      <Label htmlFor="account" className="text-xs text-gray-400">Cuenta</Label>
+                      <Select value={accountId} onValueChange={v => setAccountId(v)}>
                         <SelectTrigger id="account" className="h-9 bg-[#0A0A0A] text-sm">
-                          <SelectValue placeholder="Selecciona" />
+                          <SelectValue placeholder="Sin cuenta (efectivo)" />
                         </SelectTrigger>
                         <SelectContent>
-                          {accounts
-                            .filter(a =>
-                              paymentMethod === 'credit'
-                                ? a.account_type === 'credit_card'
-                                : a.account_type !== 'credit_card'
-                            )
-                            .map(a => (
-                              <SelectItem key={a.id} value={a.id}>
-                                {a.name}
-                              </SelectItem>
-                            ))}
+                          <SelectItem value="">Sin cuenta (efectivo)</SelectItem>
+                          {accounts.map(a => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {a.name}{' '}
+                              {a.account_type === 'credit_card' ? '· Crédito' : a.account_type === 'savings' ? '· Ahorro' : '· Débito'}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       {billingMonth && (
                         <p className="text-[11px] text-[#4F8EF7] bg-[#4F8EF7]/10 rounded-md px-2 py-1">
                           Se cobra en el estado de: <span className="font-medium capitalize">{billingMonth}</span>
+                        </p>
+                      )}
+                      {selectedAccount?.account_type === 'savings' && (
+                        <p className="text-[11px] text-amber-500 bg-amber-500/10 rounded-md px-2 py-1">
+                          Cuenta de ahorro — no se descuenta del disponible del mes
                         </p>
                       )}
                     </div>
@@ -296,7 +311,7 @@ export default function QuickTransactionFAB() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={loading || !expenseName || !expenseAmount || !category || ((paymentMethod !== 'cash') && !accountId)}
+                      disabled={loading || !expenseName || !expenseAmount || !category}
                       className="flex-1 h-9 bg-white text-black hover:bg-white/90 text-xs font-medium"
                     >
                       {loading ? 'Guardando...' : 'Guardar'}

@@ -5,7 +5,7 @@ import type {
   CategoriesResponse, CustomCategory,
 } from './types'
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/v1'
+const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
 
 function token(): string {
   if (typeof window === 'undefined') return ''

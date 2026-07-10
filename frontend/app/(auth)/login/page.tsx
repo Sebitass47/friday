@@ -25,7 +25,7 @@ export default function LoginPage() {
       formData.append('username', email)
       formData.append('password', password)
 
-      const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api/v1'
+      const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
       const response = await fetch(`${BASE}/auth/login?remember_me=${rememberMe}`, {
         method: 'POST',
         body: formData,

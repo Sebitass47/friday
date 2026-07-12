@@ -43,7 +43,7 @@ def send_push(subscription, title: str, body: str, url: str = "/", tag: str = "f
         else:
             logger.error("Push WebPushException (no response) → ...%s | %s", endpoint_short, e)
         # 404 and 410 both mean the subscription is gone
-        if status in (404, 410):
+        if status in (403, 404, 410):
             return False
         return True
     except Exception as e:
@@ -55,10 +55,10 @@ def check_and_notify_habits(db: Session, hour: int) -> None:
     """Send a habit progress push to every user who still has pending habits today."""
     from app.models.habit import Habit, HabitLog
     from app.models.push_subscription import PushSubscription
-    from datetime import datetime, timezone
-    import pytz
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
 
-    tz = pytz.timezone("America/Mexico_City")
+    tz = ZoneInfo("America/Mexico_City")
     today = datetime.now(tz).date()
 
     # All users that have at least one push subscription

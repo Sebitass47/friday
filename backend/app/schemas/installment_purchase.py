@@ -16,11 +16,18 @@ class InstallmentPurchaseBase(BaseModel):
     payment_day: Optional[int] = None
     closing_day: Optional[int] = None
 
-    @field_validator("total_installments", "remaining_installments")
+    @field_validator("total_installments")
     @classmethod
-    def must_be_positive(cls, v: int) -> int:
+    def total_must_be_positive(cls, v: int) -> int:
         if v <= 0:
             raise ValueError("Debe ser mayor a 0")
+        return v
+
+    @field_validator("remaining_installments")
+    @classmethod
+    def remaining_must_be_non_negative(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("No puede ser negativo")
         return v
 
     @field_validator("remaining_installments")

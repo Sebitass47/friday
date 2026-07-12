@@ -1,5 +1,6 @@
 from app.celery_app import celery
 from app.core.database import SessionLocal
+import app.models  # noqa: F401 — registers all SQLAlchemy mappers before any task runs
 import logging
 
 logger = logging.getLogger(__name__)

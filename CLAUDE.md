@@ -3,7 +3,9 @@
 > **Instrucción para el agente:** Al terminar cualquier tarea:
 > 1. **Actualiza este archivo** — si agregaste módulo, endpoint, modelo, página o componente, añádelo en la sección correspondiente. Si completaste algo de "Lo que viene", muévelo a donde corresponda.
 > 2. **Haz un commit** con un mensaje descriptivo de lo que se hizo (en inglés, estilo convencional: `feat:`, `fix:`, `docs:`, etc.). Siempre incluye `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`.
-> 3. **Reconstruye y reinicia los contenedores afectados** si están corriendo: `docker compose build <servicio> && docker compose up -d --no-deps <servicio>`. Si cambiaron backend y frontend, reconstruye ambos.
+> 3. **NUNCA hagas cambios directos en producción.** Todo cambio va en local → commit → push → el pipeline de GitHub Actions se encarga del deploy. Jamás corras comandos en el server de EC2 (ni `git pull`, ni `docker compose build`, ni `docker exec`). El único caso válido para conectarse al server es **leer logs** cuando hay un error que no se puede diagnosticar de otra forma, y solo si Sebastian lo autoriza explícitamente.
+> 4. **NUNCA toques `docker-compose.yml` ni `docker-compose.prod.yml`** sin autorización explícita de Sebastian. Estos archivos controlan producción y un cambio incorrecto puede romper el acceso al servidor.
+> 5. El pipeline de CI/CD (`.github/workflows/deploy.yml`) se dispara automáticamente con cada push a `main`. Hace `git pull` en el server, reconstruye y reinicia todos los contenedores, y aplica migraciones. Confía en el pipeline.
 
 
 

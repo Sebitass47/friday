@@ -41,11 +41,8 @@ services:
     build: ./backend
     command: celery -A app.celery_app.celery worker --loglevel=info --concurrency=2
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-friday}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/friday}
+      SECRET_KEY: ${SECRET_KEY:-changeme}
       REDIS_URL: redis://redis:6379/0
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JR0hBZ0VBTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEJHMHdhd0lCQVFRZ3BIckRoRTMwdy9sWW5nRzMKdURGamNaWXg4R0pWV3FZYVM5RGhoS01WSjBLaFJBTkNBQVR3YkRadjNyKzl3VjZIR25namV4TXZmbnVHSjJLRgpYdW96ek4zbExZd3pkQ2EwRlF5NFpQRWFMQjM5OU9lRGF2Y1dFRzlBSHlTVzhUVUU0QjcxTVZRdgotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0t}
       VAPID_CONTACT_EMAIL: ${VAPID_CONTACT_EMAIL:-sebastian.dlr47@gmail.com}
@@ -59,11 +56,8 @@ services:
     build: ./backend
     command: celery -A app.celery_app.celery beat --loglevel=info
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-friday}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/friday}
+      SECRET_KEY: ${SECRET_KEY:-changeme}
       REDIS_URL: redis://redis:6379/0
     depends_on:
       - postgres

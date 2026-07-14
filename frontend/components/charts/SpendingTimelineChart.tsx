@@ -105,6 +105,10 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome, cycleSt
   const periodExpenses = useMemo(() =>
     expenses
       .filter(e => {
+        if (e.payment_method === 'credit' && e.credit_statement_month && e.credit_statement_year) {
+          return e.credit_statement_month === period.end.getMonth() + 1
+            && e.credit_statement_year === period.end.getFullYear()
+        }
         const d = new Date(e.date + 'T00:00:00')
         return d >= period.start && d <= period.end
       })
@@ -116,7 +120,7 @@ export default function SpendingTimelineChart({ expenses, monthlyIncome, cycleSt
     const map: Record<number, DayData> = {}
     for (const e of periodExpenses) {
       const d = new Date(e.date + 'T00:00:00')
-      const offset = daysBetween(period.start, d)
+      const offset = Math.max(0, daysBetween(period.start, d))
       if (!map[offset]) map[offset] = { total: 0, items: [], date: d }
       map[offset].total += Number(e.amount)
       map[offset].items.push(e)

@@ -123,12 +123,12 @@ export default function QuickTransactionFAB() {
 
   const derivedPaymentMethod = accountId ? getPaymentMethod(selectedAccount) : 'cash'
 
-  function getBillingMonth(card: typeof selectedAccount): string {
+  function getBillingMonth(card: typeof selectedAccount, forDate: string): string {
     if (!card || !card.closing_day) return ''
-    const today = new Date()
-    let month = today.getMonth()
-    let year = today.getFullYear()
-    if (today.getDate() > card.closing_day) {
+    const [y, mo, d] = forDate.split('-').map(Number)
+    let month = mo - 1  // 0-indexed
+    let year = y
+    if (d > card.closing_day) {
       month++
       if (month > 11) { month = 0; year++ }
     }
@@ -136,7 +136,7 @@ export default function QuickTransactionFAB() {
   }
 
   const billingMonth = selectedAccount?.account_type === 'credit_card'
-    ? getBillingMonth(selectedAccount)
+    ? getBillingMonth(selectedAccount, expenseDate)
     : ''
 
   return (

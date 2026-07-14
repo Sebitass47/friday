@@ -589,16 +589,16 @@ export default function DashboardPage() {
   function resetSim() { setSimBase(null); setSimResult(null); setSimError('') }
 
   // Billing month helper for register modal
-  function getBillingMonth(card: Account): string {
+  function getBillingMonth(card: Account, forDate: string): string {
     if (!card.closing_day) return ''
-    const d = new Date()
-    let m = d.getMonth(), y = d.getFullYear()
-    if (d.getDate() > card.closing_day) { m++; if (m > 11) { m = 0; y++ } }
-    return new Date(y, m, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+    const [y, mo, d] = forDate.split('-').map(Number)
+    let m = mo - 1, yr = y  // m is 0-indexed
+    if (d > card.closing_day) { m++; if (m > 11) { m = 0; yr++ } }
+    return new Date(yr, m, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
   }
   const selectedRegCard = accounts.find(a => a.id === regAccountId)
   const billingMonth = selectedRegCard?.account_type === 'credit_card'
-    ? getBillingMonth(selectedRegCard) : ''
+    ? getBillingMonth(selectedRegCard, regDate) : ''
   const derivedRegMethod: 'cash' | 'debit' | 'credit' | 'savings' = !regAccountId
     ? 'cash'
     : selectedRegCard?.account_type === 'credit_card' ? 'credit'

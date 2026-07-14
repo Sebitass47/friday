@@ -188,6 +188,19 @@ def _credit_payments_for_cycle(
     return sum((Decimal(str(p.amount_paid)) for p in payments), Decimal("0"))
 
 
+def _credit_expenses_by_statement_month(
+    db: Session, user_id: UUID, statement_month: int, statement_year: int
+) -> Decimal:
+    """Sum credit card expenses whose statement month/year matches the given cycle month."""
+    expenses = db.query(Expense).filter(
+        Expense.user_id == user_id,
+        Expense.payment_method == PaymentMethod.CREDIT,
+        Expense.credit_statement_month == statement_month,
+        Expense.credit_statement_year == statement_year,
+    ).all()
+    return sum((Decimal(str(e.amount)) for e in expenses), Decimal("0"))
+
+
 # ── Projection builder ────────────────────────────────────────────────────────
 
 def _build_cycle_projection(
@@ -210,12 +223,15 @@ def _build_cycle_projection(
     inst_total = _installment_cost_for_cycle(installments, cycle_start, cycle_start_day)
     sav_total = _savings_cost_for_cycle(savings_goals, cycle_start, cycle_end, today)
 
-    credit_total = Decimal("0")
+    # Credit expenses counted by statement month for ALL cycles (current and future)
+    credit_expenses_total = _credit_expenses_by_statement_month(
+        db, user_id, cycle_start.month, cycle_start.year
+    )
+
     cash_debit_total = Decimal("0")
     extra_income = Decimal("0")
     if is_current:
         cash_debit_total = _cash_debit_spent_for_cycle(db, user_id, cycle_start, today)
-        credit_total = _credit_payments_for_cycle(db, user_id, cycle_start, today)
         extra_income = _extra_income_for_cycle(db, user_id, cycle_start, today)
 
     effective_income = income if monthly_income_counts else Decimal("0")
@@ -229,7 +245,7 @@ def _build_cycle_projection(
         if 0 <= cycles_elapsed < extra_installment.total_installments:
             inst_total += extra_installment.monthly_amount
 
-    available = effective_income + extra_income - rec_total - inst_total - sav_total - credit_total - cash_debit_total
+    available = effective_income + extra_income - rec_total - inst_total - sav_total - credit_expenses_total - cash_debit_total
 
     return MonthProjection(
         month=cycle_start.month,
@@ -242,6 +258,7 @@ def _build_cycle_projection(
         installments=inst_total,
         savings_contributions=sav_total,
         cash_debit_spent=cash_debit_total,
+        credit_spent=credit_expenses_total,
         available=available,
     )
 

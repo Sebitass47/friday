@@ -15,6 +15,7 @@ class MonthProjection(BaseModel):
     installments: Decimal
     savings_contributions: Decimal
     cash_debit_spent: Decimal
+    credit_spent: Decimal
     available: Decimal
 
 

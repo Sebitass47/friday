@@ -11,16 +11,16 @@ interface CategorySpendingChartProps {
 }
 
 const PALETTE = [
-  '#818CF8', // indigo
-  '#34D399', // emerald
-  '#F472B6', // pink
-  '#FBBF24', // amber
-  '#22D3EE', // cyan
-  '#A78BFA', // violet
-  '#F87171', // red
-  '#4ADE80', // green
-  '#FB923C', // orange
-  '#38BDF8', // sky
+  '#AF9BFF', // morado principal FRIDAY
+  '#C4B5FD', // lavanda claro
+  '#7C3AED', // morado profundo
+  '#DDD6FE', // lavanda suave
+  '#E879F9', // fucsia
+  '#F0ABFC', // malva claro
+  '#818CF8', // indigo complemento
+  '#A5B4FC', // indigo suave
+  '#F9A8D4', // rosa suave
+  '#C084FC', // violeta medio
 ]
 
 const fmt = (n: number) =>

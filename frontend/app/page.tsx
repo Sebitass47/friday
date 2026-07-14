@@ -172,7 +172,7 @@ function SpeedDial() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   return (
-    <div className="fixed bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end gap-3" style={{ pointerEvents: 'none' }}>
       {FAB_ACTIONS.map((a, i) => (
         <div
           key={a.key}
@@ -199,13 +199,13 @@ function SpeedDial() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-2xl text-white transition-all duration-300 hover:scale-110 active:scale-95"
-        style={{ background: 'linear-gradient(135deg, #FF6B9D, #6B46E5)' }}
+        style={{ background: 'linear-gradient(135deg, #FF6B9D, #6B46E5)', pointerEvents: 'auto' }}
       >
         <span className={`transition-transform duration-300 ${open ? 'rotate-45' : 'rotate-0'} flex`}>
           {open ? <X size={22} /> : <Plus size={22} />}
         </span>
       </button>
-      {open && <div className="fixed inset-0 -z-10" onClick={() => setOpen(false)} />}
+      {open && <div className="fixed inset-0 -z-10" style={{ pointerEvents: 'auto' }} onClick={() => setOpen(false)} />}
     </div>
   )
 }

@@ -29,10 +29,8 @@ const fmt = (n: number) =>
 export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd, onCategoryClick }: CategorySpendingChartProps) {
   const [hovered, setHovered] = useState<string | null>(null)
 
-  const cycleExpenses = expenses.filter(e => e.date >= cycleStart && e.date <= cycleEnd)
-
   const map = new Map<string, { amount: number; items: Expense[] }>()
-  for (const e of cycleExpenses) {
+  for (const e of expenses) {
     const cat = e.category?.trim() || 'Sin categoría'
     const prev = map.get(cat) ?? { amount: 0, items: [] }
     map.set(cat, { amount: prev.amount + Number(e.amount), items: [...prev.items, e] })

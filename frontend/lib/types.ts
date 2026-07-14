@@ -30,7 +30,7 @@ export interface RecurringExpense {
   amount: number
   frequency: 'monthly' | 'weekly' | 'custom'
   interval_days: number | null
-  last_charged_date: string | null
+  last_charged_date?: string | null
   created_at: string
   updated_at: string
 }

@@ -11,8 +11,9 @@ import type {
 } from '@/lib/types'
 import {
   DollarSign, CheckSquare, CalendarDays, StickyNote,
-  Plus, X, CreditCard, Clock, ChevronRight, Target, Check, ChevronLeft,
+  Plus, X, CreditCard, Clock, ChevronRight, Target, ChevronLeft,
 } from 'lucide-react'
+import HabitsWeekTable from '@/components/HabitsWeekTable'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -513,16 +514,14 @@ export default function HomePage() {
 
         {/* ── Habits ───────────────────────────────────────────────────────── */}
         {(loading || habits.length > 0) && (() => {
-          const DAYS_ES = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM']
           const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
           const weekDates = Array.from({length:7},(_,i)=>{ const d=new Date(habitWeekStart); d.setDate(d.getDate()+i); return d })
           const today = todayISO()
           const weekLabel = `${weekDates[0].getDate()} ${MONTHS_ES[weekDates[0].getMonth()]} – ${weekDates[6].getDate()} ${MONTHS_ES[weekDates[6].getMonth()]} ${weekDates[6].getFullYear()}`
-          const toISO = (d:Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 
           return (
-            <GCard isDark={isDark}>
-              <div className="flex items-center justify-between mb-4">
+            <GCard isDark={isDark} className="overflow-hidden !p-0">
+              <div className="flex items-center justify-between px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
                 <div className="flex items-center gap-2">
                   <SectionTitle isDark={isDark} icon={<Target size={14} />} label="Hábitos" count={habits.length || undefined} />
                 </div>
@@ -546,61 +545,15 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
-              <p className="text-[10px] mb-3" style={{ color: txtMuted }}>{weekLabel}</p>
+              <p className="text-[10px] px-4 sm:px-5 mt-3 mb-1" style={{ color: txtMuted }}>{weekLabel}</p>
 
-              {loading ? (
-                <div className="space-y-2">{[1,2,3].map(i => <div key={i} className={`${shimmer} h-8`} />)}</div>
-              ) : (
-                <div className="overflow-x-auto w-full">
-                  <table className="w-full min-w-[340px]">
-                    <thead>
-                      <tr>
-                        <th className="text-left pb-2 pr-3 w-20" />
-                        {weekDates.map((d,i) => {
-                          const iso = toISO(d)
-                          const isToday = iso === today
-                          return (
-                            <th key={i} className="pb-2 px-1 text-center">
-                              <div className="text-[9px] font-bold tracking-widest" style={{ color: isToday ? '#6B46E5' : (isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af') }}>{DAYS_ES[i]}</div>
-                              <div className="text-xs font-medium" style={{ color: isToday ? '#6B46E5' : (isDark ? 'rgba(255,255,255,0.4)' : '#6b7280') }}>{d.getDate()}</div>
-                            </th>
-                          )
-                        })}
-                        <th className="pb-2 px-2 text-center text-[9px] font-bold tracking-widest" style={{ color: isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }}>%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {habits.map(habit => (
-                        <tr key={habit.id} className="border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6' }}>
-                          <td className="py-2.5 pr-3 text-sm font-medium truncate max-w-[80px]" style={{ color: txt(0.85) }}>{habit.name}</td>
-                          {weekDates.map((d,i) => {
-                            const iso = toISO(d)
-                            const done = habit.completed_dates.includes(iso)
-                            const isToday = iso === today
-                            return (
-                              <td key={i} className="py-2.5 px-1 text-center">
-                                <button
-                                  onClick={() => toggleHabit(habit.id, iso)}
-                                  className="w-7 h-7 rounded-xl mx-auto flex items-center justify-center transition-all duration-150"
-                                  style={done
-                                    ? { backgroundColor: habit.color }
-                                    : { border: `2px solid ${isToday ? (isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af') : (isDark ? 'rgba(255,255,255,0.12)' : '#e5e7eb')}` }
-                                  }
-                                >
-                                  {done && <Check size={12} strokeWidth={3} color="white" />}
-                                </button>
-                              </td>
-                            )
-                          })}
-                          <td className="py-2.5 px-2 text-center text-xs font-semibold" style={{ color: habit.week_percentage > 0 ? habit.color : (isDark ? 'rgba(255,255,255,0.2)' : '#d1d5db') }}>
-                            {habit.week_percentage}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <HabitsWeekTable
+                habits={habits}
+                weekDates={weekDates}
+                today={today}
+                loading={loading}
+                onToggle={toggleHabit}
+              />
             </GCard>
           )
         })()}

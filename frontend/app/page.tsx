@@ -488,11 +488,9 @@ export default function HomePage() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate" style={{ color: txt(0.8) }}>{e.title}</p>
-                      {e.due_time && (
-                        <span className="text-[10px] flex items-center gap-0.5" style={{ color: txtMuted }}>
-                          <Clock size={9} />{e.due_time.slice(0, 5)}
-                        </span>
-                      )}
+                      <span className="text-[10px] flex items-center gap-0.5" style={{ color: txtMuted }}>
+                        <Clock size={9} />{e.due_time ? e.due_time.slice(0, 5) : 'Todo el día'}
+                      </span>
                     </div>
                   </div>
                 ))}

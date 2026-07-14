@@ -313,7 +313,11 @@ export default function HomePage() {
         const d = new Date(e.due_date + 'T00:00:00')
         return d >= today && d <= in7
       })
-      .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
+      .sort((a, b) => {
+        const aKey = (a.due_date ?? '') + (a.due_time ?? '99:99')
+        const bKey = (b.due_date ?? '') + (b.due_time ?? '99:99')
+        return aKey.localeCompare(bKey)
+      })
   }, [events])
 
   const recentNotes = useMemo(() => {

@@ -47,11 +47,17 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
     upcoming.push(e)
   }
 
+  const byDateTime = (a: Task, b: Task) => {
+    const aKey = (a.due_date ?? '') + (a.due_time ?? '99:99')
+    const bKey = (b.due_date ?? '') + (b.due_time ?? '99:99')
+    return aKey.localeCompare(bKey)
+  }
+
   const groups: { label: string; events: Task[] }[] = []
-  if (past.length) groups.push({ label: 'Pasados', events: past.reverse() })
-  if (todayEvs.length) groups.push({ label: 'Hoy', events: todayEvs })
-  if (tomEvs.length) groups.push({ label: 'Mañana', events: tomEvs })
-  if (upcoming.length) groups.push({ label: 'Próximamente', events: upcoming })
+  if (past.length) groups.push({ label: 'Pasados', events: past.sort(byDateTime).reverse() })
+  if (todayEvs.length) groups.push({ label: 'Hoy', events: todayEvs.sort(byDateTime) })
+  if (tomEvs.length) groups.push({ label: 'Mañana', events: tomEvs.sort(byDateTime) })
+  if (upcoming.length) groups.push({ label: 'Próximamente', events: upcoming.sort(byDateTime) })
   if (noDate.length) groups.push({ label: 'Sin fecha', events: noDate })
   return groups
 }

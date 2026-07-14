@@ -744,6 +744,32 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {/* Other accounts */}
+            {otherAccounts.length > 0 && (
+              <div className="space-y-2">
+                {otherAccounts.map(a => (
+                  <div key={a.id} className={`${cardCls} flex items-center justify-between px-5 py-3.5`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`${a.account_type === 'savings' ? 'text-emerald-400' : 'text-[#6B46E5] dark:text-[#AF9BFF]'}`}>
+                        {a.account_type === 'savings' ? <PiggyBank size={16} /> : <Wallet size={16} />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-black dark:text-white">{a.name}</p>
+                        <p className="text-[11px] text-black/40 dark:text-white/40">{a.account_type === 'savings' ? 'Ahorro' : 'Débito'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-sm font-semibold tabular-nums ${a.account_type === 'savings' ? 'text-emerald-400' : 'text-black dark:text-white'}`}>{fmt(Number(a.balance))}</span>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEditAccount(a)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={12} /></button>
+                        <button onClick={() => removeAccount(a.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={12} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Credit cards */}
             {creditCards.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -811,31 +837,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Other accounts */}
-            {otherAccounts.length > 0 && (
-              <div className="space-y-2">
-                {otherAccounts.map(a => (
-                  <div key={a.id} className={`${cardCls} flex items-center justify-between px-5 py-3.5`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`${a.account_type === 'savings' ? 'text-emerald-400' : 'text-[#6B46E5] dark:text-[#AF9BFF]'}`}>
-                        {a.account_type === 'savings' ? <PiggyBank size={16} /> : <Wallet size={16} />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-black dark:text-white">{a.name}</p>
-                        <p className="text-[11px] text-black/40 dark:text-white/40">{a.account_type === 'savings' ? 'Ahorro' : 'Débito'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className={`text-sm font-semibold tabular-nums ${a.account_type === 'savings' ? 'text-emerald-400' : 'text-black dark:text-white'}`}>{fmt(Number(a.balance))}</span>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => openEditAccount(a)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={12} /></button>
-                        <button onClick={() => removeAccount(a.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={12} /></button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 

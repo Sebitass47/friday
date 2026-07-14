@@ -8,20 +8,28 @@ import { Search, Plus, X, Trash2, MapPin, Clock, Calendar, AlarmClock, CalendarD
 import { DateInput } from '@/components/ui/date-input'
 import { cn } from '@/lib/utils'
 
-const LABELS = ['Trabajo', 'Personal', 'Hogar', 'Finanzas', 'Salud']
+const LABELS = ['Trabajo', 'Personal', 'Pareja', 'Familia', 'Social', 'Hogar', 'Salud', 'Finanzas', 'Ocio']
 const LABEL_COLORS: Record<string, string> = {
-  Trabajo: 'bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/30',
+  Trabajo:  'bg-blue-500/20 text-blue-500 dark:text-blue-400 border-blue-500/30',
   Personal: 'bg-purple-500/20 text-purple-500 dark:text-purple-400 border-purple-500/30',
-  Hogar: 'bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/30',
+  Pareja:   'bg-rose-500/20 text-rose-500 dark:text-rose-400 border-rose-500/30',
+  Familia:  'bg-orange-500/20 text-orange-500 dark:text-orange-400 border-orange-500/30',
+  Social:   'bg-teal-500/20 text-teal-500 dark:text-teal-400 border-teal-500/30',
+  Hogar:    'bg-green-500/20 text-green-500 dark:text-green-400 border-green-500/30',
+  Salud:    'bg-pink-500/20 text-pink-500 dark:text-pink-400 border-pink-500/30',
   Finanzas: 'bg-amber-500/20 text-amber-500 dark:text-amber-400 border-amber-500/30',
-  Salud: 'bg-pink-500/20 text-pink-500 dark:text-pink-400 border-pink-500/30',
+  Ocio:     'bg-violet-500/20 text-violet-500 dark:text-violet-400 border-violet-500/30',
 }
 const LABEL_HEX: Record<string, string> = {
-  Trabajo: '#3b82f6',
+  Trabajo:  '#3b82f6',
   Personal: '#a855f7',
-  Hogar: '#22c55e',
+  Pareja:   '#f43f5e',
+  Familia:  '#f97316',
+  Social:   '#14b8a6',
+  Hogar:    '#22c55e',
+  Salud:    '#ec4899',
   Finanzas: '#f59e0b',
-  Salud: '#ec4899',
+  Ocio:     '#8b5cf6',
 }
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
 

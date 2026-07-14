@@ -38,12 +38,30 @@ function tomorrow() {
   const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]
 }
 
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
 function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
   const tod = today()
   const tom = tomorrow()
+
+  // End of this calendar week (Sunday)
+  const todDate = new Date(tod + 'T12:00:00')
+  const daysUntilSunday = todDate.getDay() === 0 ? 0 : 7 - todDate.getDay()
+  const endOfWeek = addDays(tod, daysUntilSunday)
+
+  // End of this calendar month
+  const endOfMonth = new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0)
+    .toISOString().split('T')[0]
+
   const past: Task[] = []
   const todayEvs: Task[] = []
   const tomEvs: Task[] = []
+  const thisWeek: Task[] = []
+  const thisMonth: Task[] = []
   const upcoming: Task[] = []
   const noDate: Task[] = []
 
@@ -52,6 +70,8 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
     if (e.due_date < tod) { past.push(e); continue }
     if (e.due_date === tod) { todayEvs.push(e); continue }
     if (e.due_date === tom) { tomEvs.push(e); continue }
+    if (e.due_date <= endOfWeek) { thisWeek.push(e); continue }
+    if (e.due_date <= endOfMonth) { thisMonth.push(e); continue }
     upcoming.push(e)
   }
 
@@ -65,6 +85,8 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
   if (past.length) groups.push({ label: 'Pasados', events: past.sort(byDateTime).reverse() })
   if (todayEvs.length) groups.push({ label: 'Hoy', events: todayEvs.sort(byDateTime) })
   if (tomEvs.length) groups.push({ label: 'Mañana', events: tomEvs.sort(byDateTime) })
+  if (thisWeek.length) groups.push({ label: 'Esta semana', events: thisWeek.sort(byDateTime) })
+  if (thisMonth.length) groups.push({ label: 'Este mes', events: thisMonth.sort(byDateTime) })
   if (upcoming.length) groups.push({ label: 'Próximamente', events: upcoming.sort(byDateTime) })
   if (noDate.length) groups.push({ label: 'Sin fecha', events: noDate })
   return groups

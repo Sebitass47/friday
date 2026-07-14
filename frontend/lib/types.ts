@@ -87,6 +87,7 @@ export interface MonthProjection {
   installments: number
   savings_contributions: number
   cash_debit_spent: number
+  credit_spent: number
   available: number
 }
 

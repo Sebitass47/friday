@@ -275,7 +275,7 @@ export default function HomePage() {
 
   const incomeAmt = safe(currentCycle?.income)
   const compromisos = safe(currentCycle?.recurring_expenses) + safe(currentCycle?.installments) + safe(currentCycle?.savings_contributions)
-  const gastado = safe(currentCycle?.cash_debit_spent)
+  const gastado = safe(currentCycle?.cash_debit_spent) + safe(currentCycle?.credit_spent)
   const disponible = safe(currentCycle?.available)
   const cycleHasIncome = hasIncome && currentCycle !== null
 

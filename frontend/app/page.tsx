@@ -551,11 +551,11 @@ export default function HomePage() {
               {loading ? (
                 <div className="space-y-2">{[1,2,3].map(i => <div key={i} className={`${shimmer} h-8`} />)}</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[420px]">
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full min-w-[340px]">
                     <thead>
                       <tr>
-                        <th className="text-left pb-2 pr-3 w-32" />
+                        <th className="text-left pb-2 pr-3 w-20" />
                         {weekDates.map((d,i) => {
                           const iso = toISO(d)
                           const isToday = iso === today
@@ -572,7 +572,7 @@ export default function HomePage() {
                     <tbody>
                       {habits.map(habit => (
                         <tr key={habit.id} className="border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6' }}>
-                          <td className="py-2.5 pr-3 text-sm font-medium truncate max-w-[120px]" style={{ color: txt(0.85) }}>{habit.name}</td>
+                          <td className="py-2.5 pr-3 text-sm font-medium truncate max-w-[80px]" style={{ color: txt(0.85) }}>{habit.name}</td>
                           {weekDates.map((d,i) => {
                             const iso = toISO(d)
                             const done = habit.completed_dates.includes(iso)

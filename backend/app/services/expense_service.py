@@ -132,6 +132,13 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
     for key, value in update_data.items():
         setattr(db_expense, key, value)
 
+    # Recalculate credit statement month whenever date or account changes on a credit expense
+    if db_expense.payment_method == PaymentMethod.CREDIT and account and account.closing_day:
+        new_date = db_expense.date
+        stmt_month, stmt_year = _calculate_credit_statement_month(new_date, account.closing_day)
+        db_expense.credit_statement_month = stmt_month
+        db_expense.credit_statement_year = stmt_year
+
     db.commit()
     db.refresh(db_expense)
     return db_expense

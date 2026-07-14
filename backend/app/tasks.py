@@ -2,8 +2,23 @@ from app.celery_app import celery
 from app.core.database import SessionLocal
 import app.models  # noqa: F401 — registers all SQLAlchemy mappers before any task runs
 import logging
+import calendar as cal_mod
+from datetime import date, timedelta
 
 logger = logging.getLogger(__name__)
+
+
+def _current_cycle_start(today: date, cycle_start_day: int) -> date:
+    """Return the start date of the financial cycle that contains today."""
+    def clamp(y, m, d):
+        return date(y, m, min(d, cal_mod.monthrange(y, m)[1]))
+
+    this_cycle = clamp(today.year, today.month, cycle_start_day)
+    if today >= this_cycle:
+        return this_cycle
+    prev_month = today.month - 1 or 12
+    prev_year = today.year if today.month > 1 else today.year - 1
+    return clamp(prev_year, prev_month, cycle_start_day)
 
 
 @celery.task(name="app.tasks.check_payment_due_dates")
@@ -105,6 +120,61 @@ def check_task_reminders():
         logger.info("Task reminders check completed")
     except Exception as e:
         logger.error("Error in check_task_reminders: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
+@celery.task(name="app.tasks.charge_recurring_expenses")
+def charge_recurring_expenses():
+    """
+    Daily task: for each recurring expense linked to a credit card, charge the
+    amount to current_balance_used if we haven't done so in the user's current
+    financial cycle (determined by their cycle_start_day in monthly_income).
+    """
+    from decimal import Decimal
+    from app.models.recurring_expense import RecurringExpense
+    from app.models.account import Account, AccountType
+    from app.models.monthly_income import MonthlyIncome
+
+    db = SessionLocal()
+    try:
+        today = date.today()
+        charged = 0
+
+        expenses = (
+            db.query(RecurringExpense)
+            .filter(RecurringExpense.account_id.isnot(None))
+            .all()
+        )
+
+        for expense in expenses:
+            account = db.query(Account).filter(Account.id == expense.account_id).first()
+            if not account or account.account_type != AccountType.CREDIT_CARD:
+                continue
+
+            mi = db.query(MonthlyIncome).filter(MonthlyIncome.user_id == expense.user_id).first()
+            cycle_start_day = mi.cycle_start_day if mi else 1
+            current_cycle_start = _current_cycle_start(today, cycle_start_day)
+
+            already_charged = (
+                expense.last_charged_date is not None
+                and expense.last_charged_date >= current_cycle_start
+            )
+            if already_charged:
+                continue
+
+            amount = Decimal(str(expense.amount))
+            account.current_balance_used = (account.current_balance_used or Decimal(0)) + amount
+            if account.credit_limit:
+                account.available_credit = account.credit_limit - account.current_balance_used
+            expense.last_charged_date = today
+            charged += 1
+
+        db.commit()
+        logger.info("charge_recurring_expenses: charged %d expenses", charged)
+    except Exception as e:
+        logger.error("Error in charge_recurring_expenses: %s", e)
         db.rollback()
     finally:
         db.close()

@@ -43,7 +43,7 @@ type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | 'edit
 
 const MSI_EMPTY = { name: '', total_amount: 0, monthly_amount: 0, total_installments: 12, remaining_installments: 12, start_date: today(), account_id: null as string | null, is_new_charge: true }
 const GOAL_EMPTY = { name: '', target_amount: 0, current_amount: 0, monthly_contribution: 0 }
-const REC_EMPTY = { name: '', amount: '' as string | number, frequency: 'monthly' as RecurringExpense['frequency'], interval_days: null as number | null }
+const REC_EMPTY = { name: '', amount: '' as string | number, frequency: 'monthly' as RecurringExpense['frequency'], interval_days: null as number | null, account_id: null as string | null }
 
 interface AccountForm {
   name: string
@@ -469,7 +469,7 @@ export default function DashboardPage() {
   // Recurring CRUD
   function openNewRec() { setRecForm(REC_EMPTY); setRecError(''); setActiveModal('recurring') }
   function openEditRec(e: RecurringExpense) {
-    setRecForm({ name: e.name, amount: Number(e.amount), frequency: e.frequency, interval_days: e.interval_days, id: e.id })
+    setRecForm({ name: e.name, amount: Number(e.amount), frequency: e.frequency, interval_days: e.interval_days, account_id: e.account_id, id: e.id })
     setRecError(''); setActiveModal('recurring')
   }
   async function saveRec() {
@@ -1052,16 +1052,26 @@ export default function DashboardPage() {
                     scrollbarColor: 'rgba(255,107,107,0.25) transparent',
                   }}
                 >
-                  {recurring.map(e => (
-                    <div key={e.id} className="group flex items-center justify-between">
-                      <span className="text-xs text-black dark:text-white truncate max-w-[55%]">{e.name}</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-black/70 dark:text-white/70 tabular-nums">{fmt(Number(e.amount))}</span>
-                        <button onClick={() => openEditRec(e)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
-                        <button onClick={() => deleteRec(e.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                  {recurring.map(e => {
+                    const recAccount = accounts.find(a => a.id === e.account_id)
+                    return (
+                      <div key={e.id} className="group flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs text-black dark:text-white truncate max-w-[110px]">{e.name}</span>
+                          {recAccount && (
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${recAccount.account_type === 'credit_card' ? 'bg-[#6B46E5]/15 text-[#6B46E5] dark:bg-[#AF9BFF]/15 dark:text-[#AF9BFF]' : 'bg-black/[0.06] dark:bg-white/[0.06] text-black/50 dark:text-white/50'}`}>
+                              {recAccount.name}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-xs font-semibold text-black/70 dark:text-white/70 tabular-nums">{fmt(Number(e.amount))}</span>
+                          <button onClick={() => openEditRec(e)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                          <button onClick={() => deleteRec(e.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
                 <div className="mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
                   <span className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-wide">Mensual</span>
@@ -1424,6 +1434,27 @@ export default function DashboardPage() {
           {recForm.frequency === 'custom' && (
             <FormField label="Cada cuántos días">
               <input type="number" min={1} value={recForm.interval_days ?? ''} onChange={e => setRecForm(f => ({ ...f, interval_days: e.target.value ? Number(e.target.value) : null }))} className={inputCls()} />
+            </FormField>
+          )}
+          {accounts.length > 0 && (
+            <FormField label="Tarjeta / cuenta">
+              <CustomSelect
+                value={recForm.account_id ?? ''}
+                onChange={v => setRecForm(f => ({ ...f, account_id: v || null }))}
+                placeholder="Sin cuenta (efectivo)"
+                options={[
+                  { value: '', label: 'Sin cuenta (efectivo)' },
+                  ...accounts.map(a => ({
+                    value: a.id,
+                    label: `${a.name} · ${a.account_type === 'credit_card' ? 'Crédito' : a.account_type === 'savings' ? 'Ahorro' : 'Débito'}`,
+                  })),
+                ]}
+              />
+              {recForm.account_id && accounts.find(a => a.id === recForm.account_id)?.account_type === 'credit_card' && (
+                <p className="text-[11px] text-amber-500 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                  Se cargará al saldo de esta tarjeta al inicio de cada ciclo
+                </p>
+              )}
             </FormField>
           )}
           <FormActions onCancel={() => setActiveModal(null)} onSave={saveRec} saving={recSaving} error={recError} />

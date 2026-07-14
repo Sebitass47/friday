@@ -25,10 +25,12 @@ export interface Account {
 export interface RecurringExpense {
   id: string
   user_id: string
+  account_id: string | null
   name: string
   amount: number
   frequency: 'monthly' | 'weekly' | 'custom'
   interval_days: number | null
+  last_charged_date: string | null
   created_at: string
   updated_at: string
 }

@@ -30,6 +30,10 @@ celery.conf.beat_schedule = {
         "schedule": crontab(hour=21, minute=0),
         "kwargs": {"hour": 21},
     },
+    "charge-recurring-expenses": {
+        "task": "app.tasks.charge_recurring_expenses",
+        "schedule": crontab(hour=7, minute=0),
+    },
 }
 celery.conf.timezone = "America/Mexico_City"
 celery.conf.task_serializer = "json"

@@ -1,6 +1,6 @@
 from uuid import UUID
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 from pydantic import BaseModel, field_validator
 from app.models.recurring_expense import ExpenseFrequency
@@ -11,6 +11,7 @@ class RecurringExpenseBase(BaseModel):
     amount: Decimal
     frequency: ExpenseFrequency = ExpenseFrequency.MONTHLY
     interval_days: Optional[int] = None
+    account_id: Optional[UUID] = None
 
     @field_validator("interval_days")
     @classmethod
@@ -30,11 +31,13 @@ class RecurringExpenseUpdate(BaseModel):
     amount: Optional[Decimal] = None
     frequency: Optional[ExpenseFrequency] = None
     interval_days: Optional[int] = None
+    account_id: Optional[UUID] = None
 
 
 class RecurringExpenseResponse(RecurringExpenseBase):
     id: UUID
     user_id: UUID
+    last_charged_date: Optional[date] = None
     created_at: datetime
     updated_at: datetime
 

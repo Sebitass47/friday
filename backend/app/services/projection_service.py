@@ -223,9 +223,10 @@ def _build_cycle_projection(
     inst_total = _installment_cost_for_cycle(installments, cycle_start, cycle_start_day)
     sav_total = _savings_cost_for_cycle(savings_goals, cycle_start, cycle_end, today)
 
-    # Credit expenses counted by statement month for ALL cycles (current and future)
+    # Credit expenses counted by statement month for ALL cycles (current and future).
+    # A cycle Jul 14→Aug 13 collects credit expenses whose statement closes in Aug (cycle_end.month).
     credit_expenses_total = _credit_expenses_by_statement_month(
-        db, user_id, cycle_start.month, cycle_start.year
+        db, user_id, cycle_end.month, cycle_end.year
     )
 
     cash_debit_total = Decimal("0")

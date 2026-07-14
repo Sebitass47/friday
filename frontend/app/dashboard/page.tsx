@@ -689,58 +689,6 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Recent movements card */}
-        {(expenses.length > 0 || incomes.length > 0) && (() => {
-          const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : m === 'savings' ? 'Ahorro' : 'Crédito'
-          type Movement =
-            | { kind: 'expense'; id: string; name: string; date: string; created_at: string; amount: number; payment_method: string; category: string | null; data: Expense }
-            | { kind: 'income'; id: string; name: string; date: string; created_at: string; amount: number; category: string | null; incData: Income }
-          const movements: Movement[] = [
-            ...expenses.map(e => ({ kind: 'expense' as const, id: e.id, name: e.name, date: e.date, created_at: e.created_at, amount: Number(e.amount), payment_method: e.payment_method, category: e.category, data: e })),
-            ...incomes.map(i => ({ kind: 'income' as const, id: i.id, name: i.description, date: i.date, created_at: i.created_at, amount: Number(i.amount), category: i.category, incData: i })),
-          ]
-          const recent = movements.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)).slice(0, 10)
-          return (
-            <div className={`${cardCls} p-5`}>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Movimientos recientes</h2>
-                  <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Últimos {recent.length} registrados</p>
-                </div>
-                <button
-                  onClick={() => setShowAllExpenses(true)}
-                  className={`text-xs font-medium px-2.5 py-1.5 rounded-lg ${ACCENT_BG_SOFT} ${ACCENT} transition-opacity hover:opacity-80`}
-                >
-                  Ver todos
-                </button>
-              </div>
-              <div className="space-y-1">
-                {recent.map(mov => (
-                  <button
-                    key={`${mov.kind}-${mov.id}`}
-                    onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : openEditIncome_pt(mov.incData)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
-                  >
-                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#A8FF3E]'}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-black dark:text-white truncate">{mov.name}</p>
-                      <p className="text-[11px] text-black/30 dark:text-white/30">
-                        {fmtDate(mov.date)}
-                        {mov.kind === 'expense' ? ` · ${pmLabel(mov.payment_method)}` : ' · Ingreso'}
-                        {mov.category ? ` · ${mov.category}` : ''}
-                      </p>
-                    </div>
-                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#A8FF3E]'}`}>
-                      {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
-                    </span>
-                    <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )
-        })()}
-
         {/* Category spending chart */}
         {projection && (() => {
           const thisMonth = projection.months[0]
@@ -1082,6 +1030,58 @@ export default function DashboardPage() {
           </div>
 
         </div>
+
+        {/* Recent movements card */}
+        {(expenses.length > 0 || incomes.length > 0) && (() => {
+          const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : m === 'savings' ? 'Ahorro' : 'Crédito'
+          type Movement =
+            | { kind: 'expense'; id: string; name: string; date: string; created_at: string; amount: number; payment_method: string; category: string | null; data: Expense }
+            | { kind: 'income'; id: string; name: string; date: string; created_at: string; amount: number; category: string | null; incData: Income }
+          const movements: Movement[] = [
+            ...expenses.map(e => ({ kind: 'expense' as const, id: e.id, name: e.name, date: e.date, created_at: e.created_at, amount: Number(e.amount), payment_method: e.payment_method, category: e.category, data: e })),
+            ...incomes.map(i => ({ kind: 'income' as const, id: i.id, name: i.description, date: i.date, created_at: i.created_at, amount: Number(i.amount), category: i.category, incData: i })),
+          ]
+          const recent = movements.sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at)).slice(0, 10)
+          return (
+            <div className={`${cardCls} p-5`}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-sm font-semibold text-black dark:text-white">Movimientos recientes</h2>
+                  <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Últimos {recent.length} registrados</p>
+                </div>
+                <button
+                  onClick={() => setShowAllExpenses(true)}
+                  className={`text-xs font-medium px-2.5 py-1.5 rounded-lg ${ACCENT_BG_SOFT} ${ACCENT} transition-opacity hover:opacity-80`}
+                >
+                  Ver todos
+                </button>
+              </div>
+              <div className="space-y-1">
+                {recent.map(mov => (
+                  <button
+                    key={`${mov.kind}-${mov.id}`}
+                    onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : openEditIncome_pt(mov.incData)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
+                  >
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#A8FF3E]'}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-black dark:text-white truncate">{mov.name}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">
+                        {fmtDate(mov.date)}
+                        {mov.kind === 'expense' ? ` · ${pmLabel(mov.payment_method)}` : ' · Ingreso'}
+                        {mov.category ? ` · ${mov.category}` : ''}
+                      </p>
+                    </div>
+                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#A8FF3E]'}`}>
+                      {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
+                    </span>
+                    <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Proyección 12 meses */}
         <div className={`${cardCls} p-6`}>

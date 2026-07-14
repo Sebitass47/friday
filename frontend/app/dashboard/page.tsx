@@ -684,7 +684,7 @@ export default function DashboardPage() {
           </div>
           <SpendingTimelineChart
             expenses={expenses}
-            monthlyIncome={monthlyIncomeData?.amount ?? Number(projection?.months[0]?.income ?? 0)}
+            monthlyIncome={(monthlyIncomeData?.amount ?? Number(projection?.months[0]?.income ?? 0)) - totalExpenses}
             cycleStartDay={monthlyIncomeData?.cycle_start_day ?? 1}
           />
         </div>

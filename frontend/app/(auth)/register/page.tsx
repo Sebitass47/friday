@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, KeyRound } from 'lucide-react'
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -24,7 +25,7 @@ export default function RegisterPage() {
       const response = await fetch(`${BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, full_name: fullName }),
+        body: JSON.stringify({ email, password, full_name: fullName, invite_code: inviteCode }),
       })
 
       const data = await response.json()
@@ -94,6 +95,15 @@ export default function RegisterPage() {
               >
                 {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
+            </div>
+
+            <div className="relative">
+              <KeyRound size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30" />
+              <input
+                type="text" value={inviteCode} onChange={e => setInviteCode(e.target.value)}
+                placeholder="Código de invitación" required
+                className={`${inputCls} pl-10`}
+              />
             </div>
 
             <button

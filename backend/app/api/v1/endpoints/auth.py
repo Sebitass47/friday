@@ -14,9 +14,10 @@ TRUSTED_DEVICE_DAYS = 30
 
 @router.post("/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    # Single-user app: block registration once any account exists
-    if db.query(User).first():
-        raise HTTPException(status_code=403, detail="Registration is closed")
+    import os
+    secret = os.getenv("REGISTRATION_SECRET", "")
+    if not secret or user.invite_code != secret:
+        raise HTTPException(status_code=403, detail="Código de invitación inválido")
     existing_user = user_service.get_user_by_email(db, user.email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")

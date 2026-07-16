@@ -165,7 +165,7 @@ const LABEL_COLORS: Record<string, { dark: string; light: string }> = {
 const FAB_ACTIONS = [
   { key: 'nota',   label: 'Nota',   icon: <StickyNote size={16} />,   color: '#14B8A6', href: '/notas?new=1' },
   { key: 'evento', label: 'Evento', icon: <CalendarDays size={16} />, color: '#3B82F6', href: '/events?new=1' },
-  { key: 'tarea',  label: 'Tarea',  icon: <CheckSquare size={16} />,  color: '#6B46E5', href: '/to_do?new=1' },
+  { key: 'tarea',  label: 'Recordatorio',  icon: <CheckSquare size={16} />,  color: '#6B46E5', href: '/recordatorios?new=1' },
   { key: 'gasto',  label: 'Gasto',  icon: <DollarSign size={16} />,   color: '#A8FF3E', href: '/dashboard?new=1' },
 ]
 
@@ -460,7 +460,7 @@ export default function HomePage() {
                   </div>
                 ))}
                 {todayTasks.length > 5 && (
-                  <button onClick={() => router.push('/to_do')}
+                  <button onClick={() => router.push('/recordatorios')}
                     className="text-xs flex items-center gap-1 transition-colors"
                     style={{ color: txtMuted }}>
                     +{todayTasks.length - 5} más <ChevronRight size={10} />
@@ -468,7 +468,7 @@ export default function HomePage() {
                 )}
               </div>
             )}
-            <button onClick={() => router.push('/to_do')}
+            <button onClick={() => router.push('/recordatorios')}
               className="mt-4 text-xs flex items-center gap-1 transition-colors hover:opacity-70"
               style={{ color: txtMuted }}>
               Ver todas las tareas <ChevronRight size={10} />

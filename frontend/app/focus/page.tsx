@@ -1166,7 +1166,7 @@ export default function FocusPage() {
                 ? { background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }
                 : { color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.07)' }
               }
-            >Tareas</button>
+            >Recordatorios</button>
             <button onClick={() => setShowSounds(s => !s)}
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
               style={showSounds
@@ -1289,7 +1289,7 @@ export default function FocusPage() {
                       onClick={() => setSelectedTask(null)}
                       className="flex items-center gap-1.5 text-white/45 hover:text-white/75 transition-colors text-xs font-medium"
                     >
-                      <span className="text-base leading-none">←</span> Tareas
+                      <span className="text-base leading-none">←</span> Recordatorios
                     </button>
                     <div className="flex items-center gap-2">
                       <button
@@ -1432,7 +1432,7 @@ export default function FocusPage() {
                 <>
                   {/* Header */}
                   <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06] flex-shrink-0">
-                    <span className="text-white text-sm font-semibold">Tareas</span>
+                    <span className="text-white text-sm font-semibold">Recordatorios</span>
                     <div className="flex items-center gap-2">
                       <span className="text-white/30 text-[10px]">{doneTasks}/{tasks.length}</span>
                       <button onClick={() => setShowTasks(false)}

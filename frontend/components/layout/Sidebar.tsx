@@ -18,7 +18,7 @@ import { getPushVapidKey, registerPushSubscription, removePushSubscription, test
 const NAV = [
   { href: '/',          icon: Home,           label: 'Inicio' },
   { href: '/dashboard', icon: LayoutDashboard, label: 'Finanzas' },
-  { href: '/to_do',     icon: CheckSquare,    label: 'Tareas' },
+  { href: '/recordatorios', icon: CheckSquare, label: 'Recordatorios' },
   { href: '/events',    icon: CalendarDays,   label: 'Eventos' },
   { href: '/habitos',   icon: Target,         label: 'Hábitos' },
   { href: '/notas',     icon: StickyNote,     label: 'Notas' },

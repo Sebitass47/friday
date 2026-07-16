@@ -75,7 +75,7 @@ def check_task_reminders():
                 and now < reminder_dt
             ):
                 for sub in subs:
-                    alive = send_push(sub, f"🔔 Mañana: {task.title}", "Tienes una tarea para mañana", url="/to_do", tag=f"todo-pre-{task.id}")
+                    alive = send_push(sub, f"🔔 Mañana: {task.title}", "Tienes una tarea para mañana", url="/recordatorios", tag=f"todo-pre-{task.id}")
                     if not alive:
                         db.delete(sub)
                 task.reminded_day_before = True
@@ -83,7 +83,7 @@ def check_task_reminders():
             # Main notification
             if not task.reminded_main and reminder_dt and now >= reminder_dt:
                 for sub in subs:
-                    alive = send_push(sub, f"✅ {task.title}", task.notes or "Es hora de esta tarea", url="/to_do", tag=f"todo-{task.id}")
+                    alive = send_push(sub, f"✅ {task.title}", task.notes or "Es hora de esta tarea", url="/recordatorios", tag=f"todo-{task.id}")
                     if not alive:
                         db.delete(sub)
                 task.reminded_main = True

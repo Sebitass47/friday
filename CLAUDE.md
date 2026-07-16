@@ -41,11 +41,11 @@ Dashboard personal central. Reemplaza el redirect que había a `/dashboard`.
 **FAB speed-dial** (bottom-right, siempre visible):
 - Botón + con gradiente rosa-morado; al abrir rota a X y expande 4 opciones animadas
 - 💸 Gasto → `/dashboard?new=1` (abre QuickTransactionFAB automáticamente)
-- ✅ Tarea → `/to_do?new=1` (abre panel de crear tarea)
+- ✅ Recordatorio → `/recordatorios?new=1` (abre panel de crear recordatorio)
 - 📅 Evento → `/events?new=1` (abre panel de crear evento)
 - 📝 Nota → `/notas?new=1` (abre formulario de nueva nota)
 
-**Auto-open `?new=1`:** implementado en QuickTransactionFAB, to_do, events y notas — al llegar con ese param el formulario se abre solo.
+**Auto-open `?new=1`:** implementado en QuickTransactionFAB, recordatorios, events y notas — al llegar con ese param el formulario se abre solo.
 
 ### Finanzas (`/dashboard`)
 
@@ -75,7 +75,7 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 
 Ya no es una página separada. Vive al final de la página de Finanzas, debajo de la Proyección 12 meses. Simula el impacto de una compra a MSI en los próximos 12 meses. Llama a `POST /projection/simulate/`.
 
-### Tareas (`/to_do`)
+### Recordatorios (`/recordatorios`)
 
 Lista de recordatorios/tareas personales. Diseño minimalista dark con panel lateral derecho para crear/editar.
 
@@ -169,7 +169,7 @@ Tracker semanal de hábitos. Tabla tipo grid donde cada fila es un hábito y cad
 
 ### Eventos (`/events`)
 
-Lista de eventos tipo calendario. Mismo diseño que `/to_do` pero para cosas con fecha fija (citas, reuniones, etc.). **No tiene endpoint propio en el backend** — reutiliza la API de tareas (`/tasks/`) filtrando por `is_event=true`.
+Lista de eventos tipo calendario. Mismo diseño que `/recordatorios` pero para cosas con fecha fija (citas, reuniones, etc.). **No tiene endpoint propio en el backend** — reutiliza la API de tareas (`/tasks/`) filtrando por `is_event=true`.
 
 **Funcionalidades:**
 - Crear eventos con título, etiqueta, fecha, hora, "Todo el día", ubicación y notas
@@ -237,7 +237,7 @@ frontend/
 │   ├── page.tsx                    # Home / — dashboard personal central
 │   ├── dashboard/page.tsx          # App principal de finanzas (~1200 líneas)
 │   ├── simulador/page.tsx          # Simulador MSI (página legacy, el simulador ya vive en /dashboard)
-│   ├── to_do/page.tsx              # Tareas
+│   ├── recordatorios/page.tsx      # Recordatorios
 │   ├── events/page.tsx             # Eventos (reutiliza API de tasks con is_event)
 │   ├── focus/page.tsx              # Espacio Focus (Three.js, Pomodoro, sonidos)
 │   ├── notas/page.tsx              # Notas con colores

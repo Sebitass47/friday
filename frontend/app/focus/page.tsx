@@ -529,6 +529,10 @@ function fmtFocus(s: number) {
 function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
+function localTimeFromISO(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+}
 
 // ─── Focus Select ─────────────────────────────────────────────────────────────
 function FocusSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
@@ -646,7 +650,7 @@ function TaskCard({ task, onToggle, onClick }: { task: Task; onToggle: (id: stri
             </span>
           )}
           {task.reminder_at && (
-            <span className="text-[9px] text-white/30">🕐 {task.reminder_at.slice(11, 16)}</span>
+            <span className="text-[9px] text-white/30">🕐 {localTimeFromISO(task.reminder_at)}</span>
           )}
           {task.subtasks && task.subtasks.length > 0 && (
             <span className="text-[9px] text-white/25">
@@ -731,7 +735,7 @@ function TaskDetail({
           {task.reminder_at && (
             <span className="text-[10px] px-2 py-1 rounded-lg text-white/50"
               style={{ background: 'rgba(255,255,255,0.05)' }}>
-              🔔 {task.reminder_at.slice(11, 16)}
+              🔔 {localTimeFromISO(task.reminder_at)}
             </span>
           )}
         </div>
@@ -1343,7 +1347,7 @@ export default function FocusPage() {
                         {selectedTask.reminder_at && (
                           <span className="text-[10px] px-2 py-1 rounded-lg text-white/45"
                             style={{ background: 'rgba(255,255,255,0.05)' }}>
-                            🔔 {selectedTask.reminder_at.slice(11, 16)}
+                            🔔 {localTimeFromISO(selectedTask.reminder_at)}
                           </span>
                         )}
                       </div>

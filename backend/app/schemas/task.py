@@ -1,7 +1,21 @@
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timezone
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+from zoneinfo import ZoneInfo
+
+_MX = ZoneInfo("America/Mexico_City")
+
+
+def _localize_reminder(v):
+    """If reminder_at arrives as a naive datetime, treat it as Mexico City local time."""
+    if v is None:
+        return v
+    if isinstance(v, str):
+        v = datetime.fromisoformat(v)
+    if isinstance(v, datetime) and v.tzinfo is None:
+        v = v.replace(tzinfo=_MX)
+    return v
 
 
 class SubtaskCreate(BaseModel):
@@ -36,6 +50,11 @@ class TaskCreate(BaseModel):
     reminder_at: Optional[datetime] = None
     remind_day_before: bool = False
 
+    @field_validator("reminder_at", mode="before")
+    @classmethod
+    def localize_reminder(cls, v):
+        return _localize_reminder(v)
+
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -50,6 +69,11 @@ class TaskUpdate(BaseModel):
     recurrence: Optional[str] = None
     reminder_at: Optional[datetime] = None
     remind_day_before: Optional[bool] = None
+
+    @field_validator("reminder_at", mode="before")
+    @classmethod
+    def localize_reminder(cls, v):
+        return _localize_reminder(v)
 
 
 class TaskResponse(BaseModel):

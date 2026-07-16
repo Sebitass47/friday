@@ -53,6 +53,18 @@ function tomorrow() {
   const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]
 }
 
+/** Extract HH:MM in the user's local timezone from a UTC ISO string */
+function localTimeFromISO(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+}
+
+/** Extract YYYY-MM-DD in the user's local timezone from a UTC ISO string */
+function localDateFromISO(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
+}
+
 function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
   const tod = today()
   const tom = tomorrow()
@@ -111,8 +123,8 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
     !task?.due_date ? 'none' : task.due_date === today() ? 'hoy' : task.due_date === tomorrow() ? 'manana' : 'custom'
   )
   const [customDate, setCustomDate] = useState(task?.due_date ?? '')
-  const [reminderTime, setReminderTime] = useState(task?.reminder_at ? task.reminder_at.slice(11, 16) : '')
-  const [reminderDate, setReminderDate] = useState(task?.reminder_at ? task.reminder_at.slice(0, 10) : '')
+  const [reminderTime, setReminderTime] = useState(task?.reminder_at ? localTimeFromISO(task.reminder_at) : '')
+  const [reminderDate, setReminderDate] = useState(task?.reminder_at ? localDateFromISO(task.reminder_at) : '')
   const [dayBefore, setDayBefore] = useState(task?.remind_day_before ?? false)
   const [recurrence, setRecurrence] = useState(
     task?.recurrence ? (RECURRENCE_LABEL[task.recurrence] ?? 'No se repite') : 'No se repite'
@@ -407,7 +419,7 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
           {task.reminder_at && (
             <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35">
               <AlarmClock size={11} />
-              {task.reminder_at.slice(11, 16)}
+              {localTimeFromISO(task.reminder_at)}
             </span>
           )}
           {subtasksTotal > 0 && (

@@ -181,14 +181,14 @@ def get_pending_event_reminders(db: Session) -> List[Task]:
 
 
 def _event_due_dt(task: Task) -> Optional[datetime]:
-    import pytz
+    from zoneinfo import ZoneInfo
     if not task.due_date:
         return None
-    tz = pytz.timezone("America/Mexico_City")
+    tz = ZoneInfo("America/Mexico_City")
     if task.due_time:
         naive = datetime.combine(task.due_date, task.due_time)
-        return tz.localize(naive).astimezone(timezone.utc)
+        return naive.replace(tzinfo=tz).astimezone(timezone.utc)
     else:
         # All-day events: anchor to 9:00 AM Mexico City time
-        local_dt = tz.localize(datetime.combine(task.due_date, time(9, 0)))
+        local_dt = datetime.combine(task.due_date, time(9, 0)).replace(tzinfo=tz)
         return local_dt.astimezone(timezone.utc)

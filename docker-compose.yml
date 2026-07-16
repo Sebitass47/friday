@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-friday}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -22,11 +22,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/friday}
-      SECRET_KEY: ${SECRET_KEY:-changeme}
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
       REDIS_URL: redis://redis:6379/0
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JR0hBZ0VBTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEJHMHdhd0lCQVFRZ3BIckRoRTMwdy9sWW5nRzMKdURGamNaWXg4R0pWV3FZYVM5RGhoS01WSjBLaFJBTkNBQVR3YkRadjNyKzl3VjZIR25namV4TXZmbnVHSjJLRgpYdW96ek4zbExZd3pkQ2EwRlF5NFpQRWFMQjM5OU9lRGF2Y1dFRzlBSHlTVzhUVUU0QjcxTVZRdgotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0t}
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-BPBsNmvev73BXocaeCN7Ey9-e4YnYoVe6jPM3eUtjDN0JrQVDLhk8RosHf3054Nq9xYQb0AfJJbxNQTgHvUxVC8}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_CONTACT_EMAIL: ${VAPID_CONTACT_EMAIL:-sebastian.dlr47@gmail.com}
     depends_on:
       - postgres
@@ -38,10 +38,10 @@ services:
     build: ./backend
     command: celery -A app.celery_app.celery worker --loglevel=info --concurrency=2
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/friday}
-      SECRET_KEY: ${SECRET_KEY:-changeme}
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
       REDIS_URL: redis://redis:6379/0
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JR0hBZ0VBTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEJHMHdhd0lCQVFRZ3BIckRoRTMwdy9sWW5nRzMKdURGamNaWXg4R0pWV3FZYVM5RGhoS01WSjBLaFJBTkNBQVR3YkRadjNyKzl3VjZIR25namV4TXZmbnVHSjJLRgpYdW96ek4zbExZd3pkQ2EwRlF5NFpQRWFMQjM5OU9lRGF2Y1dFRzlBSHlTVzhUVUU0QjcxTVZRdgotLS0tLUVORCBQUklWQVRFIEtFWS0tLS0t}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_CONTACT_EMAIL: ${VAPID_CONTACT_EMAIL:-sebastian.dlr47@gmail.com}
     depends_on:
       - postgres
@@ -53,8 +53,8 @@ services:
     build: ./backend
     command: celery -A app.celery_app.celery beat --loglevel=info
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/friday}
-      SECRET_KEY: ${SECRET_KEY:-changeme}
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
       REDIS_URL: redis://redis:6379/0
     depends_on:
       - postgres

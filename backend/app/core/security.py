@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from .database import get_db
 
 # Security configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is required")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 360))
 

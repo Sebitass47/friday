@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime
 from uuid import UUID
 
@@ -11,6 +11,13 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("La contraseña debe tener al menos 8 caracteres")
+        return v
 
 class UserResponse(UserBase):
     id: UUID

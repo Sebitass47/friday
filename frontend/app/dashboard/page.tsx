@@ -1121,15 +1121,15 @@ export default function DashboardPage() {
               </div>
               <div>
                 <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Precio total</label>
-                <input type="number" value={simForm.total_amount} onChange={e => setSimForm(f => ({ ...f, total_amount: Number(e.target.value) }))} onFocus={resetSim} className={inputCls()} />
+                <input type="number" value={simForm.total_amount === 0 ? '' : simForm.total_amount} onChange={e => setSimForm(f => ({ ...f, total_amount: Number(e.target.value) || 0 }))} onFocus={resetSim} placeholder="0.00" className={inputCls()} />
               </div>
               <div>
                 <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Pago mensual</label>
-                <input type="number" value={simForm.monthly_amount} onChange={e => setSimForm(f => ({ ...f, monthly_amount: Number(e.target.value) }))} onFocus={resetSim} className={inputCls()} />
+                <input type="number" value={simForm.monthly_amount === 0 ? '' : simForm.monthly_amount} onChange={e => setSimForm(f => ({ ...f, monthly_amount: Number(e.target.value) || 0 }))} onFocus={resetSim} placeholder="0.00" className={inputCls()} />
               </div>
               <div>
                 <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Número de meses</label>
-                <input type="number" min={1} max={48} value={simForm.total_installments} onChange={e => setSimForm(f => ({ ...f, total_installments: Number(e.target.value) }))} onFocus={resetSim} className={inputCls()} />
+                <input type="number" min={1} max={48} value={simForm.total_installments === 0 ? '' : simForm.total_installments} onChange={e => setSimForm(f => ({ ...f, total_installments: Number(e.target.value) || 0 }))} onFocus={resetSim} placeholder="12" className={inputCls()} />
               </div>
               <div>
                 <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Inicio</label>
@@ -1335,16 +1335,16 @@ export default function DashboardPage() {
           </FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Monto total">
-              <input type="number" value={msiForm.total_amount} onChange={e => setMsiForm(f => ({ ...f, total_amount: Number(e.target.value) }))} className={inputCls()} />
+              <input type="number" value={msiForm.total_amount === 0 ? '' : msiForm.total_amount} onChange={e => setMsiForm(f => ({ ...f, total_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
             </FormField>
             <FormField label="Pago mensual">
-              <input type="number" value={msiForm.monthly_amount} onChange={e => setMsiForm(f => ({ ...f, monthly_amount: Number(e.target.value) }))} className={inputCls()} />
+              <input type="number" value={msiForm.monthly_amount === 0 ? '' : msiForm.monthly_amount} onChange={e => setMsiForm(f => ({ ...f, monthly_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
             </FormField>
             <FormField label="Total cuotas">
-              <input type="number" min={1} value={msiForm.total_installments} onChange={e => setMsiForm(f => ({ ...f, total_installments: Number(e.target.value) }))} className={inputCls()} />
+              <input type="number" min={1} value={msiForm.total_installments === 0 ? '' : msiForm.total_installments} onChange={e => setMsiForm(f => ({ ...f, total_installments: Number(e.target.value) || 0 }))} placeholder="12" className={inputCls()} />
             </FormField>
             <FormField label="Cuotas restantes">
-              <input type="number" min={0} value={msiForm.remaining_installments} onChange={e => setMsiForm(f => ({ ...f, remaining_installments: Number(e.target.value) }))} className={inputCls()} />
+              <input type="number" min={0} value={msiForm.remaining_installments === 0 ? '' : msiForm.remaining_installments} onChange={e => setMsiForm(f => ({ ...f, remaining_installments: Number(e.target.value) || 0 }))} placeholder="12" className={inputCls()} />
             </FormField>
           </div>
           <FormField label="Fecha de inicio">
@@ -1395,13 +1395,13 @@ export default function DashboardPage() {
             <input value={goalForm.name} onChange={e => setGoalForm(f => ({ ...f, name: e.target.value }))} placeholder="PC gaming, viaje, emergencias…" className={inputCls()} />
           </FormField>
           <FormField label="Meta total">
-            <input type="number" value={goalForm.target_amount} onChange={e => setGoalForm(f => ({ ...f, target_amount: Number(e.target.value) }))} className={inputCls()} />
+            <input type="number" value={goalForm.target_amount === 0 ? '' : goalForm.target_amount} onChange={e => setGoalForm(f => ({ ...f, target_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
           </FormField>
           <FormField label="Ya ahorré">
-            <input type="number" value={goalForm.current_amount} onChange={e => setGoalForm(f => ({ ...f, current_amount: Number(e.target.value) }))} className={inputCls()} />
+            <input type="number" value={goalForm.current_amount === 0 ? '' : goalForm.current_amount} onChange={e => setGoalForm(f => ({ ...f, current_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
           </FormField>
           <FormField label="Ahorro mensual">
-            <input type="number" value={goalForm.monthly_contribution} onChange={e => setGoalForm(f => ({ ...f, monthly_contribution: Number(e.target.value) }))} className={inputCls()} />
+            <input type="number" value={goalForm.monthly_contribution === 0 ? '' : goalForm.monthly_contribution} onChange={e => setGoalForm(f => ({ ...f, monthly_contribution: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
           </FormField>
           {goalForm.monthly_contribution > 0 && goalForm.target_amount > goalForm.current_amount && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl px-3 py-2">
@@ -1530,7 +1530,7 @@ export default function DashboardPage() {
 
           {accountForm.account_type !== 'credit_card' ? (
             <FormField label="Saldo actual">
-              <input type="number" value={accountForm.balance} onChange={e => setAccountForm({ ...accountForm, balance: Number(e.target.value) })} className={inputCls()} />
+              <input type="number" value={accountForm.balance === 0 ? '' : accountForm.balance} onChange={e => setAccountForm({ ...accountForm, balance: Number(e.target.value) || 0 })} placeholder="0.00" className={inputCls()} />
             </FormField>
           ) : (
             <>

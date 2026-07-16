@@ -157,7 +157,7 @@ export async function simulateProjection(data: {
   total_installments: number
   start_date: string
 }, months = 12): Promise<SimulationResponse> {
-  return req(`/projection/simulate/?months=${months}`, { method: 'POST', body: JSON.stringify(data) })
+  return req(`/projection/simulate?months=${months}`, { method: 'POST', body: JSON.stringify(data) })
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────

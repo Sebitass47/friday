@@ -53,7 +53,10 @@ def check_habit_reminders(hour: int):
 def check_task_reminders():
     """Send push notifications for due todos and upcoming events."""
     from app.services.push_service import send_push
-    from app.services.task_service import get_pending_todo_reminders, get_pending_event_reminders, _event_due_dt
+    from app.services.task_service import (
+        get_pending_todo_reminders, get_pending_event_reminders,
+        get_past_recurring_events, _advance_recurring_task, _event_due_dt,
+    )
     from app.models.push_subscription import PushSubscription
     from datetime import datetime, timezone, timedelta
 
@@ -86,7 +89,11 @@ def check_task_reminders():
                     alive = send_push(sub, f"✅ {task.title}", task.notes or "Es hora de esta tarea", url="/recordatorios", tag=f"todo-{task.id}")
                     if not alive:
                         db.delete(sub)
-                task.reminded_main = True
+                if task.recurrence and task.recurrence != 'none':
+                    # Recurring: advance to next occurrence and reset flags
+                    _advance_recurring_task(task)
+                else:
+                    task.reminded_main = True
 
         # ── Event reminders ───────────────────────────────────────────────────
         for task in get_pending_event_reminders(db):
@@ -115,6 +122,11 @@ def check_task_reminders():
                     if not alive:
                         db.delete(sub)
                 task.reminded_1h = True
+
+        # ── Advance recurring events whose date has passed ────────────────────
+        for task in get_past_recurring_events(db):
+            _advance_recurring_task(task)
+            logger.info("Advanced recurring event '%s' to next occurrence: %s", task.title, task.due_date)
 
         db.commit()
         logger.info("Task reminders check completed")

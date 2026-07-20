@@ -192,3 +192,66 @@ def _event_due_dt(task: Task) -> Optional[datetime]:
         # All-day events: anchor to 9:00 AM Mexico City time
         local_dt = datetime.combine(task.due_date, time(9, 0)).replace(tzinfo=tz)
         return local_dt.astimezone(timezone.utc)
+
+
+def _advance_recurring_task(task: Task) -> None:
+    """Advance due_date and reminder_at to the next occurrence and reset notification flags."""
+    import calendar as cal
+    from zoneinfo import ZoneInfo
+
+    if not task.recurrence or task.recurrence == 'none':
+        return
+
+    tz = ZoneInfo("America/Mexico_City")
+
+    if task.recurrence in ('daily', 'weekly'):
+        delta = timedelta(days=1) if task.recurrence == 'daily' else timedelta(weeks=1)
+        if task.due_date:
+            task.due_date = task.due_date + delta
+        if task.reminder_at:
+            task.reminder_at = task.reminder_at + delta
+
+    elif task.recurrence == 'monthly':
+        def _next_month(d: date) -> date:
+            m = d.month % 12 + 1
+            y = d.year + (1 if d.month == 12 else 0)
+            return date(y, m, min(d.day, cal.monthrange(y, m)[1]))
+
+        new_due = _next_month(task.due_date) if task.due_date else None
+
+        if task.reminder_at and new_due:
+            local_dt = task.reminder_at.astimezone(tz)
+            new_local = datetime.combine(new_due, local_dt.time()).replace(tzinfo=tz)
+            task.reminder_at = new_local.astimezone(timezone.utc)
+
+        if new_due:
+            task.due_date = new_due
+
+    # Reset all notification flags for the next occurrence
+    task.reminded_main = False
+    task.reminded_day_before = False
+    task.reminded_3d = False
+    task.reminded_1d = False
+    task.reminded_1h = False
+
+
+def get_past_recurring_events(db: Session) -> List[Task]:
+    """Recurring events whose due datetime has passed — ready to advance to next occurrence."""
+    now = datetime.now(timezone.utc)
+    tasks = (
+        db.query(Task)
+        .filter(
+            Task.is_event == True,
+            Task.due_date != None,
+            Task.recurrence != None,
+            Task.recurrence != 'none',
+        )
+        .all()
+    )
+    result = []
+    for t in tasks:
+        due_dt = _event_due_dt(t)
+        # Wait 2 hours after event time before advancing so the 1h notification can fire
+        if due_dt and now >= due_dt + timedelta(hours=2):
+            result.append(t)
+    return result

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FRIDAY — Sin conexión</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0A0A0A;
+      color: #fff;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    .icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      background: rgba(107, 70, 229, 0.15);
+      border: 1px solid rgba(107, 70, 229, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    p { font-size: 0.9rem; color: rgba(255,255,255,0.45); max-width: 280px; line-height: 1.6; }
+    button {
+      margin-top: 0.5rem;
+      background: #6B46E5;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 0.65rem 1.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    .hint { font-size: 0.75rem; color: rgba(255,255,255,0.25); margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div class="icon">📡</div>
+  <div>
+    <h1>Sin conexión</h1>
+  </div>
+  <p>No hay internet. Si ya visitaste FRIDAY antes, recarga — puede que tengamos una copia guardada.</p>
+  <button onclick="location.reload()">Reintentar</button>
+  <p class="hint">Los datos que veas pueden ser de tu última sesión</p>
+</body>
+</html>

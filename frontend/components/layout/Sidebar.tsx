@@ -14,6 +14,7 @@ import { useSidebar } from './SidebarContext'
 import PlanetIcon from '@/components/ui/PlanetIcon'
 import { pushSupported, getRegistration, getCurrentSubscription, subscribePush, unsubscribePush } from '@/lib/push'
 import { getPushVapidKey, registerPushSubscription, removePushSubscription, testPushNotification } from '@/lib/api'
+import OfflineBadge from '@/components/OfflineBadge'
 
 const NAV = [
   { href: '/',          icon: Home,           label: 'Inicio' },
@@ -175,6 +176,7 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
 
       {/* Bottom */}
       <div className="border-t border-black/[0.06] dark:border-white/[0.06] p-3 space-y-1">
+        <OfflineBadge />
         {/* Push notifications */}
         {isIosNonPwa ? (
           <div className="px-3 py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06]">

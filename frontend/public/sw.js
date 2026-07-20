@@ -1,4 +1,4 @@
-// FRIDAY Service Worker — push notifications + offline cache
+// FRIDAY Service Worker — push notifications + offline cache + offline queue
 
 const CACHE_VERSION = 'v2'
 const STATIC_CACHE = `friday-static-${CACHE_VERSION}`
@@ -27,22 +27,23 @@ function isCacheableApi(pathname) {
   return CACHEABLE_API_PREFIXES.some(p => pathname.startsWith(p))
 }
 
-// ── Install: pre-cache shell assets ─────────────────────────────────────────
+// POST endpoints that get queued when offline
+const QUEUEABLE_POSTS = ['/api/v1/expenses', '/api/v1/tasks', '/api/v1/notes']
+
+// ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then(cache =>
-      cache.addAll(['/offline.html', '/manifest.json', '/icon-192.png', '/icon-512.png'])
-    ).then(() => self.skipWaiting())
+    caches.open(STATIC_CACHE)
+      .then(cache => cache.addAll(['/offline.html', '/manifest.json', '/icon-192.png', '/icon-512.png']))
+      .then(() => self.skipWaiting())
   )
 })
 
-// ── Activate: delete old caches ──────────────────────────────────────────────
+// ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => !ALL_CACHES.includes(k)).map(k => caches.delete(k))
-      ))
+      .then(keys => Promise.all(keys.filter(k => !ALL_CACHES.includes(k)).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   )
 })
@@ -52,8 +53,17 @@ self.addEventListener('fetch', event => {
   const { request } = event
   const url = new URL(request.url)
 
-  // Only intercept GET + same-origin
-  if (request.method !== 'GET' || url.origin !== location.origin) return
+  // Skip cross-origin
+  if (url.origin !== location.origin) return
+
+  // Intercept POST to queueable endpoints
+  if (request.method === 'POST' && QUEUEABLE_POSTS.some(p => url.pathname.startsWith(p))) {
+    event.respondWith(handleOfflinePost(request))
+    return
+  }
+
+  // Only cache GET from here on
+  if (request.method !== 'GET') return
 
   // Next.js static assets (content-hashed → cache-first, never expire)
   if (url.pathname.startsWith('/_next/static/')) {
@@ -115,7 +125,6 @@ async function networkFirstApi(request) {
   } catch {
     const cached = await caches.match(request)
     if (cached) return cached
-    // Return empty 503 so the app can handle it gracefully
     return new Response(JSON.stringify({ offline: true }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },
@@ -126,13 +135,132 @@ async function networkFirstApi(request) {
 async function staleWhileRevalidate(request, cacheName) {
   const cached = await caches.match(request)
   const fetchPromise = fetch(request).then(response => {
-    if (response.ok) {
-      caches.open(cacheName).then(cache => cache.put(request, response.clone()))
-    }
+    if (response.ok) caches.open(cacheName).then(cache => cache.put(request, response.clone()))
     return response
   }).catch(() => null)
   return cached || fetchPromise
 }
+
+// ── Offline POST queue ────────────────────────────────────────────────────────
+
+const DB_NAME = 'friday-offline'
+const STORE   = 'queue'
+const SYNC_TAG = 'friday-sync'
+const BC_NAME  = 'friday-offline'
+
+function dbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1)
+    req.onupgradeneeded = e => e.target.result.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true })
+    req.onsuccess = e => resolve(e.target.result)
+    req.onerror = e => reject(e.target.error)
+  })
+}
+
+async function dbAdd(record) {
+  const db = await dbOpen()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    const req = tx.objectStore(STORE).add(record)
+    req.onsuccess = () => resolve(req.result)
+    tx.onerror = e => reject(e.target.error)
+    tx.oncomplete = () => db.close()
+  })
+}
+
+async function dbGetAll() {
+  const db = await dbOpen()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly')
+    const req = tx.objectStore(STORE).getAll()
+    req.onsuccess = () => { resolve(req.result); db.close() }
+    req.onerror = e => reject(e.target.error)
+  })
+}
+
+async function dbDelete(id) {
+  const db = await dbOpen()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    tx.objectStore(STORE).delete(id)
+    tx.oncomplete = () => { db.close(); resolve() }
+    tx.onerror = e => reject(e.target.error)
+  })
+}
+
+async function broadcastCount() {
+  const queue = await dbGetAll()
+  const ch = new BroadcastChannel(BC_NAME)
+  ch.postMessage({ type: 'queue-count', count: queue.length })
+  ch.close()
+}
+
+async function handleOfflinePost(request) {
+  try {
+    // Online: pass through normally
+    return await fetch(request)
+  } catch {
+    // Offline: queue the action and return fake success
+    let body = {}
+    try { body = await request.clone().json() } catch {}
+
+    await dbAdd({
+      url: request.url,
+      method: 'POST',
+      body,
+      token: request.headers.get('Authorization') || '',
+      queuedAt: new Date().toISOString(),
+    })
+
+    // Register background sync if the browser supports it (Chrome/Android)
+    if (self.registration.sync) {
+      try { await self.registration.sync.register(SYNC_TAG) } catch {}
+    }
+
+    await broadcastCount()
+
+    // Return a fake 200 so the form closes normally
+    return new Response(JSON.stringify({ id: `pending-${Date.now()}`, _pending: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+}
+
+async function processQueue() {
+  const queue = await dbGetAll()
+  for (const action of queue) {
+    try {
+      const res = await fetch(action.url, {
+        method: action.method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': action.token,
+        },
+        body: JSON.stringify(action.body),
+      })
+      if (res.ok) {
+        await dbDelete(action.id)
+      } else if (res.status < 500) {
+        // 4xx: can't recover (e.g. expired token, validation error) — remove to avoid stuck state
+        await dbDelete(action.id)
+      }
+      // 5xx: keep in queue for next retry
+    } catch {
+      break // Still offline
+    }
+  }
+  await broadcastCount()
+}
+
+self.addEventListener('sync', event => {
+  if (event.tag === SYNC_TAG) event.waitUntil(processQueue())
+})
+
+self.addEventListener('message', event => {
+  if (event.data === 'process-queue') processQueue()
+  if (event.data === 'get-queue-count') broadcastCount()
+})
 
 // ── Push notifications ───────────────────────────────────────────────────────
 self.addEventListener('push', function (event) {

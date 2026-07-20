@@ -140,7 +140,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#141414] border-l border-black/[0.06] dark:border-white/[0.08] w-80 min-w-[300px]" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
+    <div className="flex flex-col bg-white dark:bg-[#141414] rounded-t-2xl lg:rounded-none border-t border-black/[0.06] dark:border-white/[0.08] lg:border-t-0 lg:border-l lg:h-full lg:w-80 lg:min-w-[300px] max-h-[88dvh] lg:max-h-none" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <span className="text-[14px] font-bold text-black/80 dark:text-white/80">{creating ? 'Nuevo evento' : 'Editar evento'}</span>
         <div className="flex gap-1">
@@ -375,6 +375,7 @@ export default function EventsPage() {
     const updated = await updateTask(id, data)
     setAllEvents(es => es.map(e => e.id === id ? updated : e))
     setPanelEvent(updated)
+    closePanel()
   }
 
   async function handleDelete(id: string) {
@@ -540,16 +541,21 @@ export default function EventsPage() {
           )}
         </div>
 
-        {/* Right panel — always dark */}
+        {/* Right panel: bottom sheet on mobile, side panel on desktop */}
         {panelOpen && (
-          <EventPanel
-            event={panelEvent}
-            creating={creating}
-            onClose={closePanel}
-            onSave={handleSave}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-          />
+          <>
+            <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={closePanel} />
+            <div className="fixed inset-x-0 bottom-0 z-50 lg:static lg:z-auto lg:inset-auto">
+              <EventPanel
+                event={panelEvent}
+                creating={creating}
+                onClose={closePanel}
+                onSave={handleSave}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+              />
+            </div>
+          </>
         )}
       </div>
     </AppLayout>

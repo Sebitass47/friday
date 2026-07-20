@@ -1064,7 +1064,7 @@ export default function DashboardPage() {
                     onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : openEditIncome_pt(mov.incData)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
                   >
-                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#A8FF3E]'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#34D399]'}`} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-black dark:text-white truncate">{mov.name}</p>
                       <p className="text-[11px] text-black/30 dark:text-white/30">
@@ -1073,7 +1073,7 @@ export default function DashboardPage() {
                         {mov.category ? ` · ${mov.category}` : ''}
                       </p>
                     </div>
-                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#A8FF3E]'}`}>
+                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#34D399]'}`}>
                       {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
                     </span>
                     <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
@@ -1632,31 +1632,50 @@ export default function DashboardPage() {
       {/* All expenses modal (last 30 days) */}
       {showAllExpenses && !editingExpense && (
         <Modal
-          title="Todos los gastos"
+          title="Todos los movimientos"
           subtitle="Últimos 30 días · toca uno para editar"
           onClose={() => setShowAllExpenses(false)}
         >
           {(() => {
             const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30)
             const cutoffStr = cutoff.toISOString().split('T')[0]
-            const filtered = [...expenses]
-              .filter(e => e.date >= cutoffStr)
-              .sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
             const pmLabel = (m: string) => m === 'cash' ? 'Efectivo' : m === 'debit' ? 'Débito' : m === 'savings' ? 'Ahorro' : 'Crédito'
-            if (filtered.length === 0) return <p className="text-sm text-black/40 dark:text-white/40 text-center py-6">Sin gastos en los últimos 30 días</p>
+            type AllMov =
+              | { kind: 'expense'; id: string; date: string; created_at: string; amount: number; label: string; sub: string; data: Expense }
+              | { kind: 'income';  id: string; date: string; created_at: string; amount: number; label: string; sub: string; incData: Income }
+            const all: AllMov[] = [
+              ...expenses.filter(e => e.date >= cutoffStr).map(e => ({
+                kind: 'expense' as const, id: e.id, date: e.date, created_at: e.created_at,
+                amount: Number(e.amount),
+                label: e.name,
+                sub: `${fmtDate(e.date)} · ${pmLabel(e.payment_method)}${e.category ? ` · ${e.category}` : ''}`,
+                data: e,
+              })),
+              ...incomes.filter(i => i.date >= cutoffStr).map(i => ({
+                kind: 'income' as const, id: i.id, date: i.date, created_at: i.created_at,
+                amount: Number(i.amount),
+                label: i.description,
+                sub: `${fmtDate(i.date)} · Ingreso${i.category ? ` · ${i.category}` : ''}`,
+                incData: i,
+              })),
+            ].sort((a, b) => b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at))
+            if (all.length === 0) return <p className="text-sm text-black/40 dark:text-white/40 text-center py-6">Sin movimientos en los últimos 30 días</p>
             return (
               <div className="space-y-1 max-h-[60vh] overflow-y-auto">
-                {filtered.map(exp => (
+                {all.map(mov => (
                   <button
-                    key={exp.id}
-                    onClick={() => openEditExpense(exp)}
+                    key={`${mov.kind}-${mov.id}`}
+                    onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : openEditIncome_pt(mov.incData)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
                   >
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#34D399]'}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-black dark:text-white truncate">{exp.name}</p>
-                      <p className="text-[11px] text-black/30 dark:text-white/30">{fmtDate(exp.date)} · {pmLabel(exp.payment_method)}{exp.category ? ` · ${exp.category}` : ''}</p>
+                      <p className="text-sm text-black dark:text-white truncate">{mov.label}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">{mov.sub}</p>
                     </div>
-                    <span className="text-sm font-semibold text-[#FF4444] shrink-0 tabular-nums">−{fmt(Number(exp.amount))}</span>
+                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#34D399]'}`}>
+                      {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
+                    </span>
                     <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
                   </button>
                 ))}

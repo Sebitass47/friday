@@ -190,7 +190,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
   const panelInput = 'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#141414] border-l border-black/[0.06] dark:border-white/[0.08] w-80 min-w-[300px]" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
+    <div className="flex flex-col bg-white dark:bg-[#141414] rounded-t-2xl lg:rounded-none border-t border-black/[0.06] dark:border-white/[0.08] lg:border-t-0 lg:border-l lg:h-full lg:w-80 lg:min-w-[300px] max-h-[88dvh] lg:max-h-none" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <span className="text-[14px] font-bold text-black/80 dark:text-white/80">{creating ? 'Nueva tarea' : 'Editar tarea'}</span>
@@ -493,6 +493,7 @@ export default function ToDoPage() {
     const updated = await updateTask(id, data)
     setTasks(ts => ts.map(t => t.id === id ? updated : t))
     setPanelTask(updated)
+    closePanel()
   }
 
   async function handleDelete(id: string) {
@@ -649,20 +650,25 @@ export default function ToDoPage() {
           )}
         </div>
 
-        {/* Right panel — always dark */}
+        {/* Right panel: bottom sheet on mobile, side panel on desktop */}
         {panelOpen && (
-          <TaskPanel
-            key={panelTask?.id ?? 'new'}
-            task={panelTask}
-            creating={creating}
-            onClose={closePanel}
-            onSave={handleSave}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-            onAddSubtask={handleAddSubtask}
-            onToggleSubtask={handleToggleSubtask}
-            onDeleteSubtask={handleDeleteSubtask}
-          />
+          <>
+            <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={closePanel} />
+            <div className="fixed inset-x-0 bottom-0 z-50 lg:static lg:z-auto lg:inset-auto">
+              <TaskPanel
+                key={panelTask?.id ?? 'new'}
+                task={panelTask}
+                creating={creating}
+                onClose={closePanel}
+                onSave={handleSave}
+                onUpdate={handleUpdate}
+                onDelete={handleDelete}
+                onAddSubtask={handleAddSubtask}
+                onToggleSubtask={handleToggleSubtask}
+                onDeleteSubtask={handleDeleteSubtask}
+              />
+            </div>
+          </>
         )}
       </div>
     </AppLayout>

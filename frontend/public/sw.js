@@ -56,8 +56,10 @@ self.addEventListener('fetch', event => {
   // Skip cross-origin
   if (url.origin !== location.origin) return
 
-  // Intercept POST to queueable endpoints
-  if (request.method === 'POST' && QUEUEABLE_POSTS.some(p => url.pathname.startsWith(p))) {
+  // Intercept POST to queueable endpoints (skip SW's own replay requests)
+  if (request.method === 'POST'
+      && QUEUEABLE_POSTS.some(p => url.pathname.startsWith(p))
+      && !request.headers.get('X-SW-Replay')) {
     event.respondWith(handleOfflinePost(request))
     return
   }
@@ -196,13 +198,15 @@ async function broadcastCount() {
 }
 
 async function handleOfflinePost(request) {
+  // Clone BEFORE fetch — body stream can only be read once
+  const clone = request.clone()
   try {
     // Online: pass through normally
     return await fetch(request)
   } catch {
     // Offline: queue the action and return fake success
     let body = {}
-    try { body = await request.clone().json() } catch {}
+    try { body = await clone.json() } catch {}
 
     await dbAdd({
       url: request.url,
@@ -236,6 +240,7 @@ async function processQueue() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': action.token,
+          'X-SW-Replay': '1',  // Prevents the SW from re-intercepting this request
         },
         body: JSON.stringify(action.body),
       })

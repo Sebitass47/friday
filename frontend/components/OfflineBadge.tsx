@@ -20,7 +20,9 @@ export default function OfflineBadge() {
     window.addEventListener('offline', handleOffline)
 
     // Ask SW for the current queue count (e.g. if there were pending items from before)
-    navigator.serviceWorker?.controller?.postMessage('get-queue-count')
+    navigator.serviceWorker?.ready
+      .then(reg => reg.active?.postMessage('get-queue-count'))
+      .catch(() => {})
 
     return () => {
       ch.close()

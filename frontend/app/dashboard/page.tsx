@@ -616,7 +616,7 @@ export default function DashboardPage() {
               {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
             <h1 className="text-2xl font-bold text-black dark:text-white mt-0.5">
-              Buenos días{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''}
+              💸 Tu dinero, bajo control
             </h1>
           </div>
           <div className="flex items-center gap-2">

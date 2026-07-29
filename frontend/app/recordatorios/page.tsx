@@ -501,12 +501,21 @@ export default function ToDoPage() {
   }
 
   async function handleToggle(id: string) {
+    const original = tasks.find(t => t.id === id)
     const updated = await toggleTaskComplete(id)
     if (updated.is_completed) {
-      // Remove from list after a brief moment so the check animation is visible
+      // Non-recurring: show check animation then remove
       setTasks(ts => ts.map(t => t.id === id ? updated : t))
       if (panelTask?.id === id) { setPanelTask(updated); setTimeout(closePanel, 400) }
       setTimeout(() => setTasks(ts => ts.filter(t => t.id !== id)), 400)
+    } else if (original && !original.is_completed && updated.due_date !== original.due_date) {
+      // Recurring task advanced: briefly show check then settle at new date
+      setTasks(ts => ts.map(t => t.id === id ? { ...updated, is_completed: true } : t))
+      if (panelTask?.id === id) setPanelTask({ ...updated, is_completed: true })
+      setTimeout(() => {
+        setTasks(ts => ts.map(t => t.id === id ? updated : t))
+        if (panelTask?.id === id) setPanelTask(updated)
+      }, 600)
     } else {
       setTasks(ts => ts.map(t => t.id === id ? updated : t))
       if (panelTask?.id === id) setPanelTask(updated)

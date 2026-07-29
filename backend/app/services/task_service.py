@@ -86,7 +86,15 @@ def complete_task(db: Session, task_id: UUID, user_id: UUID) -> Optional[Task]:
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
     if not task:
         return None
-    task.is_completed = not task.is_completed
+
+    if not task.is_completed and task.recurrence and task.recurrence != 'none' and task.due_date:
+        # Recurring task: advance to next occurrence instead of marking permanently complete
+        _advance_recurring_task(task)
+        for sub in task.subtasks:
+            sub.is_completed = False
+    else:
+        task.is_completed = not task.is_completed
+
     db.commit()
     db.refresh(task)
     return get_task(db, task_id, user_id)

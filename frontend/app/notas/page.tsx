@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { getNotes, createNote, updateNote, deleteNote, toggleNotePin } from '@/lib/api'
 import { Note } from '@/lib/types'
@@ -157,7 +157,7 @@ function NoteCard({ note, isDark, onPin, onDelete, onEdit }: NoteCardProps) {
   )
 }
 
-// ─── CreateEditForm ───────────────────────────────────────────────────────────
+// ─── NoteForm + Modal ─────────────────────────────────────────────────────────
 
 interface FormState {
   title: string
@@ -178,19 +178,21 @@ interface NoteFormProps {
 
 function NoteForm({ isDark, initial, onSave, onCancel }: NoteFormProps) {
   const [form, setForm] = useState<FormState>(initial ?? EMPTY_FORM)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const cardBg = isDark
-    ? 'rgba(255,255,255,0.04)'
-    : '#FFFFFF'
-  const cardBorder = isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB'
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [form.content])
 
   return (
     <div
-      className="rounded-2xl p-5 mb-6"
+      className="rounded-2xl p-5"
       style={{
-        background: cardBg,
-        border: `1px solid ${cardBorder}`,
-        backdropFilter: 'blur(12px)',
+        background: isDark ? 'rgba(20,20,20,0.98)' : '#FFFFFF',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB'}`,
       }}
     >
       <input
@@ -198,16 +200,17 @@ function NoteForm({ isDark, initial, onSave, onCancel }: NoteFormProps) {
         placeholder="Título"
         value={form.title}
         onChange={e => setForm({ ...form, title: e.target.value })}
-        className={`w-full bg-transparent font-semibold text-lg outline-none placeholder-current mb-2 ${
+        className={`w-full bg-transparent font-semibold text-lg outline-none placeholder-current mb-3 ${
           isDark ? 'text-white placeholder-white/30' : 'text-gray-900 placeholder-gray-400'
         }`}
       />
       <textarea
+        ref={textareaRef}
         placeholder="Escribe algo..."
         value={form.content}
         onChange={e => setForm({ ...form, content: e.target.value })}
-        rows={3}
-        className={`w-full bg-transparent text-sm outline-none resize-none placeholder-current mb-4 ${
+        rows={4}
+        className={`w-full bg-transparent text-sm leading-relaxed outline-none resize-none placeholder-current mb-4 overflow-hidden ${
           isDark ? 'text-white/80 placeholder-white/30' : 'text-gray-700 placeholder-gray-400'
         }`}
       />
@@ -246,9 +249,7 @@ function NoteForm({ isDark, initial, onSave, onCancel }: NoteFormProps) {
           className="w-6 h-6 rounded-full border-2 transition-all duration-150"
           style={{
             background: isDark ? 'rgba(255,255,255,0.15)' : '#E5E7EB',
-            borderColor: form.color === 'default'
-              ? (isDark ? '#fff' : '#374151')
-              : 'transparent',
+            borderColor: form.color === 'default' ? (isDark ? '#fff' : '#374151') : 'transparent',
           }}
           title="Sin color"
         />
@@ -301,6 +302,38 @@ function NoteForm({ isDark, initial, onSave, onCancel }: NoteFormProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+function NoteModal({ isDark, children, onClose }: { isDark: boolean; children: React.ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <>
+      <style>{`
+        .note-modal-inner::-webkit-scrollbar { width: 4px; }
+        .note-modal-inner::-webkit-scrollbar-track { background: transparent; }
+        .note-modal-inner::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        .note-modal-inner::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+      `}</style>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
+        onClick={onClose}
+      >
+        <div
+          className="note-modal-inner w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-2xl shadow-2xl"
+          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.15) transparent' }}
+          onClick={e => e.stopPropagation()}
+        >
+          {children}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -446,29 +479,33 @@ export default function NotasPage() {
           ))}
         </div>
 
-        {/* Create form */}
+        {/* Create modal */}
         {showForm && (
-          <NoteForm
-            isDark={isDark}
-            onSave={handleCreate}
-            onCancel={() => setShowForm(false)}
-          />
+          <NoteModal isDark={isDark} onClose={() => setShowForm(false)}>
+            <NoteForm
+              isDark={isDark}
+              onSave={handleCreate}
+              onCancel={() => setShowForm(false)}
+            />
+          </NoteModal>
         )}
 
-        {/* Edit form (modal-like inline replacement) */}
+        {/* Edit modal */}
         {editingNote && (
-          <NoteForm
-            isDark={isDark}
-            initial={{
-              title: editingNote.title,
-              content: editingNote.content ?? '',
-              label: editingNote.label ?? '',
-              color: editingNote.color,
-              is_pinned: editingNote.is_pinned,
-            }}
-            onSave={handleEdit}
-            onCancel={() => setEditingNote(null)}
-          />
+          <NoteModal isDark={isDark} onClose={() => setEditingNote(null)}>
+            <NoteForm
+              isDark={isDark}
+              initial={{
+                title: editingNote.title,
+                content: editingNote.content ?? '',
+                label: editingNote.label ?? '',
+                color: editingNote.color,
+                is_pinned: editingNote.is_pinned,
+              }}
+              onSave={handleEdit}
+              onCancel={() => setEditingNote(null)}
+            />
+          </NoteModal>
         )}
 
         {loading ? (

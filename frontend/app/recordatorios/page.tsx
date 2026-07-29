@@ -126,6 +126,10 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
   const [reminderTime, setReminderTime] = useState(task?.reminder_at ? localTimeFromISO(task.reminder_at) : '')
   const [reminderDate, setReminderDate] = useState(task?.reminder_at ? localDateFromISO(task.reminder_at) : '')
   const [dayBefore, setDayBefore] = useState(task?.remind_day_before ?? false)
+  const [sameDay, setSameDay] = useState(() => {
+    if (!task?.due_date || !task?.reminder_at) return false
+    return localDateFromISO(task.reminder_at) === task.due_date
+  })
   const [recurrence, setRecurrence] = useState(
     task?.recurrence ? (RECURRENCE_LABEL[task.recurrence] ?? 'No se repite') : 'No se repite'
   )
@@ -136,6 +140,20 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
   const mountedRef = useRef(false)
 
   useEffect(() => { if (creating) titleRef.current?.focus() }, [creating])
+
+  // Sync reminder date/time when sameDay is active and due date changes
+  useEffect(() => {
+    if (!sameDay) return
+    const dueDate = dueDateType === 'hoy' ? today()
+      : dueDateType === 'manana' ? tomorrow()
+      : dueDateType === 'custom' ? (customDate || null)
+      : null
+    if (dueDate) {
+      setReminderDate(dueDate)
+      setReminderTime(t => t || '09:00')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sameDay, dueDateType, customDate])
 
   // Auto-save when any field changes (debounced, edit mode only)
   useEffect(() => {
@@ -274,13 +292,44 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
         {/* Reminder */}
         <div>
           <p className={panelLabel}>Recordatorio</p>
+
+          {/* Same-day toggle */}
+          <label className="flex items-center gap-2 mb-2.5 cursor-pointer">
+            <div
+              onClick={() => {
+                if (!sameDay) {
+                  const dueDate = dueDateType === 'hoy' ? today()
+                    : dueDateType === 'manana' ? tomorrow()
+                    : dueDateType === 'custom' ? (customDate || null)
+                    : null
+                  if (dueDate) {
+                    setReminderDate(dueDate)
+                    setReminderTime(t => t || '09:00')
+                  }
+                }
+                setSameDay(b => !b)
+              }}
+              className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer flex-shrink-0', sameDay ? 'bg-[#6B46E5]' : 'bg-black/10 dark:bg-white/10')}
+            >
+              <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', sameDay ? 'left-4' : 'left-0.5')} />
+            </div>
+            <span className="text-xs text-black/50 dark:text-white/50">Recordatorio el mismo día</span>
+          </label>
+
           <div className="flex gap-2">
-            <DateInput
-              value={reminderDate}
-              onChange={setReminderDate}
-              className="flex-1"
-              inputClassName="text-xs py-2"
-            />
+            {sameDay ? (
+              <div className="flex-1 flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 text-black/40 dark:text-white/40">
+                <AlarmClock size={12} />
+                <span>{reminderDate ? reminderDate.split('-').reverse().join('/') : 'Elige una fecha a la tarea'}</span>
+              </div>
+            ) : (
+              <DateInput
+                value={reminderDate}
+                onChange={setReminderDate}
+                className="flex-1"
+                inputClassName="text-xs py-2"
+              />
+            )}
             <input
               type="time"
               value={reminderTime}
@@ -288,6 +337,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
               className="w-24 text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
             />
           </div>
+
           {reminderTime && (
             <label className="flex items-center gap-2 mt-2 cursor-pointer">
               <div

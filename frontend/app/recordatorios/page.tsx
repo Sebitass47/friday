@@ -65,32 +65,35 @@ function localDateFromISO(iso: string): string {
   return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
 }
 
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
 function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
   const tod = today()
   const tom = tomorrow()
-  const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate() + 7)
-  const groups: Record<string, Task[]> = { Hoy: [], Mañana: [], 'Esta semana': [], 'Sin fecha': [] }
-  const extra: Record<string, Task[]> = {}
+  const todDate = new Date(tod + 'T12:00:00')
+  const daysUntilSunday = todDate.getDay() === 0 ? 0 : 7 - todDate.getDay()
+  const endOfWeek = addDays(tod, daysUntilSunday)
+  const endOfMonth = new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0)
+    .toISOString().split('T')[0]
+
+  const buckets: Record<string, Task[]> = { Hoy: [], Mañana: [], 'Esta semana': [], 'Este mes': [], 'Próximamente': [], 'Sin fecha': [] }
 
   for (const t of tasks) {
-    if (!t.due_date) { groups['Sin fecha'].push(t); continue }
-    if (t.due_date === tod) { groups['Hoy'].push(t); continue }
-    if (t.due_date === tom) { groups['Mañana'].push(t); continue }
-    const d = new Date(t.due_date + 'T12:00:00')
-    if (d <= weekEnd) { groups['Esta semana'].push(t) } else {
-      const label = d.toLocaleDateString('es-MX', { month: 'long', day: 'numeric' })
-      if (!extra[label]) extra[label] = []
-      extra[label].push(t)
-    }
+    if (!t.due_date) { buckets['Sin fecha'].push(t); continue }
+    if (t.due_date === tod) { buckets['Hoy'].push(t); continue }
+    if (t.due_date === tom) { buckets['Mañana'].push(t); continue }
+    if (t.due_date <= endOfWeek) { buckets['Esta semana'].push(t); continue }
+    if (t.due_date <= endOfMonth) { buckets['Este mes'].push(t); continue }
+    buckets['Próximamente'].push(t)
   }
 
-  const result = Object.entries(groups)
+  return Object.entries(buckets)
     .filter(([, ts]) => ts.length > 0)
     .map(([label, tasks]) => ({ label, tasks }))
-  for (const [label, tasks] of Object.entries(extra)) {
-    if (tasks.length > 0) result.push({ label, tasks })
-  }
-  return result
 }
 
 function progressRing(tasks: Task[]) {
@@ -118,7 +121,7 @@ interface PanelProps {
 
 function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddSubtask, onToggleSubtask, onDeleteSubtask }: PanelProps) {
   const [title, setTitle] = useState(task?.title ?? '')
-  const [label, setLabel] = useState<string | null>(task?.label ?? null)
+  const [label, setLabel] = useState<string | null>(task?.label ?? (creating ? 'Personal' : null))
   const [dueDateType, setDueDateType] = useState<'hoy' | 'manana' | 'custom' | 'none'>(
     !task?.due_date ? 'none' : task.due_date === today() ? 'hoy' : task.due_date === tomorrow() ? 'manana' : 'custom'
   )

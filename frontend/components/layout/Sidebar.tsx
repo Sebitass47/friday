@@ -46,8 +46,21 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
     setIsIosNonPwa(ios && !standalone)
 
     if (!pushSupported()) return
-    getRegistration().then(() => getCurrentSubscription()).then(sub => {
+    getRegistration().then(() => getCurrentSubscription()).then(async sub => {
       setPushSubscribed(!!sub)
+      if (sub) {
+        // Re-register with backend silently on each load — backend may have lost
+        // the subscription (e.g. during a deploy restart + push failure cleanup)
+        const p256dh = sub.getKey('p256dh')
+        const auth = sub.getKey('auth')
+        try {
+          await registerPushSubscription({
+            endpoint: sub.endpoint,
+            p256dh: p256dh ? btoa(String.fromCharCode(...new Uint8Array(p256dh))) : '',
+            auth: auth ? btoa(String.fromCharCode(...new Uint8Array(auth))) : '',
+          })
+        } catch { /* silent — non-critical */ }
+      }
     }).catch(() => {})
   }, [])
 

@@ -816,6 +816,7 @@ export default function FocusPage() {
   const [showSounds, setShowSounds] = useState(true)
   const [showMusic, setShowMusic] = useState(false)
   const [zen, setZen] = useState(false)
+  const [goalReached, setGoalReached] = useState(false)
   const [bgPickerOpen, setBgPickerOpen] = useState(false)
 
   useEffect(() => {
@@ -911,6 +912,36 @@ export default function FocusPage() {
     const done = sessionsDoneRef.current
     const s = settingsRef.current
     const nextDone = p === 'work' ? done + 1 : done
+
+    const playBell = () => {
+      try {
+        const ctx = audioCtxRef.current
+        if (ctx && ctx.state !== 'closed') {
+          const osc = ctx.createOscillator(); const g = ctx.createGain()
+          osc.frequency.value = 880; osc.type = 'sine'
+          g.gain.setValueAtTime(0.3, ctx.currentTime)
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2)
+          osc.connect(g); g.connect(ctx.destination)
+          osc.start(); osc.stop(ctx.currentTime + 1.3)
+        }
+      } catch { /* ignore */ }
+    }
+
+    if (p === 'work') {
+      const newTotal = totalFocusedRef.current + s.session * 60
+      setTotalFocused(newTotal)
+      if (newTotal >= s.goalHours * 3600) {
+        // Goal reached — stop timer and celebrate
+        setRunning(false)
+        setSessionsDone(nextDone)
+        setPhase('work')
+        setSecs(s.session * 60)
+        setGoalReached(true)
+        playBell()
+        return
+      }
+    }
+
     const nextPhase: Phase = p === 'work'
       ? (nextDone % s.cycle === 0 ? 'long' : 'short')
       : 'work'
@@ -925,19 +956,7 @@ export default function FocusPage() {
     setPhase(nextPhase)
     setSessionsDone(nextDone)
     setSecs(nextSecs)
-    if (p === 'work') setTotalFocused(tf => tf + s.session * 60)
-    // Bell
-    try {
-      const ctx = audioCtxRef.current
-      if (ctx && ctx.state !== 'closed') {
-        const osc = ctx.createOscillator(); const g = ctx.createGain()
-        osc.frequency.value = 880; osc.type = 'sine'
-        g.gain.setValueAtTime(0.3, ctx.currentTime)
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2)
-        osc.connect(g); g.connect(ctx.destination)
-        osc.start(); osc.stop(ctx.currentTime + 1.3)
-      }
-    } catch { /* ignore */ }
+    playBell()
   }, [])
 
   const advanceRef = useRef(advancePhase)
@@ -1095,6 +1114,34 @@ export default function FocusPage() {
 
       {/* Nav sidebar — overlays on focus page; focus page has its own ☰ in header */}
       <Sidebar hideExternalToggle />
+
+      {/* Goal reached celebration overlay */}
+      {goalReached && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center"
+          style={{ background: 'rgba(6,0,16,0.85)', backdropFilter: 'blur(12px)' }}>
+          <div className="flex flex-col items-center gap-6 text-center px-8 max-w-sm animate-[fadeIn_0.4s_ease]">
+            <div className="text-7xl select-none" style={{ filter: 'drop-shadow(0 0 24px #AF9BFF)' }}>🏆</div>
+            <div>
+              <p className="text-3xl font-bold text-white mb-1">¡Lo lograste!</p>
+              <p className="text-white/50 text-sm">
+                Completaste tu objetivo de <span className="text-white/80 font-semibold">{settings.goalHours}h</span> de concentración hoy.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 bg-white/[0.06] border border-white/10 rounded-2xl px-6 py-3">
+              <span className="text-3xl font-bold" style={{ color: '#AF9BFF' }}>{fmtFocus(totalFocused)}</span>
+              <span className="text-white/40 text-sm">enfocado</span>
+            </div>
+            <p className="text-white/30 text-xs">Mereces un descanso de verdad 🌙</p>
+            <button
+              onClick={() => setGoalReached(false)}
+              className="mt-2 px-8 py-3 rounded-full font-semibold text-white text-sm transition-all"
+              style={{ background: 'linear-gradient(135deg,#6B46E5,#AF9BFF)' }}
+            >
+              Seguir en modo Focus
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Canvas background — 2D for lluvia/brasas/aurora/cosmos, WebGL for mar/planeta/tunel */}
       <canvas ref={canvas2DRef} className="absolute inset-0 w-full h-full"

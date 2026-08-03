@@ -880,7 +880,7 @@ export default function FocusPage() {
     try {
       const all = await getTasks({ is_event: false })
       const today = todayStr()
-      const filtered = all.filter(t => t.due_date === today && t.recurrence === null)
+      const filtered = all.filter(t => t.due_date === today)
       setTasks(filtered)
       return filtered
     } catch { return null }

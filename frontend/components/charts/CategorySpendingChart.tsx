@@ -10,18 +10,7 @@ interface CategorySpendingChartProps {
   onCategoryClick?: (category: string, expenses: Expense[]) => void
 }
 
-const PALETTE = [
-  '#AF9BFF', // morado principal FRIDAY
-  '#C4B5FD', // lavanda claro
-  '#7C3AED', // morado profundo
-  '#DDD6FE', // lavanda suave
-  '#E879F9', // fucsia
-  '#F0ABFC', // malva claro
-  '#818CF8', // indigo complemento
-  '#A5B4FC', // indigo suave
-  '#F9A8D4', // rosa suave
-  '#C084FC', // violeta medio
-]
+const ACCENT = '#6B46E5'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
@@ -49,7 +38,6 @@ export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd, 
     <div className="space-y-2">
       {rows.map((row, i) => {
         const pct = Math.max(4, (row.amount / max) * 100)
-        const color = PALETTE[i % PALETTE.length]
         const isHovered = hovered === row.name
         return (
           <div
@@ -63,7 +51,7 @@ export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd, 
               <span className="text-[11px] text-black/50 dark:text-white/50 truncate max-w-[140px]">{row.name}</span>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-[10px] text-black/30 dark:text-white/30">{((row.amount / total) * 100).toFixed(0)}%</span>
-                <span className="text-[11px] font-semibold tabular-nums" style={{ color }}>{fmt(row.amount)}</span>
+                <span className="text-[11px] font-semibold tabular-nums" style={{ color: ACCENT }}>{fmt(row.amount)}</span>
               </div>
             </div>
             <div className="h-1.5 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06] overflow-hidden">
@@ -71,8 +59,8 @@ export default function CategorySpendingChart({ expenses, cycleStart, cycleEnd, 
                 className="h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${pct}%`,
-                  backgroundColor: color,
-                  opacity: isHovered ? 1 : 0.7,
+                  backgroundColor: ACCENT,
+                  opacity: isHovered ? 1 : 0.8,
                 }}
               />
             </div>

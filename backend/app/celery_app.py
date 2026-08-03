@@ -34,6 +34,10 @@ celery.conf.beat_schedule = {
         "task": "app.tasks.charge_recurring_expenses",
         "schedule": crontab(hour=7, minute=0),
     },
+    "auto-complete-overdue-recurring-tasks": {
+        "task": "app.tasks.auto_complete_overdue_recurring_tasks",
+        "schedule": crontab(hour=0, minute=0),
+    },
 }
 celery.conf.timezone = "America/Mexico_City"
 celery.conf.task_serializer = "json"

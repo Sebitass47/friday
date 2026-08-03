@@ -89,11 +89,7 @@ def check_task_reminders():
                     alive = send_push(sub, f"✅ {task.title}", task.notes or "Es hora de esta tarea", url="/recordatorios", tag=f"todo-{task.id}")
                     if not alive:
                         db.delete(sub)
-                if task.recurrence and task.recurrence != 'none':
-                    # Recurring: advance to next occurrence and reset flags
-                    _advance_recurring_task(task)
-                else:
-                    task.reminded_main = True
+                task.reminded_main = True
 
         # ── Event reminders ───────────────────────────────────────────────────
         for task in get_pending_event_reminders(db):
@@ -132,6 +128,39 @@ def check_task_reminders():
         logger.info("Task reminders check completed")
     except Exception as e:
         logger.error("Error in check_task_reminders: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
+@celery.task(name="app.tasks.auto_complete_overdue_recurring_tasks")
+def auto_complete_overdue_recurring_tasks():
+    """Midnight cron: advance recurring todos whose due_date passed and were never completed."""
+    from app.services.task_service import _advance_recurring_task
+    from app.models.task import Task
+
+    db = SessionLocal()
+    try:
+        today = date.today()
+        tasks = (
+            db.query(Task)
+            .filter(
+                Task.is_event == False,
+                Task.is_completed == False,
+                Task.recurrence != None,
+                Task.recurrence != 'none',
+                Task.due_date < today,
+            )
+            .all()
+        )
+        for task in tasks:
+            prev_date = task.due_date
+            _advance_recurring_task(task)
+            logger.info("Auto-advanced recurring task '%s' from %s to %s", task.title, prev_date, task.due_date)
+        db.commit()
+        logger.info("auto_complete_overdue_recurring_tasks: advanced %d tasks", len(tasks))
+    except Exception as e:
+        logger.error("Error in auto_complete_overdue_recurring_tasks: %s", e)
         db.rollback()
     finally:
         db.close()

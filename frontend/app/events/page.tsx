@@ -33,10 +33,11 @@ const LABEL_HEX: Record<string, string> = {
 }
 const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
 
-function today() { return new Date().toISOString().split('T')[0] }
-function tomorrow() {
-  const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]
+function localDate(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+function today() { return localDate() }
+function tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return localDate(d) }
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00')
@@ -54,8 +55,7 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
   const endOfWeek = addDays(tod, daysUntilSunday)
 
   // End of this calendar month
-  const endOfMonth = new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0)
-    .toISOString().split('T')[0]
+  const endOfMonth = localDate(new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0))
 
   const past: Task[] = []
   const todayEvs: Task[] = []

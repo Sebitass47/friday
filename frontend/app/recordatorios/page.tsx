@@ -48,10 +48,11 @@ const SORT_OPTIONS = [
 // shared classes for light/dark inputs
 const inputCls = 'w-full text-xs bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/50 dark:focus:border-[#6B46E5]/40 transition-colors'
 
-function today() { return new Date().toISOString().split('T')[0] }
-function tomorrow() {
-  const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]
+function localDate(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+function today() { return localDate() }
+function tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return localDate(d) }
 
 /** Extract HH:MM in the user's local timezone from a UTC ISO string */
 function localTimeFromISO(iso: string): string {
@@ -77,8 +78,7 @@ function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
   const todDate = new Date(tod + 'T12:00:00')
   const daysUntilSunday = todDate.getDay() === 0 ? 0 : 7 - todDate.getDay()
   const endOfWeek = addDays(tod, daysUntilSunday)
-  const endOfMonth = new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0)
-    .toISOString().split('T')[0]
+  const endOfMonth = localDate(new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0))
 
   const buckets: Record<string, Task[]> = { Hoy: [], Mañana: [], 'Esta semana': [], 'Este mes': [], 'Próximamente': [], 'Sin fecha': [] }
 
@@ -197,7 +197,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
     setSaving(true)
     try {
       if (creating) await onSave(buildPayload())
-      else if (task) await onUpdate(task.id, buildPayload())
+      else if (task) { await onUpdate(task.id, buildPayload()); onClose() }
     } finally { setSaving(false) }
   }
 
@@ -546,7 +546,6 @@ export default function ToDoPage() {
     const updated = await updateTask(id, data)
     setTasks(ts => ts.map(t => t.id === id ? updated : t))
     setPanelTask(updated)
-    closePanel()
   }
 
   async function handleDelete(id: string) {

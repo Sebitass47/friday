@@ -31,7 +31,7 @@ import { DateInput } from '@/components/ui/date-input'
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
 const pct = (cur: number, tot: number) => Math.min(100, Math.round((cur / tot) * 100))
-const today = () => new Date().toISOString().split('T')[0]
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 const ACCENT = 'text-[#6B46E5] dark:text-[#AF9BFF]'
 const ACCENT_BG = 'bg-[#6B46E5]'

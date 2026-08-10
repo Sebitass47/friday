@@ -229,10 +229,13 @@ def _build_cycle_projection(
         db, user_id, cycle_end.month, cycle_end.year
     )
 
-    cash_debit_total = Decimal("0")
+    # Always count registered cash/debit expenses within the cycle range.
+    # For the current cycle only look up to today; future cycles use full range
+    # (captures pre-registered expenses the user already knows about).
+    cash_end = today if is_current else cycle_end
+    cash_debit_total = _cash_debit_spent_for_cycle(db, user_id, cycle_start, cash_end)
     extra_income = Decimal("0")
     if is_current:
-        cash_debit_total = _cash_debit_spent_for_cycle(db, user_id, cycle_start, today)
         extra_income = _extra_income_for_cycle(db, user_id, cycle_start, today)
 
     effective_income = income if monthly_income_counts else Decimal("0")

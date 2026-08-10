@@ -57,6 +57,9 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
                   <p className="text-black/50 dark:text-white/50">Recurrentes: <span style={{ color: coral }}>−{fmt(m.recurring_expenses)}</span></p>
                   <p className="text-black/50 dark:text-white/50">MSI: <span style={{ color: coral }}>−{fmt(m.installments)}</span></p>
                   <p className="text-black/50 dark:text-white/50">Ahorro: <span className="text-amber-500 dark:text-amber-400">−{fmt(m.savings_contributions)}</span></p>
+                  {(m.cash_debit_spent > 0 || m.credit_spent > 0) && (
+                    <p className="text-black/50 dark:text-white/50">Gastos: <span style={{ color: coral }}>−{fmt(m.cash_debit_spent + m.credit_spent)}</span></p>
+                  )}
                   <div className="mt-1.5 pt-1.5 border-t border-black/10 dark:border-white/10">
                     <p className="text-black/50 dark:text-white/50">Disponible:{' '}
                       <span style={{ color: isNeg ? coral : accent }} className="font-semibold">{fmt(m.available)}</span>

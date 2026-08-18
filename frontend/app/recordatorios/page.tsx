@@ -72,6 +72,17 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
+function sortByDateTime(a: Task, b: Task, desc = false): number {
+  const fallback = desc ? '' : '9999-99-99'
+  const dateA = a.due_date ?? fallback
+  const dateB = b.due_date ?? fallback
+  const dateCmp = desc ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB)
+  if (dateCmp !== 0) return dateCmp
+  const timeA = a.reminder_at ? localTimeFromISO(a.reminder_at) : '99:99'
+  const timeB = b.reminder_at ? localTimeFromISO(b.reminder_at) : '99:99'
+  return timeA.localeCompare(timeB)
+}
+
 function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
   const tod = today()
   const tom = tomorrow()
@@ -80,15 +91,21 @@ function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
   const endOfWeek = addDays(tod, daysUntilSunday)
   const endOfMonth = localDate(new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0))
 
-  const buckets: Record<string, Task[]> = { Hoy: [], Mañana: [], 'Esta semana': [], 'Este mes': [], 'Próximamente': [], 'Sin fecha': [] }
+  const buckets: Record<string, Task[]> = { Pasados: [], Hoy: [], Mañana: [], 'Esta semana': [], 'Este mes': [], 'Próximamente': [], 'Sin fecha': [] }
 
   for (const t of tasks) {
     if (!t.due_date) { buckets['Sin fecha'].push(t); continue }
+    if (t.due_date < tod) { buckets['Pasados'].push(t); continue }
     if (t.due_date === tod) { buckets['Hoy'].push(t); continue }
     if (t.due_date === tom) { buckets['Mañana'].push(t); continue }
     if (t.due_date <= endOfWeek) { buckets['Esta semana'].push(t); continue }
     if (t.due_date <= endOfMonth) { buckets['Este mes'].push(t); continue }
     buckets['Próximamente'].push(t)
+  }
+
+  // Sort each bucket: Pasados newest-first, rest oldest-first; always by time within same date
+  for (const [key, bucket] of Object.entries(buckets)) {
+    bucket.sort((a, b) => sortByDateTime(a, b, key === 'Pasados'))
   }
 
   return Object.entries(buckets)
@@ -433,10 +450,14 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
 
 // ── Task Row ──────────────────────────────────────────────────────────────────
 
-function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: () => void; onStar: () => void; onClick: () => void }) {
+function TaskRow({ task, onToggle, onStar, onClick, isOverdue, isPast }: {
+  task: Task; onToggle: () => void; onStar: () => void; onClick: () => void;
+  isOverdue?: boolean; isPast?: boolean;
+}) {
   const subtasksDone = task.subtasks.filter(s => s.is_completed).length
   const subtasksTotal = task.subtasks.length
   const accentColor = task.label ? LABEL_HEX[task.label] : undefined
+  const highlighted = (isOverdue || isPast) && !task.is_completed
 
   return (
     <div
@@ -444,9 +465,11 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
         'flex items-center gap-3 px-4 py-3 rounded-xl border-y border-r border-l-4 cursor-pointer group transition-all duration-200',
         task.is_completed
           ? 'bg-black/[0.02] dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] opacity-55 shadow-none'
-          : 'bg-white dark:bg-white/[0.04] dark:backdrop-blur-sm border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.45)] hover:-translate-y-px'
+          : highlighted
+            ? 'bg-red-500/[0.04] dark:bg-red-500/[0.06] border-red-400/25 shadow-[0_2px_8px_rgba(239,68,68,0.08)] hover:shadow-[0_4px_16px_rgba(239,68,68,0.14)] hover:-translate-y-px'
+            : 'bg-white dark:bg-white/[0.04] dark:backdrop-blur-sm border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.45)] hover:-translate-y-px'
       )}
-      style={{ borderLeftColor: accentColor ?? 'transparent' }}
+      style={{ borderLeftColor: highlighted ? '#ef4444' : (accentColor ?? 'transparent') }}
       onClick={onClick}
     >
       <button
@@ -470,7 +493,7 @@ function TaskRow({ task, onToggle, onStar, onClick }: { task: Task; onToggle: ()
             </span>
           )}
           {task.reminder_at && (
-            <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35">
+            <span className={cn('flex items-center gap-1 text-[12px] font-bold', isOverdue ? 'text-red-500' : 'text-black/40 dark:text-white/35')}>
               <AlarmClock size={11} />
               {localTimeFromISO(task.reminder_at)}
             </span>
@@ -693,17 +716,27 @@ export default function ToDoPage() {
             <div className="space-y-6">
               {groups.map(({ label, tasks: gt }) => (
                 <div key={label}>
-                  <p className="text-[13px] font-extrabold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2">{label}</p>
+                  <p className={cn(
+                    'text-[13px] font-extrabold uppercase tracking-widest mb-2',
+                    label === 'Pasados' ? 'text-red-500/70' : 'text-black/30 dark:text-white/30'
+                  )}>{label}</p>
                   <div className="space-y-1.5">
-                    {gt.map(t => (
-                      <TaskRow
-                        key={t.id}
-                        task={t}
-                        onToggle={() => handleToggle(t.id)}
-                        onStar={() => handleStar(t.id, t.is_starred)}
-                        onClick={() => openEdit(t)}
-                      />
-                    ))}
+                    {gt.map(t => {
+                      const now = new Date()
+                      const isOverdue = label === 'Hoy' && !!t.reminder_at && new Date(t.reminder_at) < now && !t.is_completed
+                      const isPast = label === 'Pasados'
+                      return (
+                        <TaskRow
+                          key={t.id}
+                          task={t}
+                          onToggle={() => handleToggle(t.id)}
+                          onStar={() => handleStar(t.id, t.is_starred)}
+                          onClick={() => openEdit(t)}
+                          isOverdue={isOverdue}
+                          isPast={isPast}
+                        />
+                      )
+                    })}
                   </div>
                 </div>
               ))}

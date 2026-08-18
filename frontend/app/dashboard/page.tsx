@@ -557,10 +557,10 @@ export default function DashboardPage() {
   function openTransferModal() {
     const nonCredit = accounts.filter(a => a.account_type !== 'credit_card')
     setTransferFrom(nonCredit[0]?.id || '')
-    setTransferTo(nonCredit[1]?.id || nonCredit[0]?.id || '')
+    setTransferTo(nonCredit[1]?.id || '')
     setTransferAmount('')
     setTransferDesc('')
-    setTransferError('')
+    setTransferError(nonCredit.length < 2 ? 'Necesitas al menos 2 cuentas no-crédito para transferir' : '')
     setTransferOpen(true)
   }
 
@@ -765,7 +765,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Cuentas y tarjetas</h2>
               <div className="flex items-center gap-2">
-                {otherAccounts.length >= 2 && (
+                {otherAccounts.length > 0 && (
                   <button onClick={openTransferModal} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-400/10 text-emerald-500 dark:text-emerald-400 transition-opacity hover:opacity-80">
                     <ArrowLeftRight size={12} strokeWidth={2.5} /> Transferir
                   </button>

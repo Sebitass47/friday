@@ -6,6 +6,7 @@ COPY package*.json ./
 
 RUN npm install
 
+# bust-cache: 2026-08-18
 COPY . .
 
 ARG NEXT_PUBLIC_API_BASE_URL

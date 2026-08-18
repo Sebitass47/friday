@@ -528,7 +528,28 @@ export default function DashboardPage() {
   }
   function openPayCardModal(card: Account) {
     const linkedMsis = msi.filter(m => m.account_id === card.id && m.remaining_installments > 0)
-    const computedPayment = linkedMsis.reduce((sum, m) => sum + Number(m.monthly_amount), 0)
+    const msiAmount = linkedMsis.reduce((sum, m) => sum + Number(m.monthly_amount), 0)
+
+    // Determine which statement is currently due based on closing_day
+    const now = new Date()
+    let dueMonth = now.getMonth() + 1
+    let dueYear = now.getFullYear()
+    if (card.closing_day && now.getDate() <= card.closing_day) {
+      // Still before closing: previous statement is due
+      if (dueMonth === 1) { dueMonth = 12; dueYear-- } else { dueMonth-- }
+    }
+
+    // Sum all non-MSI credit expenses for the due statement
+    const statementExpenses = expenses
+      .filter(e =>
+        e.payment_method === 'credit' &&
+        e.account_id === card.id &&
+        e.credit_statement_month === dueMonth &&
+        e.credit_statement_year === dueYear
+      )
+      .reduce((sum, e) => sum + Number(e.amount), 0)
+
+    const computedPayment = msiAmount + statementExpenses
     const currentUsed = Number(card.current_balance_used) || 0
     const newBalance = Math.max(0, currentUsed - computedPayment)
     setPayCardState({ card, amountToPay: computedPayment, newBalanceUsed: newBalance })
@@ -1637,11 +1658,28 @@ export default function DashboardPage() {
       )}
 
       {/* Pay Card Month Modal */}
-      {payCardState && (
-        <Modal title={`Pagar tarjeta · ${payCardState.card.name}`} onClose={() => setPayCardState(null)}>
-          <p className="text-xs text-black/50 dark:text-white/40 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl px-3 py-2">
-            Los MSI vinculados avanzarán 1 cuota automáticamente. Ajusta los valores si tienes gastos no registrados en la app.
-          </p>
+      {payCardState && (() => {
+        const card = payCardState.card
+        const now = new Date()
+        let dueMonth = now.getMonth() + 1
+        let dueYear = now.getFullYear()
+        if (card.closing_day && now.getDate() <= card.closing_day) {
+          if (dueMonth === 1) { dueMonth = 12; dueYear-- } else { dueMonth-- }
+        }
+        const linkedMsis = msi.filter(m => m.account_id === card.id && m.remaining_installments > 0)
+        const msiAmt = linkedMsis.reduce((sum, m) => sum + Number(m.monthly_amount), 0)
+        const stmtAmt = expenses.filter(e =>
+          e.payment_method === 'credit' && e.account_id === card.id &&
+          e.credit_statement_month === dueMonth && e.credit_statement_year === dueYear
+        ).reduce((sum, e) => sum + Number(e.amount), 0)
+        return (
+        <Modal title={`Pagar tarjeta · ${card.name}`} onClose={() => setPayCardState(null)}>
+          <div className="text-xs text-black/50 dark:text-white/40 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl px-3 py-2 space-y-1">
+            {stmtAmt > 0 && <p>Gastos del estado {String(dueMonth).padStart(2,'0')}/{dueYear}: <span className="font-semibold text-black/70 dark:text-white/60">{fmt(stmtAmt)}</span></p>}
+            {msiAmt > 0 && <p>Cuotas MSI ({linkedMsis.length}): <span className="font-semibold text-black/70 dark:text-white/60">{fmt(msiAmt)}</span></p>}
+            {stmtAmt === 0 && msiAmt === 0 && <p>Sin gastos registrados en la app para este estado. Ajusta el monto manualmente.</p>}
+            <p className="text-black/30 dark:text-white/30">Los MSI vinculados avanzarán 1 cuota automáticamente.</p>
+          </div>
           <FormField label="Pago a realizar">
             <input
               type="number"
@@ -1677,7 +1715,8 @@ export default function DashboardPage() {
             error={payCardError}
           />
         </Modal>
-      )}
+        )
+      })()}
 
       {transferOpen && (
         <Modal title="Transferir entre cuentas" onClose={() => setTransferOpen(false)}>

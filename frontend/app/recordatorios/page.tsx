@@ -91,7 +91,9 @@ function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
   const endOfWeek = addDays(tod, daysUntilSunday)
   const endOfMonth = localDate(new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0))
 
-  const buckets: Record<string, Task[]> = { Pasados: [], Hoy: [], Mañana: [], 'Esta semana': [], 'Este mes': [], 'Próximamente': [], 'Sin fecha': [] }
+  const endOfYear = `${todDate.getFullYear()}-12-31`
+
+  const buckets: Record<string, Task[]> = { Pasados: [], Hoy: [], Mañana: [], 'Esta semana': [], 'Este mes': [], 'Este año': [], 'Próximamente': [], 'Sin fecha': [] }
 
   for (const t of tasks) {
     if (!t.due_date) { buckets['Sin fecha'].push(t); continue }
@@ -100,6 +102,7 @@ function groupTasks(tasks: Task[]): { label: string; tasks: Task[] }[] {
     if (t.due_date === tom) { buckets['Mañana'].push(t); continue }
     if (t.due_date <= endOfWeek) { buckets['Esta semana'].push(t); continue }
     if (t.due_date <= endOfMonth) { buckets['Este mes'].push(t); continue }
+    if (t.due_date <= endOfYear) { buckets['Este año'].push(t); continue }
     buckets['Próximamente'].push(t)
   }
 

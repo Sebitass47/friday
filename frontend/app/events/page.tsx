@@ -54,14 +54,16 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
   const daysUntilSunday = todDate.getDay() === 0 ? 0 : 7 - todDate.getDay()
   const endOfWeek = addDays(tod, daysUntilSunday)
 
-  // End of this calendar month
+  // End of this calendar month and year
   const endOfMonth = localDate(new Date(todDate.getFullYear(), todDate.getMonth() + 1, 0))
+  const endOfYear = `${todDate.getFullYear()}-12-31`
 
   const past: Task[] = []
   const todayEvs: Task[] = []
   const tomEvs: Task[] = []
   const thisWeek: Task[] = []
   const thisMonth: Task[] = []
+  const thisYear: Task[] = []
   const upcoming: Task[] = []
   const noDate: Task[] = []
 
@@ -72,6 +74,7 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
     if (e.due_date === tom) { tomEvs.push(e); continue }
     if (e.due_date <= endOfWeek) { thisWeek.push(e); continue }
     if (e.due_date <= endOfMonth) { thisMonth.push(e); continue }
+    if (e.due_date <= endOfYear) { thisYear.push(e); continue }
     upcoming.push(e)
   }
 
@@ -87,6 +90,7 @@ function groupEvents(events: Task[]): { label: string; events: Task[] }[] {
   if (tomEvs.length) groups.push({ label: 'Mañana', events: tomEvs.sort(byDateTime) })
   if (thisWeek.length) groups.push({ label: 'Esta semana', events: thisWeek.sort(byDateTime) })
   if (thisMonth.length) groups.push({ label: 'Este mes', events: thisMonth.sort(byDateTime) })
+  if (thisYear.length) groups.push({ label: 'Este año', events: thisYear.sort(byDateTime) })
   if (upcoming.length) groups.push({ label: 'Próximamente', events: upcoming.sort(byDateTime) })
   if (noDate.length) groups.push({ label: 'Sin fecha', events: noDate })
   return groups

@@ -82,6 +82,15 @@ export async function liquidateCard(id: string): Promise<Account> {
   return req(`/accounts/${id}/liquidate`, { method: 'POST' })
 }
 
+export async function transferBetweenAccounts(data: {
+  from_account_id: string
+  to_account_id: string
+  amount: number
+  description?: string
+}): Promise<Account[]> {
+  return req('/accounts/transfer', { method: 'POST', body: JSON.stringify(data) })
+}
+
 // ── Recurring Expenses ───────────────────────────────────────────────────────
 
 export async function getRecurringExpenses(): Promise<RecurringExpense[]> {

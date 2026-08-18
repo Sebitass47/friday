@@ -15,12 +15,20 @@ from app.services.account_service import (
     delete_account,
     pay_card_month,
     liquidate_card,
+    transfer_between_accounts,
 )
 from app.schemas.account import AccountCreate, AccountUpdate, AccountResponse
 
 
 class PayCardMonthBody(BaseModel):
     new_balance_used: Optional[Decimal] = None
+
+
+class TransferBody(BaseModel):
+    from_account_id: str
+    to_account_id: str
+    amount: Decimal
+    description: Optional[str] = "Transferencia entre cuentas"
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -90,6 +98,26 @@ def pay_card_month_endpoint(
     if not result:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
     return result
+
+
+@router.post("/transfer", response_model=List[AccountResponse])
+def transfer_accounts_endpoint(
+    body: TransferBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        from_acc, to_acc = transfer_between_accounts(
+            db,
+            from_account_id=body.from_account_id,
+            to_account_id=body.to_account_id,
+            amount=body.amount,
+            description=body.description or "Transferencia entre cuentas",
+            user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return [from_acc, to_acc]
 
 
 @router.post("/{account_id}/liquidate", response_model=AccountResponse)

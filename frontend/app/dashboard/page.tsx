@@ -12,7 +12,7 @@ import {
   createInstallmentPurchase, updateInstallmentPurchase, deleteInstallmentPurchase, liquidateMsi,
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
   createExpense, updateExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
-  createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard,
+  createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard, transferBetweenAccounts,
   getExpenses, deleteExpense, getIncomes, updateIncome, deleteIncome,
   simulateProjection,
 } from '@/lib/api'
@@ -23,7 +23,7 @@ import type {
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
   RefreshCw, Plus, X, Pencil, Trash2, CheckCircle2, CalendarDays,
-  Wallet, PiggyBank, Banknote, Zap, Sparkles, AlertTriangle,
+  Wallet, PiggyBank, Banknote, Zap, Sparkles, AlertTriangle, ArrowLeftRight,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { DateInput } from '@/components/ui/date-input'
@@ -197,6 +197,13 @@ export default function DashboardPage() {
   const [payCardState, setPayCardState] = useState<PayCardState | null>(null)
   const [payCardSaving, setPayCardSaving] = useState(false)
   const [payCardError, setPayCardError] = useState('')
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferFrom, setTransferFrom] = useState('')
+  const [transferTo, setTransferTo] = useState('')
+  const [transferAmount, setTransferAmount] = useState('')
+  const [transferDesc, setTransferDesc] = useState('')
+  const [transferSaving, setTransferSaving] = useState(false)
+  const [transferError, setTransferError] = useState('')
 
   // Register (quick transaction)
   const [regMode, setRegMode] = useState<'expense' | 'income'>('expense')
@@ -547,6 +554,42 @@ export default function DashboardPage() {
     } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error') }
   }
 
+  function openTransferModal() {
+    const nonCredit = accounts.filter(a => a.account_type !== 'credit_card')
+    setTransferFrom(nonCredit[0]?.id || '')
+    setTransferTo(nonCredit[1]?.id || nonCredit[0]?.id || '')
+    setTransferAmount('')
+    setTransferDesc('')
+    setTransferError('')
+    setTransferOpen(true)
+  }
+
+  async function handleTransfer() {
+    const amount = parseFloat(transferAmount)
+    if (!transferFrom || !transferTo) { setTransferError('Selecciona ambas cuentas'); return }
+    if (transferFrom === transferTo) { setTransferError('Las cuentas origen y destino deben ser distintas'); return }
+    if (!amount || amount <= 0) { setTransferError('Ingresa un monto válido'); return }
+    setTransferSaving(true)
+    setTransferError('')
+    try {
+      const updated = await transferBetweenAccounts({
+        from_account_id: transferFrom,
+        to_account_id: transferTo,
+        amount,
+        description: transferDesc || 'Transferencia entre cuentas',
+      })
+      setAccounts(prev => prev.map(a => {
+        const u = updated.find(u => u.id === a.id)
+        return u ? u : a
+      }))
+      setTransferOpen(false)
+    } catch (e: unknown) {
+      setTransferError(e instanceof Error ? e.message : 'Error al transferir')
+    } finally {
+      setTransferSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <AppLayout>
@@ -721,9 +764,16 @@ export default function DashboardPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Cuentas y tarjetas</h2>
-              <button onClick={openNewAccount} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${ACCENT_BG_SOFT} ${ACCENT} transition-opacity hover:opacity-80`}>
-                <Plus size={12} strokeWidth={2.5} /> Nueva
-              </button>
+              <div className="flex items-center gap-2">
+                {otherAccounts.length >= 2 && (
+                  <button onClick={openTransferModal} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-400/10 text-emerald-500 dark:text-emerald-400 transition-opacity hover:opacity-80">
+                    <ArrowLeftRight size={12} strokeWidth={2.5} /> Transferir
+                  </button>
+                )}
+                <button onClick={openNewAccount} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${ACCENT_BG_SOFT} ${ACCENT} transition-opacity hover:opacity-80`}>
+                  <Plus size={12} strokeWidth={2.5} /> Nueva
+                </button>
+              </div>
             </div>
 
             {/* Summary row */}
@@ -1625,6 +1675,54 @@ export default function DashboardPage() {
             saving={payCardSaving}
             saveLabel="Confirmar pago"
             error={payCardError}
+          />
+        </Modal>
+      )}
+
+      {transferOpen && (
+        <Modal title="Transferir entre cuentas" onClose={() => setTransferOpen(false)}>
+          <FormField label="Desde">
+            <CustomSelect
+              value={transferFrom}
+              onChange={setTransferFrom}
+              options={otherAccounts.map(a => ({ value: a.id, label: `${a.name} · ${a.account_type === 'savings' ? 'Ahorro' : 'Débito'} · ${fmt(Number(a.balance))}` }))}
+              placeholder="Cuenta origen"
+            />
+          </FormField>
+          <FormField label="Hacia">
+            <CustomSelect
+              value={transferTo}
+              onChange={setTransferTo}
+              options={otherAccounts.filter(a => a.id !== transferFrom).map(a => ({ value: a.id, label: `${a.name} · ${a.account_type === 'savings' ? 'Ahorro' : 'Débito'} · ${fmt(Number(a.balance))}` }))}
+              placeholder="Cuenta destino"
+            />
+          </FormField>
+          <FormField label="Monto">
+            <input
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={transferAmount}
+              onChange={e => setTransferAmount(e.target.value)}
+              placeholder="0.00"
+              className={inputCls()}
+            />
+          </FormField>
+          <FormField label="Descripción (opcional)">
+            <input
+              type="text"
+              value={transferDesc}
+              onChange={e => setTransferDesc(e.target.value)}
+              placeholder="Transferencia entre cuentas"
+              className={inputCls()}
+            />
+          </FormField>
+          <FormActions
+            onCancel={() => setTransferOpen(false)}
+            onSave={handleTransfer}
+            saving={transferSaving}
+            saveLabel="Transferir"
+            error={transferError}
           />
         </Modal>
       )}

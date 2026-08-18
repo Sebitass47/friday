@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.account import Account, AccountType
 from app.schemas.account import AccountCreate, AccountUpdate
 from app.models.user import User
+from app.models.enums import PaymentMethod
 
 def get_accounts(db: Session, user_id: UUID) -> List[Account]:
     """Obtener todas las cuentas de un usuario"""
@@ -116,6 +117,62 @@ def pay_card_month(
     db.commit()
     db.refresh(account)
     return account
+
+
+def transfer_between_accounts(
+    db: Session,
+    from_account_id: UUID,
+    to_account_id: UUID,
+    amount: Decimal,
+    description: str,
+    user_id: UUID,
+) -> Tuple[Account, Account]:
+    """Transfer funds between two non-credit accounts.
+    Records an Expense on the source and an Income on the destination.
+    """
+    from app.models.expense import Expense
+    from app.models.income import Income
+
+    from_account = get_account(db, from_account_id, user_id)
+    to_account = get_account(db, to_account_id, user_id)
+
+    if not from_account or not to_account:
+        raise ValueError("Cuenta no encontrada")
+    if from_account.account_type == AccountType.CREDIT_CARD or to_account.account_type == AccountType.CREDIT_CARD:
+        raise ValueError("No se puede transferir desde/hacia una tarjeta de crédito")
+    if from_account_id == to_account_id:
+        raise ValueError("Las cuentas origen y destino deben ser distintas")
+
+    payment_method = PaymentMethod.SAVINGS if from_account.account_type == AccountType.SAVINGS else PaymentMethod.DEBIT
+    today = date.today()
+
+    expense = Expense(
+        user_id=user_id,
+        account_id=from_account_id,
+        name=description,
+        amount=amount,
+        date=today,
+        payment_method=payment_method,
+        category="Transferencia",
+    )
+    db.add(expense)
+    from_account.balance = (from_account.balance or Decimal(0)) - amount
+
+    income = Income(
+        user_id=user_id,
+        account_id=to_account_id,
+        description=description,
+        amount=amount,
+        date=today,
+        category="Transferencia",
+    )
+    db.add(income)
+    to_account.balance = (to_account.balance or Decimal(0)) + amount
+
+    db.commit()
+    db.refresh(from_account)
+    db.refresh(to_account)
+    return from_account, to_account
 
 
 def liquidate_card(db: Session, account_id: UUID, user_id: UUID) -> Optional[Account]:

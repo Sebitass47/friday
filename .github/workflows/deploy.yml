@@ -17,6 +17,8 @@ jobs:
           script: |
             cd ~/FRIDAY
             git pull
+            sudo docker image prune -f
+            sudo docker builder prune -f
             sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
             sleep 15
             sudo docker compose exec -T backend alembic upgrade head

@@ -57,7 +57,7 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 - Total compromisos
 
 **Secciones:**
-- Ritmo del ciclo (`CyclePaceCard.tsx`) — cuánto puedes gastar por día para no quedar en rojo, días con gasto, cierre estimado (según el gasto de los mismos días de los últimos 3 ciclos, no un promedio diario) y comparación contra el ciclo anterior al mismo día (ignora transferencias y retiros de ahorro). Reemplazó al Spending Timeline Chart
+- Tu dinero este ciclo (`BalanceFlowChart.tsx`) — línea suave y neutra del saldo disponible: arranca con ingreso − compromisos, sube con ingresos puntuales y baja con gastos (cash/débito por fecha, crédito por statement del ciclo; mismas reglas que `/projection/`, termina en `available`). Scrub con mouse/touch, badge de % vs inicio, resumen Inicio/↑/↓. Reemplazó al Spending Timeline y a la tarjeta de ritmo
 - Gastos por categoría — chips para ocultar/mostrar categorías (guardado en localStorage `friday_hidden_categories`, `Transferencia` oculta por default); % recalculado sobre lo visible
 - Tarjetas de crédito — badge de uso con color dinámico (≤33% morado, 33–66% ámbar, >66% rojo), botón "Pagar este mes" que abre modal con monto y nuevo saldo
 - MSI (Meses Sin Intereses) — CRUD completo, botón "Liquidar"
@@ -255,7 +255,7 @@ frontend/
 │   │   └── Sidebar.tsx             # Nav lateral (desktop) / hamburguesa (móvil)
 │   ├── charts/
 │   │   ├── ProjectionChart.tsx     # Barras SVG 12 meses
-│   │   ├── CyclePaceCard.tsx       # Ritmo del ciclo (gasto diario permitido, proyección)
+│   │   ├── BalanceFlowChart.tsx    # Línea de saldo del ciclo (ingresos/gastos)
 │   │   └── CategorySpendingChart.tsx  # Barras por categoría con filtro de categorías
 │   ├── ui/
 │   │   ├── custom-select.tsx       # Dropdown custom (reemplaza <select> nativo)

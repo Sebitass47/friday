@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import ProjectionChart from '@/components/charts/ProjectionChart'
-import CyclePaceCard from '@/components/charts/CyclePaceCard'
+import BalanceFlowChart from '@/components/charts/BalanceFlowChart'
 import CategorySpendingChart from '@/components/charts/CategorySpendingChart'
 import { CategorySelector } from '@/components/ui/category-selector'
 import {
@@ -740,19 +740,20 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Cycle pace */}
+        {/* Balance flow */}
         {projection && (
           <div className={`${cardCls} p-5`}>
-            <div className="mb-3">
-              <h2 className="text-sm font-semibold text-black dark:text-white">Ritmo del ciclo</h2>
-              <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Cuánto puedes gastar al día y cómo vas vs el ciclo anterior</p>
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-black dark:text-white">Tu dinero este ciclo</h2>
+              <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">{projection.months[0].label} · toca la línea para ver cada día</p>
             </div>
-            <CyclePaceCard
+            <BalanceFlowChart
+              cycle={projection.months[0]}
               expenses={expenses}
-              cycleStart={projection.months[0].cycle_start}
-              cycleEnd={projection.months[0].cycle_end}
-              cycleStartDay={monthlyIncomeData?.cycle_start_day ?? 1}
-              available={Number(projection.months[0].available)}
+              incomes={incomes.filter(i => {
+                if (!i.account_id) return true
+                return accounts.find(a => a.id === i.account_id)?.account_type === 'checking'
+              })}
             />
           </div>
         )}

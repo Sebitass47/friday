@@ -159,6 +159,25 @@ export interface Note {
   updated_at: string
 }
 
+export interface ListItem {
+  id: string
+  list_id: string
+  text: string
+  is_done: boolean
+  position: number
+  created_at: string
+}
+
+export interface UserList {
+  id: string
+  user_id: string
+  name: string
+  emoji: string
+  items: ListItem[]
+  created_at: string
+  updated_at: string
+}
+
 export interface Task {
   id: string
   user_id: string

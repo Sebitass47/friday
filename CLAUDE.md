@@ -170,6 +170,21 @@ Tracker semanal de hábitos. Tabla tipo grid donde cada fila es un hábito y cad
 **Archivos:**
 - `frontend/app/habitos/page.tsx` — página completa
 
+### Listas (`/listas`)
+
+Listas atemporales (compras, películas por ver, libros, viajes…). Mismo layout que `/events` y `/recordatorios` (hero, buscador, panel lateral en escritorio / hoja desde abajo en celular), en escala de grises. **No usa la API de tareas**: tiene tablas propias, así no se mezcla con recordatorios ni con el Inicio/Focus.
+
+**Funcionalidades:**
+- Cada lista tiene emoji (picker de 30 + campo para pegar cualquiera) y nombre
+- Tarjeta con barra de progreso y badge de pendientes; al hacer clic abre el panel con los elementos
+- Elementos: clic para marcar/desmarcar (optimista), editar texto (lápiz), borrar, agregar con Enter; pendientes arriba y "Completados (n)" abajo con botón Limpiar
+- Renombrar/cambiar emoji desde el panel; borrar lista con doble clic en el bote
+- Orden por `updated_at` (cualquier cambio en sus elementos la sube)
+- `?new=1` abre el panel de crear; `?open=<id>` abre una lista (lo usa el Inicio)
+- Inicio: card "Listas" con las 5 más recientes (emoji + nombre + pendientes) → `/listas?open=<id>`
+
+**Archivos:** `frontend/app/listas/page.tsx` (ListCard + ListPanel + ItemRow inline), `backend/app/{models/user_list.py, schemas/user_list.py, services/user_list_service.py, api/v1/endpoints/lists.py}`
+
 ### Eventos (`/events`)
 
 Lista de eventos tipo calendario. Mismo diseño que `/recordatorios` pero para cosas con fecha fija (citas, reuniones, etc.). **No tiene endpoint propio en el backend** — reutiliza la API de tareas (`/tasks/`) filtrando por `is_event=true`.
@@ -199,6 +214,7 @@ credit_payments.py   GET /credit-payments/, POST /credit-payments/
 push.py              GET /push/vapid-public-key, POST /push/subscribe, DELETE /push/unsubscribe
 tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
 notes.py             CRUD /notes/ + POST /{id}/toggle-pin
+lists.py             GET/POST /lists/, PUT/DELETE /lists/{id}, POST /lists/{id}/items, PUT/DELETE /lists/{id}/items/{item_id}, POST /lists/{id}/clear-completed
 habits.py            GET /habits/?week_start=YYYY-MM-DD, POST /habits/, DELETE /habits/{id}, POST /habits/{id}/toggle
 ```
 
@@ -222,9 +238,11 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `push_subscriptions` | endpoint VAPID por usuario, para notificaciones push |
 | `notes` | título, contenido, etiqueta, color (string key), is_pinned; FK a users |
 | `habits` | nombre, color (hex), FK a users |
+| `lists` | name, emoji, FK a users; `updated_at` se actualiza al cambiar sus elementos |
+| `list_items` | FK a lists, text, is_done, position |
 | `habit_logs` | FK a habits, date (Date); constraint unique (habit_id, date) — un log por hábito por día |
 
-Migraciones numeradas `0001`–`0020` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0023` en `backend/alembic/versions/`.
 
 **Zona horaria:** los contenedores corren en UTC. Nunca uses `date.today()` en el backend; usa `today_local()` de `app/core/clock.py` (America/Mexico_City). Si no, después de las 18:00 hora MX el backend ya cree que es el día siguiente (y puede saltar de ciclo).
 
@@ -249,6 +267,7 @@ frontend/
 │   ├── focus/page.tsx              # Espacio Focus (Three.js, Pomodoro, sonidos)
 │   ├── notas/page.tsx              # Notas con colores
 │   ├── habitos/page.tsx            # Tracker semanal de hábitos
+│   ├── listas/page.tsx             # Listas con emoji y elementos marcables
 │   ├── layout.tsx                  # Root layout con ThemeProvider
 │   └── globals.css
 ├── components/
@@ -294,7 +313,7 @@ frontend/
 **Estilos:**
 - Glassmorphism: `bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl`
 - Fondo base dark: `#0A0A0A`
-- Acento principal (morado): `#6B46E5` (dark: `#AF9BFF`) — en `/dashboard` y sus componentes (`components/ui/*`, gráficas) el acento es escala de grises (negro en light, blanco en dark); el morado queda en el resto de la app (sidebar, home, otras páginas). Los colores semánticos (verde/rojo/ámbar) se mantienen
+- Acento principal (morado): `#6B46E5` (dark: `#AF9BFF`) — en `/dashboard` y sus componentes (`components/ui/*`, gráficas) el acento es escala de grises (negro en light, blanco en dark), igual que en sidebar, `/events`, `/recordatorios` y `/listas` (las etiquetas conservan sus colores); el morado queda en el resto (Notas, Hábitos, Focus…). Los colores semánticos (verde/rojo/ámbar) se mantienen
 - Positivo: `#A8FF3E`, Negativo: `#FF4444` / `#FF6B6B`
 - Soporte dark/light mode con Tailwind `dark:` — el toggle está en el header del dashboard
 

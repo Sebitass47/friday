@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Sparkles, Moon, Sun, LogOut, Menu,
   CheckSquare, CalendarDays, Timer, ChevronLeft, StickyNote, Home,
-  Bell, BellOff, Download, Target,
+  Bell, BellOff, Download, Target, ListChecks,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/ThemeProvider'
@@ -23,6 +23,7 @@ const NAV = [
   { href: '/events',    icon: CalendarDays,   label: 'Eventos' },
   { href: '/habitos',   icon: Target,         label: 'Hábitos' },
   { href: '/notas',     icon: StickyNote,     label: 'Notas' },
+  { href: '/listas',    icon: ListChecks,     label: 'Listas' },
   { href: '/focus',     icon: Timer,          label: 'Focus' },
 ]
 

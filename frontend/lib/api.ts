@@ -1,7 +1,7 @@
 import type {
   User, Account, RecurringExpense, InstallmentPurchase,
   SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse,
-  Expense, CreditPayment, Income, Task, Subtask, Note,
+  Expense, CreditPayment, Income, Task, Subtask, Note, UserList,
   CategoriesResponse, CustomCategory,
 } from './types'
 
@@ -361,6 +361,40 @@ export async function deleteNote(id: string): Promise<void> {
 
 export async function toggleNotePin(id: string): Promise<Note> {
   return req(`/notes/${id}/toggle-pin`, { method: 'POST' })
+}
+
+// ── Lists ─────────────────────────────────────────────────────────────────────
+
+export async function getLists(): Promise<UserList[]> {
+  return req('/lists/')
+}
+
+export async function createList(data: { name: string; emoji: string }): Promise<UserList> {
+  return req('/lists/', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateList(id: string, data: Partial<{ name: string; emoji: string }>): Promise<UserList> {
+  return req(`/lists/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteList(id: string): Promise<void> {
+  return req(`/lists/${id}`, { method: 'DELETE' })
+}
+
+export async function addListItem(listId: string, text: string): Promise<UserList> {
+  return req(`/lists/${listId}/items`, { method: 'POST', body: JSON.stringify({ text }) })
+}
+
+export async function updateListItem(listId: string, itemId: string, data: Partial<{ text: string; is_done: boolean }>): Promise<UserList> {
+  return req(`/lists/${listId}/items/${itemId}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteListItem(listId: string, itemId: string): Promise<UserList> {
+  return req(`/lists/${listId}/items/${itemId}`, { method: 'DELETE' })
+}
+
+export async function clearCompletedListItems(listId: string): Promise<UserList> {
+  return req(`/lists/${listId}/clear-completed`, { method: 'POST' })
 }
 
 // ── Habits ────────────────────────────────────────────────────────────────────

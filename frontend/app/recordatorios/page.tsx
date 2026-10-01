@@ -46,7 +46,7 @@ const SORT_OPTIONS = [
 ]
 
 // shared classes for light/dark inputs
-const inputCls = 'w-full text-xs bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/50 dark:focus:border-[#6B46E5]/40 transition-colors'
+const inputCls = 'w-full text-xs bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-black/40 dark:focus:border-white/40 dark:focus:border-black/40 dark:focus:border-white/40 transition-colors'
 
 function localDate(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -228,7 +228,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
   }
 
   const panelLabel = 'text-[11px] font-extrabold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
-  const panelInput = 'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
+  const panelInput = 'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors'
 
   return (
     <div className="flex flex-col bg-white dark:bg-[#141414] rounded-t-2xl lg:rounded-none border-t border-black/[0.06] dark:border-white/[0.08] lg:border-t-0 lg:border-l lg:h-full lg:w-80 lg:min-w-[300px] max-h-[88dvh] lg:max-h-none" style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif" }}>
@@ -254,7 +254,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Nombre de la tarea"
-          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-[19px] font-bold outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
+          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-[19px] font-bold outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-black/40 dark:focus:border-white/40 transition-colors"
           onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
         />
 
@@ -288,7 +288,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
                 className={cn(
                   'text-xs px-3 py-1.5 rounded-lg border transition-all',
                   dueDateType === t
-                    ? 'bg-[#6B46E5]/20 border-[#6B46E5]/40 text-[#AF9BFF]'
+                    ? 'bg-black/[0.07] dark:bg-white/10 border-black/30 dark:border-white/30 text-black dark:text-white'
                     : 'border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:border-black/20 dark:hover:border-white/20 hover:text-black/60 dark:hover:text-white/60'
                 )}
               >
@@ -300,7 +300,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
               className={cn(
                 'text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center',
                 dueDateType === 'custom'
-                  ? 'bg-[#6B46E5]/20 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF]'
+                  ? 'bg-black/[0.07] dark:bg-white/10 border-black/30 dark:border-white/30 text-black dark:text-white'
                   : 'border-black/10 dark:border-white/10 text-black/40 dark:text-white/40 hover:border-black/20 dark:hover:border-white/20 hover:text-black/60 dark:hover:text-white/60'
               )}
             >
@@ -332,7 +332,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
                 }
                 setSameDay(b => !b)
               }}
-              className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer flex-shrink-0', sameDay ? 'bg-[#6B46E5]' : 'bg-black/10 dark:bg-white/10')}
+              className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer flex-shrink-0', sameDay ? 'bg-neutral-800 dark:bg-neutral-500' : 'bg-black/10 dark:bg-white/10')}
             >
               <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', sameDay ? 'left-4' : 'left-0.5')} />
             </div>
@@ -357,7 +357,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
               type="time"
               value={reminderTime}
               onChange={e => setReminderTime(e.target.value)}
-              className="w-24 text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 outline-none focus:border-[#6B46E5]/40 transition-colors"
+              className="w-24 text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors"
             />
           </div>
 
@@ -365,7 +365,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
             <label className="flex items-center gap-2 mt-2 cursor-pointer">
               <div
                 onClick={() => setDayBefore(b => !b)}
-                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', dayBefore ? 'bg-[#6B46E5]' : 'bg-black/10 dark:bg-white/10')}
+                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', dayBefore ? 'bg-neutral-800 dark:bg-neutral-500' : 'bg-black/10 dark:bg-white/10')}
               >
                 <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', dayBefore ? 'left-4' : 'left-0.5')} />
               </div>
@@ -409,10 +409,10 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
                     onClick={() => onToggleSubtask(task.id, sub.id, !sub.is_completed)}
                     className={cn(
                       'w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all',
-                      sub.is_completed ? 'bg-[#6B46E5] border-[#6B46E5]' : 'border-black/20 dark:border-white/20 hover:border-[#6B46E5]/60'
+                      sub.is_completed ? 'bg-neutral-800 border-neutral-800 dark:bg-white dark:border-white' : 'border-black/20 dark:border-white/20 hover:border-black/50 dark:hover:border-white/50'
                     )}
                   >
-                    {sub.is_completed && <Check size={10} className="text-white" />}
+                    {sub.is_completed && <Check size={10} className="text-white dark:text-black" />}
                   </button>
                   <span className={cn('text-xs flex-1', sub.is_completed ? 'line-through text-black/30 dark:text-white/30' : 'text-black/70 dark:text-white/70')}>
                     {sub.title}
@@ -431,7 +431,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
               onChange={e => setNewSubtask(e.target.value)}
               onKeyDown={handleAddSubtask}
               placeholder="Agregar una tarea..."
-              className="w-full text-xs bg-transparent text-black/60 dark:text-white/60 placeholder-black/20 dark:placeholder-white/20 outline-none border-b border-black/10 dark:border-white/10 pb-1 focus:border-[#6B46E5]/40"
+              className="w-full text-xs bg-transparent text-black/60 dark:text-white/60 placeholder-black/20 dark:placeholder-white/20 outline-none border-b border-black/10 dark:border-white/10 pb-1 focus:border-black/40 dark:focus:border-white/40"
             />
           </div>
         )}
@@ -442,7 +442,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
         <button
           onClick={handleSave}
           disabled={!title.trim() || saving}
-          className="w-full py-2.5 rounded-xl bg-[#6B46E5] hover:bg-[#5a38c8] disabled:opacity-40 text-white text-sm font-medium transition-colors"
+          className="w-full py-2.5 rounded-xl bg-black dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-black text-sm font-medium transition-colors"
         >
           {saving ? 'Guardando...' : creating ? 'Crear tarea' : 'Guardar cambios'}
         </button>
@@ -479,10 +479,10 @@ function TaskRow({ task, onToggle, onStar, onClick, isOverdue, isPast }: {
         onClick={e => { e.stopPropagation(); onToggle() }}
         className={cn(
           'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all',
-          task.is_completed ? 'bg-[#6B46E5] border-[#6B46E5]' : 'border-black/25 dark:border-white/25 hover:border-[#6B46E5]/70'
+          task.is_completed ? 'bg-neutral-800 border-neutral-800 dark:bg-white dark:border-white' : 'border-black/25 dark:border-white/25 hover:border-black/60 dark:hover:border-white/60'
         )}
       >
-        {task.is_completed && <Check size={11} className="text-white" />}
+        {task.is_completed && <Check size={11} className="text-white dark:text-black" />}
       </button>
 
       <div className="flex-1 min-w-0">
@@ -681,7 +681,7 @@ export default function ToDoPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar tareas..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-sm text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 outline-none focus:border-[#6B46E5]/40 transition-colors"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-sm text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors"
               />
             </div>
             <div className="w-40">

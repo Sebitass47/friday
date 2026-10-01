@@ -118,7 +118,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
   const [saving, setSaving] = useState(false)
 
   const panelLabel = 'text-[11px] font-extrabold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
-  const panelInput = 'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
+  const panelInput = 'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors'
 
   function buildPayload() {
     return {
@@ -165,7 +165,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
           onChange={e => setTitle(e.target.value)}
           placeholder="Nombre del evento"
           autoFocus={creating}
-          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-[19px] font-bold outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-[#6B46E5]/60 transition-colors"
+          className="w-full bg-transparent text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 text-[19px] font-bold outline-none border-b border-black/10 dark:border-white/10 pb-2 focus:border-black/40 dark:focus:border-white/40 transition-colors"
           onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
         />
 
@@ -201,7 +201,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
             <label className="flex items-center gap-2 cursor-pointer">
               <div
                 onClick={() => setAllDay(v => !v)}
-                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', allDay ? 'bg-[#6B46E5]' : 'bg-black/10 dark:bg-white/10')}
+                className={cn('w-8 h-4 rounded-full transition-colors relative cursor-pointer', allDay ? 'bg-neutral-800 dark:bg-neutral-500' : 'bg-black/10 dark:bg-white/10')}
               >
                 <div className={cn('absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all', allDay ? 'left-4' : 'left-0.5')} />
               </div>
@@ -222,7 +222,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
               value={location}
               onChange={e => setLocation(e.target.value)}
               placeholder="Agregar ubicación..."
-              className="w-full pl-8 pr-3 py-2 text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors"
+              className="w-full pl-8 pr-3 py-2 text-xs bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors"
             />
           </div>
         </div>
@@ -240,10 +240,10 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
         </div>
 
         {/* Auto-reminder info */}
-        <div className="rounded-xl bg-[#6B46E5]/10 border border-[#6B46E5]/20 p-3">
+        <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 p-3">
           <div className="flex items-start gap-2">
-            <AlarmClock size={14} className="text-[#AF9BFF] mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-[#AF9BFF]/80 leading-relaxed">
+            <AlarmClock size={14} className="text-black/50 dark:text-white/50 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-black/55 dark:text-white/55 leading-relaxed">
               FRIDAY te avisará automáticamente 3 días, 1 día y 1 hora antes del evento.
             </p>
           </div>
@@ -254,7 +254,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
         <button
           onClick={handleSave}
           disabled={!title.trim() || saving}
-          className="w-full py-2.5 rounded-xl bg-[#6B46E5] hover:bg-[#5a38c8] disabled:opacity-40 text-white text-sm font-medium transition-colors"
+          className="w-full py-2.5 rounded-xl bg-black dark:bg-white hover:opacity-90 disabled:opacity-40 text-white dark:text-black text-sm font-medium transition-colors"
         >
           {saving ? 'Guardando...' : creating ? 'Crear evento' : 'Guardar cambios'}
         </button>
@@ -287,10 +287,10 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
       {d ? (
         <div className={cn(
           'flex flex-col items-center justify-center w-11 h-11 rounded-xl flex-shrink-0',
-          isPast ? 'bg-black/[0.04] dark:bg-white/[0.04]' : 'bg-[#6B46E5]/20 border border-[#6B46E5]/30'
+          isPast ? 'bg-black/[0.04] dark:bg-white/[0.04]' : 'bg-black/[0.06] dark:bg-white/10 border border-black/10 dark:border-white/15'
         )}>
-          <span className={cn('text-[22px] font-extrabold leading-none', isPast ? 'text-black/30 dark:text-white/30' : 'text-[#6B46E5] dark:text-[#AF9BFF]')}>{day}</span>
-          <span className={cn('text-[10px] font-extrabold uppercase leading-none mt-0.5', isPast ? 'text-black/20 dark:text-white/20' : 'text-[#6B46E5]/70 dark:text-[#AF9BFF]/70')}>{month}</span>
+          <span className={cn('text-[22px] font-extrabold leading-none', isPast ? 'text-black/30 dark:text-white/30' : 'text-black dark:text-white')}>{day}</span>
+          <span className={cn('text-[10px] font-extrabold uppercase leading-none mt-0.5', isPast ? 'text-black/20 dark:text-white/20' : 'text-black/60 dark:text-white/60')}>{month}</span>
         </div>
       ) : (
         <div className="w-11 h-11 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] flex items-center justify-center flex-shrink-0">
@@ -436,7 +436,7 @@ export default function EventsPage() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Buscar por nombre..."
-                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-sm text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 outline-none focus:border-[#6B46E5]/40 transition-colors"
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-sm text-black dark:text-white placeholder-black/30 dark:placeholder-white/30 outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors"
               />
             </div>
             {/* Date picker */}
@@ -503,12 +503,12 @@ export default function EventsPage() {
 
           {/* Date filter banner */}
           {filterDate && (
-            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-[#6B46E5]/10 border border-[#6B46E5]/20">
-              <Calendar size={14} className="text-[#6B46E5] dark:text-[#AF9BFF]" />
-              <span className="text-sm font-semibold text-[#6B46E5] dark:text-[#AF9BFF]">
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl bg-black/[0.05] dark:bg-white/[0.06] border border-black/10 dark:border-white/10">
+              <Calendar size={14} className="text-black/70 dark:text-white/70" />
+              <span className="text-sm font-semibold text-black/80 dark:text-white/80">
                 Eventos del {new Date(filterDate + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </span>
-              <span className="text-xs text-[#6B46E5]/60 dark:text-[#AF9BFF]/60 ml-auto">
+              <span className="text-xs text-black/40 dark:text-white/40 ml-auto">
                 {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -524,7 +524,7 @@ export default function EventsPage() {
                 {anyFilter ? 'Sin resultados para tu búsqueda' : 'Sin eventos. ¡Crea uno!'}
               </p>
               {anyFilter && (
-                <button onClick={clearFilters} className="text-xs text-[#6B46E5] dark:text-[#AF9BFF] underline">
+                <button onClick={clearFilters} className="text-xs text-black/60 dark:text-white/60 underline">
                   Limpiar filtros
                 </button>
               )}

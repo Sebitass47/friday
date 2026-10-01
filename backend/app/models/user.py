@@ -30,4 +30,5 @@ class User(Base):
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
     habits = relationship("Habit", back_populates="user", cascade="all, delete-orphan")
+    lists = relationship("UserList", back_populates="user", cascade="all, delete-orphan")
     categories = relationship("UserCategory", back_populates="user", cascade="all, delete-orphan")

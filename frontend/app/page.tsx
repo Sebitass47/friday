@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
 import {
   getProjection, getAccounts, getTasks, getNotes, getHabits, toggleHabitLog, getMe,
-  getExpenses, getIncomes, getMonthlyIncome,
+  getExpenses, getIncomes, getMonthlyIncome, getLists,
 } from '@/lib/api'
 import type {
-  MonthProjection, Account, Task, Note, Habit, User, Expense, Income,
+  MonthProjection, Account, Task, Note, Habit, User, Expense, Income, UserList,
 } from '@/lib/types'
 import {
   DollarSign, CheckSquare, CalendarDays, StickyNote,
-  Plus, X, CreditCard, Clock, ChevronRight, Target, ChevronLeft,
+  Plus, X, CreditCard, Clock, ChevronRight, Target, ChevronLeft, ListChecks,
 } from 'lucide-react'
 import HabitsWeekTable from '@/components/HabitsWeekTable'
 import CycleSummaryCard from '@/components/CycleSummaryCard'
@@ -180,6 +180,7 @@ export default function HomePage() {
   const [currentCycle, setCurrentCycle] = useState<MonthProjection | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [lists, setLists] = useState<UserList[]>([])
   const [incomes, setIncomes] = useState<Income[]>([])
   const [cycleStartDay, setCycleStartDay] = useState<number | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
@@ -207,7 +208,8 @@ export default function HomePage() {
       getExpenses(),
       getIncomes(),
       getMonthlyIncome(),
-    ]).then(([proj, acc, tsk, evt, nts, hab, exp, inc, mi]) => {
+      getLists(),
+    ]).then(([proj, acc, tsk, evt, nts, hab, exp, inc, mi, lst]) => {
       if (proj.status === 'fulfilled') {
         setCurrentCycle(proj.value.months[0] ?? null)
       } else {
@@ -221,6 +223,7 @@ export default function HomePage() {
       if (exp.status === 'fulfilled') setExpenses(exp.value)
       if (inc.status === 'fulfilled') setIncomes(inc.value)
       if (mi.status === 'fulfilled') setCycleStartDay(mi.value.cycle_start_day)
+      if (lst.status === 'fulfilled') setLists(lst.value)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -483,6 +486,45 @@ export default function HomePage() {
             </GCard>
           )
         })()}
+
+        {/* ── Recent lists ──────────────────────────────────────────────────── */}
+        {!loading && lists.length > 0 && (
+          <GCard isDark={isDark}>
+            <SectionTitle isDark={isDark} icon={<ListChecks size={14} />} label="Listas" count={lists.length} />
+            <div className="space-y-1">
+              {lists.slice(0, 5).map(l => {
+                const total = l.items.length
+                const done = l.items.filter(i => i.is_done).length
+                const pending = total - done
+                return (
+                  <button
+                    key={l.id}
+                    onClick={() => router.push(`/listas?open=${l.id}`)}
+                    className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-left transition-colors"
+                    style={{ background: 'transparent' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <span className="w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                      style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6' }}>{l.emoji}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-semibold truncate" style={{ color: txt(0.9) }}>{l.name}</span>
+                      <span className="block text-[11px]" style={{ color: txtMuted }}>
+                        {total === 0 ? 'Vacía' : pending === 0 ? 'Completa' : `${pending} pendiente${pending !== 1 ? 's' : ''} de ${total}`}
+                      </span>
+                    </span>
+                    <ChevronRight size={14} style={{ color: txtMuted }} />
+                  </button>
+                )
+              })}
+            </div>
+            <button onClick={() => router.push('/listas')}
+              className="mt-3 text-xs flex items-center gap-1 hover:opacity-70 transition-colors"
+              style={{ color: txtMuted }}>
+              Ver todas las listas <ChevronRight size={10} />
+            </button>
+          </GCard>
+        )}
 
         {/* ── Recent notes ──────────────────────────────────────────────────── */}
         {!loading && recentNotes.length > 0 && (

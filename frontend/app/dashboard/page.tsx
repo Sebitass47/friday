@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import ProjectionChart from '@/components/charts/ProjectionChart'
-import SpendingTimelineChart from '@/components/charts/SpendingTimelineChart'
+import CyclePaceCard from '@/components/charts/CyclePaceCard'
 import CategorySpendingChart from '@/components/charts/CategorySpendingChart'
 import { CategorySelector } from '@/components/ui/category-selector'
 import {
@@ -740,18 +740,22 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Spending timeline */}
-        <div className={`${cardCls} p-5`}>
-          <div className="mb-3">
-            <h2 className="text-sm font-semibold text-black dark:text-white">Gastos del mes</h2>
-            <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Balance real · cada punto es un día con gastos</p>
+        {/* Cycle pace */}
+        {projection && (
+          <div className={`${cardCls} p-5`}>
+            <div className="mb-3">
+              <h2 className="text-sm font-semibold text-black dark:text-white">Ritmo del ciclo</h2>
+              <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Cuánto puedes gastar al día y cómo vas vs el ciclo anterior</p>
+            </div>
+            <CyclePaceCard
+              expenses={expenses}
+              cycleStart={projection.months[0].cycle_start}
+              cycleEnd={projection.months[0].cycle_end}
+              cycleStartDay={monthlyIncomeData?.cycle_start_day ?? 1}
+              available={Number(projection.months[0].available)}
+            />
           </div>
-          <SpendingTimelineChart
-            expenses={expenses}
-            monthlyIncome={(monthlyIncomeData?.amount ?? Number(projection?.months[0]?.income ?? 0)) - totalExpenses}
-            cycleStartDay={monthlyIncomeData?.cycle_start_day ?? 1}
-          />
-        </div>
+        )}
 
         {/* Category spending chart */}
         {projection && (() => {
@@ -769,7 +773,7 @@ export default function DashboardPage() {
             <div className={`${cardCls} p-5`}>
               <div className="mb-4">
                 <h2 className="text-sm font-semibold text-black dark:text-white">Gastos por categoría</h2>
-                <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Ciclo actual · solo categorías con gasto</p>
+                <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">Ciclo actual · toca una categoría para ocultarla o mostrarla</p>
               </div>
               <CategorySpendingChart
                 expenses={cycleExpenses}

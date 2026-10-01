@@ -57,7 +57,8 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 - Total compromisos
 
 **Secciones:**
-- Spending Timeline Chart — SVG paso a paso de gastos del mes, navegable por períodos, `cycleStartDay` guardado en localStorage (`friday_cycle_start_day`)
+- Ritmo del ciclo (`CyclePaceCard.tsx`) — cuánto puedes gastar por día para no quedar en rojo, ritmo actual, cierre proyectado y comparación contra el ciclo anterior al mismo día (ignora transferencias y retiros de ahorro). Reemplazó al Spending Timeline Chart
+- Gastos por categoría — chips para ocultar/mostrar categorías (guardado en localStorage `friday_hidden_categories`, `Transferencia` oculta por default); % recalculado sobre lo visible
 - Tarjetas de crédito — badge de uso con color dinámico (≤33% morado, 33–66% ámbar, >66% rojo), botón "Pagar este mes" que abre modal con monto y nuevo saldo
 - MSI (Meses Sin Intereses) — CRUD completo, botón "Liquidar"
 - Metas de ahorro — CRUD completo, botón "Ahorré este mes" (modal con monto editable)
@@ -254,7 +255,8 @@ frontend/
 │   │   └── Sidebar.tsx             # Nav lateral (desktop) / hamburguesa (móvil)
 │   ├── charts/
 │   │   ├── ProjectionChart.tsx     # Barras SVG 12 meses
-│   │   └── SpendingTimelineChart.tsx  # Step-line SVG gastos del período
+│   │   ├── CyclePaceCard.tsx       # Ritmo del ciclo (gasto diario permitido, proyección)
+│   │   └── CategorySpendingChart.tsx  # Barras por categoría con filtro de categorías
 │   ├── ui/
 │   │   ├── custom-select.tsx       # Dropdown custom (reemplaza <select> nativo)
 │   │   ├── glass-card.tsx          # Card con efecto glassmorphism

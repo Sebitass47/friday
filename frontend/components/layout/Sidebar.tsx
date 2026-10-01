@@ -173,7 +173,7 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                   active
-                    ? 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF] border border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
+                    ? 'bg-black/[0.07] dark:bg-white/10 text-black dark:text-white border border-black/15 dark:border-white/15'
                     : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border border-transparent'
                 )}
               >
@@ -209,7 +209,7 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
               className={cn(
                 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all border disabled:opacity-50',
                 pushSubscribed
-                  ? 'bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF] border-[#6B46E5]/20 dark:border-[#AF9BFF]/20'
+                  ? 'bg-black/[0.07] dark:bg-white/10 text-black dark:text-white border-black/15 dark:border-white/15'
                   : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5 hover:text-black dark:hover:text-white border-transparent'
               )}
             >

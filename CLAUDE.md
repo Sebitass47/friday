@@ -56,10 +56,10 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 - Ingreso mensual (editable con lápiz — modal `edit-income`)
 - Total compromisos
 
-**Resumen del ciclo** (`components/CycleSummaryCard.tsx`) reemplaza las 3 tarjetas KPI: Disponible grande + barra (compromisos / gastado / disponible) + desglose Ingreso mensual (editable) + Ingresos variables (expandible, sin cuentas de ahorro) = Total ingresos − Compromisos − Gastado. Los ingresos variables usan la misma regla que el backend (`account_id` nulo o cuenta de débito; del inicio del ciclo a hoy).
+**Resumen del ciclo** (`components/CycleSummaryCard.tsx`) es una sola tarjeta que reemplaza las 3 KPI y la gráfica aparte: arriba la línea de saldo (`BalanceFlowChart`) con el disponible; botón "Ver desglose" (plegado por default) despliega Ingreso mensual (editable) + Ingresos variables (expandible, sin cuentas de ahorro) = Total ingresos − Compromisos − Gastado. Los ingresos variables usan la misma regla que el backend (`account_id` nulo o cuenta de débito; del inicio del ciclo a hoy).
 
 **Secciones:**
-- Tu dinero este ciclo (`BalanceFlowChart.tsx`) — línea suave y neutra del saldo disponible: arranca con ingreso − compromisos, sube con ingresos puntuales y baja con gastos (cash/débito por fecha, crédito por statement del ciclo; mismas reglas que `/projection/`, termina en `available`). Scrub con mouse/touch, badge de % vs inicio, resumen Inicio/↑/↓. Reemplazó al Spending Timeline y a la tarjeta de ritmo
+- Línea de saldo (`BalanceFlowChart.tsx`, dentro del resumen del ciclo) — línea suave y neutra del saldo disponible: arranca con ingreso − compromisos, sube con ingresos puntuales y baja con gastos (cash/débito por fecha, crédito por statement del ciclo; mismas reglas que `/projection/`, termina en `available`). Scrub con mouse/touch, badge de % vs inicio, resumen Inicio/↑/↓. Reemplazó al Spending Timeline y a la tarjeta de ritmo
 - Gastos por categoría — chips para ocultar/mostrar categorías (guardado en localStorage `friday_hidden_categories`, `Transferencia` oculta por default); % recalculado sobre lo visible
 - Tarjetas de crédito — badge de uso con color dinámico (≤33% morado, 33–66% ámbar, >66% rojo), botón "Pagar este mes" que abre modal con monto y nuevo saldo
 - MSI (Meses Sin Intereses) — CRUD completo, botón "Liquidar"

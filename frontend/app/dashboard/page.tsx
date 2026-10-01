@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import ProjectionChart from '@/components/charts/ProjectionChart'
-import BalanceFlowChart from '@/components/charts/BalanceFlowChart'
 import CycleSummaryCard from '@/components/CycleSummaryCard'
 import CategorySpendingChart from '@/components/charts/CategorySpendingChart'
 import { CategorySelector } from '@/components/ui/category-selector'
@@ -707,24 +706,11 @@ export default function DashboardPage() {
           <CycleSummaryCard
             cycle={thisMonth}
             cycleStartDay={monthlyIncomeData?.cycle_start_day ?? null}
+            expenses={expenses}
+            countedIncomes={countedIncomes}
             variableIncomes={countedIncomes.filter(i => i.date >= thisMonth.cycle_start && i.date <= toISODate(new Date()))}
             onEditIncome={openEditIncome}
           />
-        )}
-
-        {/* Balance flow */}
-        {projection && (
-          <div className={`${cardCls} p-5`}>
-            <div className="mb-4">
-              <h2 className="text-sm font-semibold text-black dark:text-white">Tu dinero este ciclo</h2>
-              <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">{projection.months[0].label} · toca la línea para ver cada día</p>
-            </div>
-            <BalanceFlowChart
-              cycle={projection.months[0]}
-              expenses={expenses}
-              incomes={countedIncomes}
-            />
-          </div>
         )}
 
         {/* Category spending chart */}

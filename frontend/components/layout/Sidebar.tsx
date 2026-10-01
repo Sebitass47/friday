@@ -22,8 +22,8 @@ const NAV = [
   { href: '/recordatorios', icon: CheckSquare, label: 'Recordatorios' },
   { href: '/events',    icon: CalendarDays,   label: 'Eventos' },
   { href: '/habitos',   icon: Target,         label: 'Hábitos' },
-  { href: '/notas',     icon: StickyNote,     label: 'Notas' },
   { href: '/listas',    icon: ListChecks,     label: 'Listas' },
+  { href: '/notas',     icon: StickyNote,     label: 'Notas' },
   { href: '/focus',     icon: Timer,          label: 'Focus' },
 ]
 

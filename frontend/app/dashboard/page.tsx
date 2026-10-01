@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import ProjectionChart from '@/components/charts/ProjectionChart'
 import BalanceFlowChart from '@/components/charts/BalanceFlowChart'
+import CycleSummaryCard from '@/components/CycleSummaryCard'
 import CategorySpendingChart from '@/components/charts/CategorySpendingChart'
 import { CategorySelector } from '@/components/ui/category-selector'
 import {
@@ -627,6 +628,13 @@ export default function DashboardPage() {
     : 0
   const available = thisMonth?.available ?? 0
   const isNeg = available < 0
+  // Point incomes that count toward "disponible": no account (e.g. deleted) or a checking account, never savings
+  const countedIncomes = incomes.filter(i => {
+    if (!i.account_id) return true
+    return accounts.find(a => a.id === i.account_id)?.account_type === 'checking'
+  })
+  const toISODate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const activeMsi = msi.filter(m => m.remaining_installments > 0)
   const totalRecurring = recurring.reduce((s, e) => s + Number(e.amount), 0)
 
@@ -694,51 +702,15 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* KPI cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className={`${cardCls} p-6`}>
-            <p className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest mb-3">Disponible este mes</p>
-            <p className={`text-4xl font-bold tabular-nums ${isNeg ? '' : 'text-black dark:text-white'}`} style={isNeg ? { color: CORAL } : {}}>
-              {fmt(available)}
-            </p>
-            <div className="flex items-center gap-1.5 mt-2">
-              {isNeg
-                ? <TrendingDown size={13} style={{ color: CORAL }} />
-                : available < (thisMonth?.income ?? 0) * 0.2
-                ? <Minus size={13} className="text-amber-500 dark:text-amber-400" />
-                : <TrendingUp size={13} className="text-emerald-500 dark:text-emerald-400" />
-              }
-              <span className="text-xs text-black/40 dark:text-white/40">
-                {isNeg ? 'Déficit este mes' : 'Después de compromisos'}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className={`${cardCls} p-5 flex-1`}>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" />
-                  <p className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Ingreso mensual</p>
-                </div>
-                <button onClick={openEditIncome} className="p-1 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                  <Pencil size={13} />
-                </button>
-              </div>
-              <p className="text-2xl font-semibold text-black dark:text-white tabular-nums">{fmt(monthlyIncomeData?.amount ?? thisMonth?.income ?? 0)}</p>
-              {monthlyIncomeData && (
-                <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">Ciclo desde el día {monthlyIncomeData.cycle_start_day}</p>
-              )}
-            </div>
-            <div className={`${cardCls} p-5 flex-1`}>
-              <div className="flex items-center gap-2 mb-1">
-                <X size={14} style={{ color: CORAL }} />
-                <p className="text-[10px] font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Total compromisos</p>
-              </div>
-              <p className="text-2xl font-semibold tabular-nums" style={{ color: CORAL }}>{fmt(totalExpenses)}</p>
-            </div>
-          </div>
-        </div>
+        {/* Cycle summary */}
+        {thisMonth && (
+          <CycleSummaryCard
+            cycle={thisMonth}
+            cycleStartDay={monthlyIncomeData?.cycle_start_day ?? null}
+            variableIncomes={countedIncomes.filter(i => i.date >= thisMonth.cycle_start && i.date <= toISODate(new Date()))}
+            onEditIncome={openEditIncome}
+          />
+        )}
 
         {/* Balance flow */}
         {projection && (
@@ -750,10 +722,7 @@ export default function DashboardPage() {
             <BalanceFlowChart
               cycle={projection.months[0]}
               expenses={expenses}
-              incomes={incomes.filter(i => {
-                if (!i.account_id) return true
-                return accounts.find(a => a.id === i.account_id)?.account_type === 'checking'
-              })}
+              incomes={countedIncomes}
             />
           </div>
         )}

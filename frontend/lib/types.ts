@@ -213,6 +213,8 @@ export interface Habit {
   name: string
   color: string
   created_at: string
+  // Weekdays the habit applies to: 0=Mon … 6=Sun
+  days: number[]
   completed_dates: string[]
   week_percentage: number
 }

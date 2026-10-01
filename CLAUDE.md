@@ -156,6 +156,7 @@ Página de notas rápidas con colores y etiquetas. Diseño grid 2 columnas, sopo
 Tracker semanal de hábitos. Tabla tipo grid donde cada fila es un hábito y cada columna es un día de la semana. Navegar entre semanas con flechas.
 
 **Funcionalidades:**
+- Cada hábito tiene sus **días de la semana** (`days_of_week`, 0=Lun…6=Dom): presets Todos los días / Entre semana / Fines de semana o días sueltos (selector `DaysPicker`, también al crear). Se cambia tocando la etiqueta de días bajo el nombre del hábito. En los días que no aplican la celda sale en blanco, sin casilla; `%`, racha, "completados hoy" y los push solo cuentan los días programados; el backend rechaza (400) marcar un día no programado
 - Vista semanal (Lun–Dom) con flechas de navegación entre semanas
 - Toggle de completado por día — checkbox redondeado con el color propio del hábito cuando está marcado
 - Cada hábito tiene un color único asignado aleatoriamente al crearse (paleta de 10 colores vivos)
@@ -215,7 +216,7 @@ push.py              GET /push/vapid-public-key, POST /push/subscribe, DELETE /p
 tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
 notes.py             CRUD /notes/ + POST /{id}/toggle-pin
 lists.py             GET/POST /lists/, PUT/DELETE /lists/{id}, POST /lists/{id}/items, PUT/DELETE /lists/{id}/items/{item_id}, POST /lists/{id}/clear-completed
-habits.py            GET /habits/?week_start=YYYY-MM-DD, POST /habits/, DELETE /habits/{id}, POST /habits/{id}/toggle
+habits.py            GET /habits/?week_start=YYYY-MM-DD, POST /habits/, PUT /habits/{id}?week_start=, DELETE /habits/{id}, POST /habits/{id}/toggle
 ```
 
 Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/auth/login`.
@@ -237,12 +238,12 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `credit_payments` | registro de pagos de tarjeta por `statement_month/year` |
 | `push_subscriptions` | endpoint VAPID por usuario, para notificaciones push |
 | `notes` | título, contenido, etiqueta, color (string key), is_pinned; FK a users |
-| `habits` | nombre, color (hex), FK a users |
+| `habits` | nombre, color (hex), `days_of_week` ("0,1,2,3,4", 0=Lun), FK a users |
 | `lists` | name, emoji, FK a users; `updated_at` se actualiza al cambiar sus elementos |
 | `list_items` | FK a lists, text, is_done, position |
 | `habit_logs` | FK a habits, date (Date); constraint unique (habit_id, date) — un log por hábito por día |
 
-Migraciones numeradas `0001`–`0023` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0024` en `backend/alembic/versions/`.
 
 **Zona horaria:** los contenedores corren en UTC. Nunca uses `date.today()` en el backend; usa `today_local()` de `app/core/clock.py` (America/Mexico_City). Si no, después de las 18:00 hora MX el backend ya cree que es el día siguiente (y puede saltar de ciclo).
 

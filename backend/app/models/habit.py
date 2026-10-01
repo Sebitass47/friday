@@ -13,6 +13,8 @@ class Habit(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     color = Column(String, nullable=False, server_default="#6B46E5")
+    # Weekdays the habit applies to, comma-separated, 0=Mon..6=Sun
+    days_of_week = Column(String, nullable=False, server_default="0,1,2,3,4,5,6")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="habits")

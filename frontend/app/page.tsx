@@ -237,7 +237,7 @@ export default function HomePage() {
       const done = h.completed_dates.includes(dateISO)
       const completed_dates = done ? h.completed_dates.filter(d => d !== dateISO) : [...h.completed_dates, dateISO]
       const weekDays = Array.from({length:7},(_,i)=>{ const d=new Date(habitWeekStart); d.setDate(d.getDate()+i); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
-      return { ...h, completed_dates, week_percentage: Math.round((weekDays.filter(d=>completed_dates.includes(d)).length/7)*100) }
+      const sched = weekDays.filter((_,i)=>h.days.includes(i)); return { ...h, completed_dates, week_percentage: sched.length ? Math.round((sched.filter(d=>completed_dates.includes(d)).length/sched.length)*100) : 0 }
     }))
     toggleHabitLog(habitId, dateISO).catch(() => getHabits(habitWeekISO).then(setHabits))
   }

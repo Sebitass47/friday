@@ -83,7 +83,9 @@ def check_and_notify_habits(db: Session, hour: int) -> None:
             .filter(HabitLog.habit_id.in_([h.id for h in habits]), HabitLog.date == today)
             .all()
         }
-        pending = [h for h in habits if h.id not in completed_ids]
+        from app.services.habit_service import parse_days
+        # Only habits that apply today count as pending
+        pending = [h for h in habits if h.id not in completed_ids and today.weekday() in parse_days(h.days_of_week)]
         n = len(pending)
         if n == 0:
             continue

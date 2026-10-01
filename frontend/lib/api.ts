@@ -403,8 +403,12 @@ export async function getHabits(weekStart: string): Promise<import('./types').Ha
   return req(`/habits/?week_start=${weekStart}`)
 }
 
-export async function createHabit(data: { name: string; color?: string }): Promise<import('./types').Habit> {
+export async function createHabit(data: { name: string; color?: string; days?: number[] }): Promise<import('./types').Habit> {
   return req('/habits/', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateHabit(id: string, weekStart: string, data: Partial<{ name: string; days: number[] }>): Promise<import('./types').Habit> {
+  return req(`/habits/${id}?week_start=${weekStart}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
 export async function deleteHabit(id: string): Promise<void> {

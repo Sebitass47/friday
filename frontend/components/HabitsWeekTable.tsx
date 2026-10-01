@@ -1,10 +1,75 @@
 'use client'
 
+import { Fragment, useState } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Habit } from '@/lib/types'
 
 const DAYS_ES = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
+const DAY_LETTERS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
+const WEEKDAYS = [0, 1, 2, 3, 4]
+const WEEKEND = [5, 6]
+
+const sameDays = (a: number[], b: number[]) => a.length === b.length && a.every(d => b.includes(d))
+
+export function scheduleLabel(days: number[]): string {
+  if (sameDays(days, ALL_DAYS)) return 'Todos los días'
+  if (sameDays(days, WEEKDAYS)) return 'Entre semana'
+  if (sameDays(days, WEEKEND)) return 'Fines de semana'
+  return [...days].sort().map(d => DAY_LETTERS[d]).join(' · ')
+}
+
+// Presets + individual weekday toggles. Always keeps at least one day selected.
+export function DaysPicker({ value, onChange }: { value: number[]; onChange: (days: number[]) => void }) {
+  const presets: [string, number[]][] = [['Todos los días', ALL_DAYS], ['Entre semana', WEEKDAYS], ['Fines de semana', WEEKEND]]
+  function toggleDay(d: number) {
+    if (value.includes(d)) {
+      if (value.length === 1) return
+      onChange(value.filter(x => x !== d))
+    } else {
+      onChange([...value, d].sort())
+    }
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        {presets.map(([label, days]) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onChange(days)}
+            className={cn(
+              'text-xs px-2.5 py-1 rounded-full border transition-all',
+              sameDays(value, days)
+                ? 'bg-[#6B46E5]/15 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF] font-semibold'
+                : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/20'
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-1.5">
+        {DAY_LETTERS.map((l, d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => toggleDay(d)}
+            className={cn(
+              'w-8 h-8 rounded-lg text-xs font-semibold transition-all border',
+              value.includes(d)
+                ? 'bg-[#6B46E5] border-[#6B46E5] text-white'
+                : 'border-gray-200 dark:border-white/10 text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-white/20'
+            )}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 interface Props {
   habits: Habit[]
@@ -14,14 +79,17 @@ interface Props {
   onToggle: (habitId: string, dateISO: string) => void
   onDelete?: (habitId: string) => void
   deleteConfirm?: string | null
+  // When provided, the schedule label under each habit becomes an editor
+  onUpdateDays?: (habitId: string, days: number[]) => void
 }
 
 function toISO(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function HabitsWeekTable({ habits, weekDates, today, loading, onToggle, onDelete, deleteConfirm }: Props) {
+export default function HabitsWeekTable({ habits, weekDates, today, loading, onToggle, onDelete, deleteConfirm, onUpdateDays }: Props) {
   const showDelete = !!onDelete
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   if (loading) {
     return (
@@ -90,19 +158,32 @@ export default function HabitsWeekTable({ habits, weekDates, today, loading, onT
         </thead>
         <tbody>
           {habits.map(habit => (
+            <Fragment key={habit.id}>
             <tr
-              key={habit.id}
               className="border-b border-gray-50 dark:border-white/[0.04] last:border-0 group"
             >
               <td className="py-4 pl-4 pr-3">
                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {habit.name}
                 </span>
+                {onUpdateDays ? (
+                  <button
+                    onClick={() => setEditingId(editingId === habit.id ? null : habit.id)}
+                    className="block text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    title="Cambiar días"
+                  >
+                    {scheduleLabel(habit.days)}
+                  </button>
+                ) : habit.days.length < 7 && (
+                  <span className="block text-[10px] text-gray-400 dark:text-gray-500">{scheduleLabel(habit.days)}</span>
+                )}
               </td>
               {weekDates.map((d, i) => {
                 const iso = toISO(d)
                 const done = habit.completed_dates.includes(iso)
                 const isToday = iso === today
+                // Days the habit doesn't apply to: blank cell, no checkbox
+                if (!habit.days.includes(i)) return <td key={i} className="py-4 px-2" />
                 return (
                   <td key={i} className="py-4 px-2 text-center">
                     <button
@@ -152,6 +233,15 @@ export default function HabitsWeekTable({ habits, weekDates, today, loading, onT
                 </td>
               )}
             </tr>
+            {onUpdateDays && editingId === habit.id && (
+              <tr className="border-b border-gray-50 dark:border-white/[0.04]">
+                <td colSpan={weekDates.length + 2 + (showDelete ? 1 : 0)} className="px-4 pb-4 pt-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Días de este hábito</p>
+                  <DaysPicker value={habit.days} onChange={days => onUpdateDays(habit.id, days)} />
+                </td>
+              </tr>
+            )}
+            </Fragment>
           ))}
         </tbody>
       </table>

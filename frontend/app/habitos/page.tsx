@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { getHabits, createHabit, deleteHabit, toggleHabitLog } from '@/lib/api'
+import { getHabits, createHabit, updateHabit, deleteHabit, toggleHabitLog } from '@/lib/api'
 import type { Habit } from '@/lib/types'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import HabitsWeekTable from '@/components/HabitsWeekTable'
+import HabitsWeekTable, { DaysPicker } from '@/components/HabitsWeekTable'
 
 const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
@@ -41,6 +41,7 @@ export default function HabitosPage() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
+  const [newDays, setNewDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6])
   const [adding, setAdding] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -50,6 +51,7 @@ export default function HabitosPage() {
   const weekStartISO = toISO(weekStart)
   const weekEndISO = toISO(weekDates[6])
   const today = todayISO()
+  const todayIdx = (new Date().getDay() + 6) % 7 // 0=Mon … 6=Sun
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -80,8 +82,10 @@ export default function HabitosPage() {
       const completed_dates = done
         ? h.completed_dates.filter(d => d !== dateISO)
         : [...h.completed_dates, dateISO]
-      const weekCount = weekDates.filter(d => completed_dates.includes(toISO(d))).length
-      return { ...h, completed_dates, week_percentage: Math.round((weekCount / 7) * 100) }
+      // Progress only counts the days this habit applies to
+      const scheduled = weekDates.filter((_, i) => h.days.includes(i))
+      const weekCount = scheduled.filter(d => completed_dates.includes(toISO(d))).length
+      return { ...h, completed_dates, week_percentage: scheduled.length ? Math.round((weekCount / scheduled.length) * 100) : 0 }
     }))
     try {
       await toggleHabitLog(habitId, dateISO)
@@ -95,14 +99,24 @@ export default function HabitosPage() {
     if (!name) return
     setAdding(true)
     try {
-      const habit = await createHabit({ name })
+      const habit = await createHabit({ name, days: newDays })
       setHabits(prev => [...prev, habit])
       setNewName('')
+      setNewDays([0, 1, 2, 3, 4, 5, 6])
       inputRef.current?.focus()
     } catch (e) {
       console.error(e)
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function handleUpdateDays(habitId: string, days: number[]) {
+    try {
+      const updated = await updateHabit(habitId, weekStartISO, { days })
+      setHabits(prev => prev.map(h => h.id === habitId ? updated : h))
+    } catch {
+      load()
     }
   }
 
@@ -160,6 +174,7 @@ export default function HabitosPage() {
               onToggle={handleToggle}
               onDelete={handleDeleteClick}
               deleteConfirm={deleteConfirm}
+              onUpdateDays={handleUpdateDays}
             />
 
             {/* Add habit row */}
@@ -181,6 +196,10 @@ export default function HabitosPage() {
                 Agregar
               </button>
             </div>
+            <div className="px-4 pb-4 -mt-1">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">¿Qué días aplica?</p>
+              <DaysPicker value={newDays} onChange={setNewDays} />
+            </div>
           </div>
 
           {/* Week summary */}
@@ -190,8 +209,8 @@ export default function HabitosPage() {
                 { label: 'Hábitos', value: habits.length, suffix: '' },
                 {
                   label: 'Completados hoy',
-                  value: habits.filter(h => h.completed_dates.includes(today)).length,
-                  suffix: `/${habits.length}`,
+                  value: habits.filter(h => h.days.includes(todayIdx) && h.completed_dates.includes(today)).length,
+                  suffix: `/${habits.filter(h => h.days.includes(todayIdx)).length}`,
                 },
                 {
                   label: 'Promedio semanal',
@@ -203,11 +222,17 @@ export default function HabitosPage() {
                 {
                   label: 'Racha máxima',
                   value: (() => {
+                    // Consecutive scheduled days completed, ending today (or week end).
+                    // Days the habit doesn't apply to are skipped; today pending doesn't break it.
                     let best = 0
+                    const endIdx = weekDates.findIndex(d => toISO(d) === today)
+                    const from = endIdx === -1 ? 6 : endIdx
                     habits.forEach(h => {
                       let streak = 0
-                      for (let i = 6; i >= 0; i--) {
+                      for (let i = from; i >= 0; i--) {
+                        if (!h.days.includes(i)) continue
                         if (h.completed_dates.includes(toISO(weekDates[i]))) streak++
+                        else if (toISO(weekDates[i]) === today) continue
                         else break
                       }
                       if (streak > best) best = streak

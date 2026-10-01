@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
-from app.schemas.habit import HabitCreate, HabitResponse, HabitToggleRequest
+from app.schemas.habit import HabitCreate, HabitUpdate, HabitResponse, HabitToggleRequest
 from app.services import habit_service
 
 router = APIRouter(prefix="/habits", tags=["habits"])
@@ -34,9 +34,24 @@ def create_habit(
         "name": habit.name,
         "color": habit.color,
         "created_at": habit.created_at,
+        "days": habit_service.parse_days(habit.days_of_week),
         "completed_dates": [],
         "week_percentage": 0,
     }
+
+
+@router.put("/{habit_id}", response_model=HabitResponse)
+def update_habit(
+    habit_id: UUID,
+    data: HabitUpdate,
+    week_start: date = Query(..., description="ISO date of the week's Monday"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    habit = habit_service.update_habit(db, habit_id, data, current_user.id)
+    if not habit:
+        raise HTTPException(status_code=404, detail="Hábito no encontrado")
+    return habit_service.habit_week_dict(habit, week_start)
 
 
 @router.delete("/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -56,7 +71,10 @@ def toggle_habit(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = habit_service.toggle_log(db, habit_id, data.date, current_user.id)
+    try:
+        result = habit_service.toggle_log(db, habit_id, data.date, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if result is None:
         raise HTTPException(status_code=404, detail="Hábito no encontrado")
     return result

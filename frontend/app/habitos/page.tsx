@@ -185,12 +185,12 @@ export default function HabitosPage() {
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
                 placeholder="Nuevo hábito..."
-                className="flex-1 bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6B46E5]/40 focus:border-[#6B46E5] dark:focus:border-[#6B46E5] transition-colors"
+                className="flex-1 bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 focus:border-black/40 dark:focus:border-white/40 transition-colors"
               />
               <button
                 onClick={handleAdd}
                 disabled={adding || !newName.trim()}
-                className="px-5 py-2.5 bg-[#6B46E5] hover:bg-[#5a35d4] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl flex items-center gap-2 transition-colors"
+                className="px-5 py-2.5 bg-black dark:bg-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-black text-sm font-semibold rounded-xl flex items-center gap-2 transition-colors"
               >
                 <Plus size={16} />
                 Agregar

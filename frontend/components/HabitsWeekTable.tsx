@@ -42,7 +42,7 @@ export function DaysPicker({ value, onChange }: { value: number[]; onChange: (da
             className={cn(
               'text-xs px-2.5 py-1 rounded-full border transition-all',
               sameDays(value, days)
-                ? 'bg-[#6B46E5]/15 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF] font-semibold'
+                ? 'bg-black/[0.07] dark:bg-white/10 border-black/30 dark:border-white/30 text-black dark:text-white font-semibold'
                 : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-white/20'
             )}
           >
@@ -50,16 +50,16 @@ export function DaysPicker({ value, onChange }: { value: number[]; onChange: (da
           </button>
         ))}
       </div>
-      <div className="flex gap-1.5">
+      <div className="grid grid-cols-7 gap-2 max-w-[340px]">
         {DAY_LETTERS.map((l, d) => (
           <button
             key={d}
             type="button"
             onClick={() => toggleDay(d)}
             className={cn(
-              'w-8 h-8 rounded-lg text-xs font-semibold transition-all border',
+              'h-9 rounded-xl text-xs font-semibold transition-all border',
               value.includes(d)
-                ? 'bg-[#6B46E5] border-[#6B46E5] text-white'
+                ? 'bg-neutral-800 border-neutral-800 text-white dark:bg-white dark:border-white dark:text-black'
                 : 'border-gray-200 dark:border-white/10 text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-white/20'
             )}
           >
@@ -139,13 +139,13 @@ export default function HabitsWeekTable({ habits, weekDates, today, loading, onT
                 <th key={i} className="py-3 px-2 text-center">
                   <div className={cn(
                     'text-[10px] font-semibold tracking-widest',
-                    isToday ? 'text-[#6B46E5] dark:text-[#AF9BFF]' : 'text-gray-400 dark:text-gray-500'
+                    isToday ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'
                   )}>
                     {DAYS_ES[i]}
                   </div>
                   <div className={cn(
                     'text-sm font-medium mt-0.5',
-                    isToday ? 'text-[#6B46E5] dark:text-[#AF9BFF]' : 'text-gray-600 dark:text-gray-400'
+                    isToday ? 'text-black dark:text-white font-semibold' : 'text-gray-600 dark:text-gray-400'
                   )}>
                     {d.getDate()}
                   </div>
@@ -174,7 +174,7 @@ export default function HabitsWeekTable({ habits, weekDates, today, loading, onT
                   >
                     {scheduleLabel(habit.days)}
                   </button>
-                ) : habit.days.length < 7 && (
+                ) : (
                   <span className="block text-[10px] text-gray-400 dark:text-gray-500">{scheduleLabel(habit.days)}</span>
                 )}
               </td>

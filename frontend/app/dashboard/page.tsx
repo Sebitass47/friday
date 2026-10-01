@@ -33,10 +33,10 @@ const fmt = (n: number) =>
 const pct = (cur: number, tot: number) => Math.min(100, Math.round((cur / tot) * 100))
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
-const ACCENT = 'text-[#6B46E5] dark:text-[#AF9BFF]'
-const ACCENT_BG = 'bg-[#6B46E5]'
-const ACCENT_BG_SOFT = 'bg-[#6B46E5]/10'
-const ACCENT_BORDER = 'border-[#6B46E5]/20'
+const ACCENT = 'text-black/80 dark:text-white/85'
+const ACCENT_BG = 'bg-black dark:bg-white'
+const ACCENT_BG_SOFT = 'bg-black/[0.07] dark:bg-white/10'
+const ACCENT_BORDER = 'border-black/20 dark:border-white/20'
 const CORAL = '#FF6B6B'
 
 type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | 'edit-income' | null
@@ -65,7 +65,7 @@ const ACCOUNT_EMPTY: AccountForm = {
 const fmtDate = (iso: string) => iso ? iso.split('-').reverse().join('/') : ''
 
 function inputCls() {
-  return 'w-full bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-[#6B46E5] dark:focus:border-[#AF9BFF] transition-colors'
+  return 'w-full bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-black dark:text-white outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors'
 }
 
 function Modal({ title, subtitle, onClose, children }: {
@@ -106,7 +106,7 @@ function FormActions({ onCancel, onSave, saving, saveLabel = 'Guardar', error }:
       {error && <p className="text-xs text-[#FF6B6B] bg-[#FF6B6B]/10 rounded-xl px-3 py-2">{error}</p>}
       <div className="flex gap-2 pt-1">
         <button onClick={onCancel} className="flex-1 rounded-xl border border-black/10 dark:border-white/10 px-4 py-2 text-sm text-black/60 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">Cancelar</button>
-        <button onClick={onSave} disabled={saving} className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${ACCENT_BG} text-white disabled:opacity-50 hover:opacity-90`}>
+        <button onClick={onSave} disabled={saving} className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${ACCENT_BG} text-white dark:text-black disabled:opacity-50 hover:opacity-90`}>
           {saving ? 'Guardando…' : saveLabel}
         </button>
       </div>
@@ -120,12 +120,12 @@ function usagePct(used: number, limit: number) {
 function usageTextColor(pct: number) {
   if (pct >= 0.66) return 'text-red-400'
   if (pct >= 0.33) return 'text-amber-400'
-  return 'text-[#6B46E5] dark:text-[#AF9BFF]'
+  return 'text-black/80 dark:text-white/85'
 }
 function usageBgColor(pct: number) {
   if (pct >= 0.66) return 'bg-red-400'
   if (pct >= 0.33) return 'bg-amber-400'
-  return 'bg-[#6B46E5] dark:bg-[#AF9BFF]'
+  return 'bg-black/60 dark:bg-white/65'
 }
 
 function CreditUsageBar({ used, limit }: { used: number; limit: number }) {
@@ -615,7 +615,7 @@ export default function DashboardPage() {
     return (
       <AppLayout>
         <div className="flex h-64 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#6B46E5]/30 dark:border-[#AF9BFF]/30 border-t-[#6B46E5] dark:border-t-[#AF9BFF]" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/20 dark:border-white/20 border-t-black dark:border-t-white" />
         </div>
       </AppLayout>
     )
@@ -693,7 +693,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={openRegister}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 ${ACCENT_BG}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white dark:text-black transition-all hover:opacity-90 active:scale-95 ${ACCENT_BG}`}
             >
               <Plus size={15} strokeWidth={2.5} />
               Registrar
@@ -781,7 +781,7 @@ export default function DashboardPage() {
                 {otherAccounts.map(a => (
                   <div key={a.id} className={`${cardCls} flex items-center justify-between px-5 py-3.5`}>
                     <div className="flex items-center gap-3">
-                      <div className={`${a.account_type === 'savings' ? 'text-emerald-400' : 'text-[#6B46E5] dark:text-[#AF9BFF]'}`}>
+                      <div className={`${a.account_type === 'savings' ? 'text-emerald-400' : 'text-black/80 dark:text-white/85'}`}>
                         {a.account_type === 'savings' ? <PiggyBank size={16} /> : <Wallet size={16} />}
                       </div>
                       <div>
@@ -844,14 +844,14 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-3 pt-1 border-t border-black/[0.05] dark:border-white/[0.05] text-[11px]">
                           {a.closing_day && <span className="text-black/40 dark:text-white/40">Corte: <span className="font-medium text-black dark:text-white">día {a.closing_day}</span></span>}
                           {a.closing_day && a.payment_day && <span className="text-black/20 dark:text-white/20">·</span>}
-                          {a.payment_day && <span className="text-black/40 dark:text-white/40">Pago: <span className="font-medium text-[#6B46E5] dark:text-[#AF9BFF]">día {a.payment_day}</span></span>}
+                          {a.payment_day && <span className="text-black/40 dark:text-white/40">Pago: <span className="font-medium text-black/80 dark:text-white/85">día {a.payment_day}</span></span>}
                         </div>
                       )}
                       {/* Card actions */}
                       <div className="flex gap-2 pt-1 border-t border-black/[0.05] dark:border-white/[0.05]">
                         <button
                           onClick={() => openPayCardModal(a)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 text-[#6B46E5] dark:text-[#AF9BFF] text-xs font-medium hover:opacity-80 transition-opacity"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-black/[0.07] dark:bg-white/10 text-black/80 dark:text-white/85 text-xs font-medium hover:opacity-80 transition-opacity"
                         >
                           <Banknote size={13} /> Pagar este mes
                         </button>
@@ -916,7 +916,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="h-1 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
-                        <div className="h-1 rounded-full bg-[#6B46E5]/60 dark:bg-[#AF9BFF]/60" style={{ width: `${progress}%` }} />
+                        <div className="h-1 rounded-full bg-black/50 dark:bg-white/55" style={{ width: `${progress}%` }} />
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[10px] text-black/25 dark:text-white/25">{paid} de {item.total_installments} meses</p>
@@ -1039,7 +1039,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span className="text-xs text-black dark:text-white truncate max-w-[110px]">{e.name}</span>
                           {recAccount && (
-                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${recAccount.account_type === 'credit_card' ? 'bg-[#6B46E5]/15 text-[#6B46E5] dark:bg-[#AF9BFF]/15 dark:text-[#AF9BFF]' : 'bg-black/[0.06] dark:bg-white/[0.06] text-black/50 dark:text-white/50'}`}>
+                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${recAccount.account_type === 'credit_card' ? 'bg-black/[0.08] text-black/80 dark:bg-white/10 dark:text-white/85' : 'bg-black/[0.06] dark:bg-white/[0.06] text-black/50 dark:text-white/50'}`}>
                               {recAccount.name}
                             </span>
                           )}
@@ -1124,7 +1124,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-4 text-xs text-black/40 dark:text-white/40">
               <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm bg-[#6B46E5]/70 dark:bg-[#AF9BFF]/70" />Positivo
+                <span className="h-2 w-2 rounded-sm bg-black/55 dark:bg-white/60" />Positivo
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: `${CORAL}b3` }} />Déficit
@@ -1164,7 +1164,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <label className="block text-xs text-black/50 dark:text-white/50 mb-1">Inicio</label>
-                <DateInput value={simForm.start_date} onChange={v => { setSimForm(f => ({ ...f, start_date: v })); resetSim() }} inputClassName="bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 rounded-xl py-2 text-sm text-black dark:text-white focus:border-[#6B46E5]" />
+                <DateInput value={simForm.start_date} onChange={v => { setSimForm(f => ({ ...f, start_date: v })); resetSim() }} inputClassName="bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 rounded-xl py-2 text-sm text-black dark:text-white focus:border-black/40 dark:focus:border-white/40" />
               </div>
             </div>
 
@@ -1177,7 +1177,7 @@ export default function DashboardPage() {
             )}
 
             <button onClick={runSimulation} disabled={simLoading}
-              className={`flex items-center justify-center gap-2 w-full rounded-xl ${ACCENT_BG} text-white px-4 py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all`}>
+              className={`flex items-center justify-center gap-2 w-full rounded-xl ${ACCENT_BG} text-white dark:text-black px-4 py-2.5 text-sm font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-50 transition-all`}>
               <Sparkles size={14} />
               {simLoading ? 'Calculando…' : '¿Puedo pagarlo?'}
             </button>
@@ -1248,7 +1248,7 @@ export default function DashboardPage() {
           <div className="flex rounded-xl border border-black/10 dark:border-white/10 overflow-hidden p-0.5 bg-black/[0.03] dark:bg-white/[0.03]">
             {(['expense', 'income'] as const).map(m => (
               <button key={m} onClick={() => setRegMode(m)}
-                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${regMode === m ? `${ACCENT_BG} text-white` : 'text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white'}`}>
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${regMode === m ? `${ACCENT_BG} text-white dark:text-black` : 'text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white'}`}>
                 {m === 'expense' ? 'Gasto' : 'Ingreso'}
               </button>
             ))}
@@ -1286,7 +1286,7 @@ export default function DashboardPage() {
                     ]}
                   />
                   {billingMonth && (
-                    <p className="text-[11px] text-[#6B46E5] dark:text-[#AF9BFF] bg-[#6B46E5]/10 dark:bg-[#AF9BFF]/10 rounded-lg px-2.5 py-1.5 mt-1.5">
+                    <p className="text-[11px] text-black/80 dark:text-white/85 bg-black/[0.07] dark:bg-white/10 rounded-lg px-2.5 py-1.5 mt-1.5">
                       Se cobra en el estado de: <span className="font-semibold capitalize">{billingMonth}</span>
                     </p>
                   )}
@@ -1334,7 +1334,7 @@ export default function DashboardPage() {
               <button type="button" onClick={() => setRegIsMonthly(v => !v)}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border transition-all text-sm ${regIsMonthly ? `${ACCENT_BG_SOFT} ${ACCENT_BORDER} ${ACCENT}` : 'border-black/10 dark:border-white/10 text-black/50 dark:text-white/50'}`}>
                 <span>¿Es tu ingreso mensual fijo?</span>
-                <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 ${regIsMonthly ? 'bg-[#6B46E5] dark:bg-[#AF9BFF] justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
+                <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 ${regIsMonthly ? 'bg-black/80 dark:bg-white/85 justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
                   <span className="w-3 h-3 rounded-full bg-white" />
                 </span>
               </button>
@@ -1382,7 +1382,7 @@ export default function DashboardPage() {
             <DateInput
               value={msiForm.start_date}
               onChange={v => setMsiForm(f => ({ ...f, start_date: v }))}
-              inputClassName="bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 rounded-xl py-2 text-sm text-black dark:text-white focus:border-[#6B46E5] dark:focus:border-[#AF9BFF]"
+              inputClassName="bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 rounded-xl py-2 text-sm text-black dark:text-white focus:border-black/40 dark:focus:border-white/40"
             />
           </FormField>
 
@@ -1409,7 +1409,7 @@ export default function DashboardPage() {
                 <p className="text-xs font-medium">¿Es un cargo nuevo a la tarjeta?</p>
                 <p className="text-[10px] opacity-60 mt-0.5">{msiForm.is_new_charge ? 'Se sumará al saldo usado de la tarjeta' : 'Ya está contemplado en el saldo inicial'}</p>
               </div>
-              <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 shrink-0 ml-3 ${msiForm.is_new_charge ? 'bg-[#6B46E5] dark:bg-[#AF9BFF] justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
+              <span className={`w-8 h-4 rounded-full transition-all flex items-center px-0.5 shrink-0 ml-3 ${msiForm.is_new_charge ? 'bg-black/80 dark:bg-white/85 justify-end' : 'bg-black/10 dark:bg-white/10 justify-start'}`}>
                 <span className="w-3 h-3 rounded-full bg-white" />
               </span>
             </button>
@@ -1855,7 +1855,7 @@ export default function DashboardPage() {
               type="button"
               onClick={handleUpdateExpense}
               disabled={editExpSaving}
-              className="flex-1 py-2 rounded-xl bg-[#6B46E5] dark:bg-[#AF9BFF] text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
+              className="flex-1 py-2 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
             >
               {editExpSaving ? 'Guardando…' : 'Guardar'}
             </button>
@@ -1919,7 +1919,7 @@ export default function DashboardPage() {
             <button type="button" onClick={() => setEditingIncome(null)} className="flex-1 py-2 rounded-xl border border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 text-xs font-medium hover:border-black/20 dark:hover:border-white/20 transition-all">
               Cancelar
             </button>
-            <button type="button" onClick={handleUpdateIncome} disabled={editPtIncSaving} className="flex-1 py-2 rounded-xl bg-[#6B46E5] dark:bg-[#AF9BFF] text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50">
+            <button type="button" onClick={handleUpdateIncome} disabled={editPtIncSaving} className="flex-1 py-2 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50">
               {editPtIncSaving ? 'Guardando…' : 'Guardar'}
             </button>
           </div>

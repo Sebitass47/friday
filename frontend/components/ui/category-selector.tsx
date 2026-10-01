@@ -79,7 +79,7 @@ export function CategorySelector({ value, onChange, required, className }: Categ
                 onClick={() => onChange(selected ? '' : cat.name)}
                 className={`relative flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
                   selected
-                    ? 'bg-[#6B46E5]/15 dark:bg-[#AF9BFF]/15 border-[#6B46E5]/40 dark:border-[#AF9BFF]/40 text-[#6B46E5] dark:text-[#AF9BFF]'
+                    ? 'bg-black/[0.08] dark:bg-white/10 border-black/30 dark:border-white/30 text-black/80 dark:text-white/85'
                     : 'bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 text-black/60 dark:text-white/50 hover:border-black/20 dark:hover:border-white/20 hover:text-black dark:hover:text-white'
                 }`}
               >
@@ -118,13 +118,13 @@ export function CategorySelector({ value, onChange, required, className }: Categ
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } if (e.key === 'Escape') { setAdding(false); setNewName('') } }}
             placeholder="Nombre de categoría"
-            className="flex-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-lg px-2.5 py-1 text-xs text-black dark:text-white outline-none focus:border-[#6B46E5] dark:focus:border-[#AF9BFF] transition-colors"
+            className="flex-1 bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-lg px-2.5 py-1 text-xs text-black dark:text-white outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors"
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={saving || !newName.trim()}
-            className="px-2.5 py-1 rounded-lg text-xs bg-[#6B46E5] text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
+            className="px-2.5 py-1 rounded-lg text-xs bg-black dark:bg-white text-white dark:text-black disabled:opacity-40 hover:opacity-90 transition-opacity"
           >
             {saving ? '…' : 'Agregar'}
           </button>

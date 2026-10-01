@@ -14,7 +14,6 @@ interface Props {
 export default function ProjectionChart({ months, compareMonths }: Props) {
   const [hovered, setHovered] = useState<number | null>(null)
 
-  const accent = '#6B46E5'
   const coral = '#FF6B6B'
 
   const allValues = [
@@ -62,7 +61,7 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
                   )}
                   <div className="mt-1.5 pt-1.5 border-t border-black/10 dark:border-white/10">
                     <p className="text-black/50 dark:text-white/50">Disponible:{' '}
-                      <span style={{ color: isNeg ? coral : accent }} className="font-semibold">{fmt(m.available)}</span>
+                      <span style={isNeg ? { color: coral } : undefined} className="font-semibold text-black dark:text-white">{fmt(m.available)}</span>
                     </p>
                     {comp && (
                       <p className="text-black/50 dark:text-white/50 mt-0.5">Con MSI:{' '}
@@ -76,10 +75,10 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
               {/* Bars area */}
               <div className="flex items-end gap-0.5 w-full px-0.5" style={{ height: `${chartHeight}px` }}>
                 <div
-                  className="flex-1 rounded-sm transition-all duration-150"
+                  className={`flex-1 rounded-sm transition-all duration-150 ${isNeg ? '' : isHovered ? 'bg-black/85 dark:bg-white/85' : 'bg-black/50 dark:bg-white/55'}`}
                   style={{
                     height: `${barH}px`,
-                    backgroundColor: isNeg ? coral : isHovered ? accent : `${accent}b3`,
+                    backgroundColor: isNeg ? coral : undefined,
                     alignSelf: isNeg ? 'flex-start' : 'flex-end',
                     marginTop: isNeg ? `${chartHeight / 2 - barH}px` : '0',
                   }}
@@ -109,7 +108,7 @@ export default function ProjectionChart({ months, compareMonths }: Props) {
       {compareMonths && (
         <div className="flex items-center gap-4 mt-3">
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `${accent}b3` }} />
+            <div className="h-2.5 w-2.5 rounded-sm bg-black/50 dark:bg-white/55" />
             <span className="text-xs text-black/40 dark:text-white/40">Sin el MSI</span>
           </div>
           <div className="flex items-center gap-1.5">

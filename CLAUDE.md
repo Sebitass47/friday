@@ -294,7 +294,7 @@ frontend/
 **Estilos:**
 - Glassmorphism: `bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl`
 - Fondo base dark: `#0A0A0A`
-- Acento principal (morado): `#6B46E5` (dark: `#AF9BFF`)
+- Acento principal (morado): `#6B46E5` (dark: `#AF9BFF`) — en `/dashboard` y sus componentes (`components/ui/*`, gráficas) el acento es escala de grises (negro en light, blanco en dark); el morado queda en el resto de la app (sidebar, home, otras páginas). Los colores semánticos (verde/rojo/ámbar) se mantienen
 - Positivo: `#A8FF3E`, Negativo: `#FF4444` / `#FF6B6B`
 - Soporte dark/light mode con Tailwind `dark:` — el toggle está en el header del dashboard
 

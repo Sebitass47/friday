@@ -30,7 +30,7 @@ function toISO(display: string): string {
 }
 
 const defaultInputCls =
-  'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg pl-9 pr-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-[#6B46E5]/40 transition-colors'
+  'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg pl-9 pr-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-black/40 dark:focus:border-white/40/40 transition-colors'
 
 export function DateInput({ value, onChange, className, inputClassName, placeholder = 'dd/mm/aaaa', clearable }: DateInputProps) {
   const [text, setText] = useState(() => toDisplay(value))
@@ -63,7 +63,7 @@ export function DateInput({ value, onChange, className, inputClassName, placehol
         type="button"
         onClick={() => nativeRef.current?.showPicker?.()}
         tabIndex={-1}
-        className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30 hover:text-[#6B46E5] dark:hover:text-[#AF9BFF] transition-colors z-10"
+        className="absolute left-3 top-1/2 -translate-y-1/2 text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-colors z-10"
       >
         <Calendar size={14} />
       </button>

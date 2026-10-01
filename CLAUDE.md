@@ -33,7 +33,7 @@ FRIDAY es una app personal de Sebastian. Empezó como tracker de finanzas person
 Dashboard personal central. Reemplaza el redirect que había a `/dashboard`.
 
 **Cards:**
-- **Finanzas del mes** — disponible (ingreso − compromisos − gastado cash/débito), 3 sub-métricas, chips de pagos de tarjeta próximos (≤7 días)
+- **Finanzas del mes** — usa el mismo `CycleSummaryCard` que `/dashboard` (línea de saldo + desglose plegable) y muestra chips de "Pagos próximos" de tarjeta (≤7 días) entre la gráfica y el botón de desglose
 - **Recordatorios de hoy** — tareas con `due_date = hoy` que no están completadas
 - **Próximos 7 días** — eventos ordenados por fecha con badge relativo (Hoy / Mañana / Mié…)
 - **Notas recientes** — notas creadas hace menos de 7 días, mini-cards con color de fondo

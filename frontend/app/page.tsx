@@ -5,15 +5,17 @@ import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
 import {
   getProjection, getAccounts, getTasks, getNotes, getHabits, toggleHabitLog, getMe,
+  getExpenses, getIncomes, getMonthlyIncome,
 } from '@/lib/api'
 import type {
-  MonthProjection, Account, Task, Note, Habit, User,
+  MonthProjection, Account, Task, Note, Habit, User, Expense, Income,
 } from '@/lib/types'
 import {
   DollarSign, CheckSquare, CalendarDays, StickyNote,
   Plus, X, CreditCard, Clock, ChevronRight, Target, ChevronLeft,
 } from 'lucide-react'
 import HabitsWeekTable from '@/components/HabitsWeekTable'
+import CycleSummaryCard from '@/components/CycleSummaryCard'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,49 +100,6 @@ function SectionTitle({ icon, label, count, isDark }: { icon: React.ReactNode; l
 
 // ─── Spending bar chart ───────────────────────────────────────────────────────
 
-function SpendingBar({ income, compromisos, gastado, isDark }: { income: number; compromisos: number; gastado: number; isDark: boolean }) {
-  const total = income > 0 ? income : 1
-  const pComp = Math.min(safe(compromisos) / total, 1)
-  const pGast = Math.min(safe(gastado) / total, Math.max(1 - pComp, 0))
-  const pDisp = Math.max(1 - pComp - pGast, 0)
-
-  const GREEN = '#34D399'
-  const AMBER = '#FBBF24'
-
-  return (
-    <div className="mt-4">
-      <div className="flex h-2.5 rounded-full overflow-hidden gap-0.5">
-        {pComp > 0 && (
-          <div style={{ width: `${pComp * 100}%`, background: AMBER, borderRadius: '999px', flexShrink: 0 }} />
-        )}
-        {pGast > 0 && (
-          <div style={{ width: `${pGast * 100}%`, background: '#6B46E5', borderRadius: '999px', flexShrink: 0 }} />
-        )}
-        {pDisp > 0 && (
-          <div style={{ width: `${pDisp * 100}%`, background: GREEN, borderRadius: '999px', flexShrink: 0 }} />
-        )}
-        {pComp === 0 && pGast === 0 && pDisp === 0 && (
-          <div className="flex-1 rounded-full" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb' }} />
-        )}
-      </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2.5">
-        {[
-          { label: 'Compromisos', pct: pComp, color: AMBER },
-          { label: 'Gastado', pct: pGast, color: '#6B46E5' },
-          { label: 'Disponible', pct: pDisp, color: GREEN },
-        ].map(({ label, pct, color }) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-            <span className="text-xs" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#6b7280' }}>
-              {label} <span className="font-semibold">{(pct * 100).toFixed(0)}%</span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ─── Note card colors ──────────────────────────────────────────────────────────
 
 const NOTE_BG_DARK: Record<string, string> = {
@@ -220,6 +179,9 @@ export default function HomePage() {
   const [me, setMe] = useState<User | null>(null)
   const [currentCycle, setCurrentCycle] = useState<MonthProjection | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [incomes, setIncomes] = useState<Income[]>([])
+  const [cycleStartDay, setCycleStartDay] = useState<number | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [events, setEvents] = useState<Task[]>([])
   const [notes, setNotes] = useState<Note[]>([])
@@ -242,7 +204,10 @@ export default function HomePage() {
       getTasks({ is_event: true }),
       getNotes(),
       getHabits(habitWeekISO),
-    ]).then(([proj, acc, tsk, evt, nts, hab]) => {
+      getExpenses(),
+      getIncomes(),
+      getMonthlyIncome(),
+    ]).then(([proj, acc, tsk, evt, nts, hab, exp, inc, mi]) => {
       if (proj.status === 'fulfilled') {
         setCurrentCycle(proj.value.months[0] ?? null)
       } else {
@@ -253,6 +218,9 @@ export default function HomePage() {
       if (evt.status === 'fulfilled') setEvents(evt.value)
       if (nts.status === 'fulfilled') setNotes(nts.value)
       if (hab.status === 'fulfilled') setHabits(hab.value)
+      if (exp.status === 'fulfilled') setExpenses(exp.value)
+      if (inc.status === 'fulfilled') setIncomes(inc.value)
+      if (mi.status === 'fulfilled') setCycleStartDay(mi.value.cycle_start_day)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -273,15 +241,17 @@ export default function HomePage() {
 
   // ── Derived values from projection ────────────────────────────────────────
 
-  const incomeAmt = safe(currentCycle?.income)
-  const compromisos = safe(currentCycle?.recurring_expenses) + safe(currentCycle?.installments) + safe(currentCycle?.savings_contributions)
-  const gastado = safe(currentCycle?.cash_debit_spent) + safe(currentCycle?.credit_spent)
-  const disponible = safe(currentCycle?.available)
   const cycleHasIncome = hasIncome && currentCycle !== null
 
   const now = new Date()
   const thisMonth = now.getMonth()
   const thisYear = now.getFullYear()
+
+  // Point incomes that count toward "disponible": no account (e.g. deleted) or a checking account, never savings
+  const countedIncomes = incomes.filter(i => {
+    if (!i.account_id) return true
+    return accounts.find(a => a.id === i.account_id)?.account_type === 'checking'
+  })
 
   const upcomingPayments = useMemo(() => {
     return accounts
@@ -330,10 +300,6 @@ export default function HomePage() {
   const txt = (opacity = 1) => isDark ? `rgba(255,255,255,${opacity})` : `rgba(0,0,0,${opacity * 0.87})`
   const txtMuted = isDark ? 'rgba(255,255,255,0.4)' : '#6b7280'
   const shimmer = `animate-pulse rounded-xl h-5 ${isDark ? 'bg-white/[0.07]' : 'bg-gray-200'}`
-  const subCard = {
-    background: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb',
-    border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb'}`,
-  }
 
   return (
     <AppLayout>
@@ -351,10 +317,9 @@ export default function HomePage() {
         </div>
 
         {/* ── Finance card ──────────────────────────────────────────────────── */}
-        <GCard isDark={isDark}>
-          <SectionTitle isDark={isDark} icon={<DollarSign size={14} />} label="Finanzas del mes" />
-
-          {loading ? (
+        {loading ? (
+          <GCard isDark={isDark}>
+            <SectionTitle isDark={isDark} icon={<DollarSign size={14} />} label="Finanzas del mes" />
             <div className="space-y-3">
               <div className={`${shimmer} h-9 w-44`} />
               <div className="flex gap-3">
@@ -364,61 +329,20 @@ export default function HomePage() {
               </div>
               <div className={`${shimmer} h-2.5 w-full`} />
             </div>
-          ) : cycleHasIncome ? (
-            <>
-              {/* Cycle label */}
-              {currentCycle && (
-                <p className="text-[10px] mb-3" style={{ color: txtMuted }}>
-                  Ciclo: {currentCycle.label}
-                </p>
-              )}
-
-              {/* Available */}
-              <div className="mb-4">
-                <p className="text-xs mb-0.5" style={{ color: txtMuted }}>Disponible este ciclo</p>
-                <p className={`text-3xl sm:text-4xl font-bold tabular-nums ${disponible >= 0 ? (isDark ? 'text-white' : 'text-black') : ''}`}
-                  style={disponible < 0 ? { color: '#FF6B6B' } : {}}>
-                  {fmt(disponible)}
-                </p>
-              </div>
-
-              {/* 3 sub-metrics */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                {[
-                  { label: 'Ingreso',      value: fmt(incomeAmt),   color: txt(0.85) },
-                  { label: 'Compromisos',  value: fmt(compromisos), color: '#FBBF24' },
-                  { label: 'Gastado',      value: fmt(gastado),     color: txt(0.55) },
-                ].map(m => (
-                  <div key={m.label} className="rounded-xl px-2.5 py-2 sm:px-3 sm:py-2.5" style={subCard}>
-                    <p className="text-[10px] uppercase tracking-wide mb-0.5" style={{ color: txtMuted }}>{m.label}</p>
-                    <p className="text-xs sm:text-sm font-semibold tabular-nums truncate" style={{ color: m.color }}>{m.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              <SpendingBar income={incomeAmt} compromisos={compromisos} gastado={gastado} isDark={isDark} />
-
-              {/* Upcoming card payments */}
-              {upcomingPayments.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: txtMuted }}>Pagos próximos</p>
-                  <div className="flex flex-wrap gap-2">
-                    {upcomingPayments.map(p => (
-                      <div key={p.account.id}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-                        style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                        <CreditCard size={12} style={{ color: '#f59e0b' }} />
-                        <span className="text-xs font-medium" style={{ color: isDark ? '#fcd34d' : '#92400e' }}>{p.account.name}</span>
-                        <span className="text-xs" style={{ color: isDark ? 'rgba(252,211,77,0.6)' : '#b45309' }}>
-                          {p.days === 0 ? 'Hoy' : p.days === 1 ? 'Mañana' : `${p.days} días`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
+          </GCard>
+        ) : cycleHasIncome && currentCycle ? (
+          <CycleSummaryCard
+            cycle={currentCycle}
+            cycleStartDay={cycleStartDay}
+            expenses={expenses}
+            countedIncomes={countedIncomes}
+            variableIncomes={countedIncomes.filter(i => i.date >= currentCycle.cycle_start && i.date <= todayISO())}
+            onEditIncome={() => router.push('/dashboard')}
+            upcomingPayments={upcomingPayments.map(p => ({ id: p.account.id, name: p.account.name, days: p.days }))}
+          />
+        ) : (
+          <GCard isDark={isDark}>
+            <SectionTitle isDark={isDark} icon={<DollarSign size={14} />} label="Finanzas del mes" />
             <div className="text-center py-4">
               <p className="text-sm mb-3" style={{ color: txtMuted }}>No tienes ingreso mensual configurado</p>
               <button
@@ -429,8 +353,8 @@ export default function HomePage() {
                 Configurar en Finanzas
               </button>
             </div>
-          )}
-        </GCard>
+          </GCard>
+        )}
 
         {/* ── Tasks + Events ────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Pencil, ChevronDown } from 'lucide-react'
+import { Pencil, ChevronDown, CreditCard } from 'lucide-react'
 import type { Expense, Income, MonthProjection } from '@/lib/types'
 import BalanceFlowChart from '@/components/charts/BalanceFlowChart'
 
@@ -13,7 +13,9 @@ interface CycleSummaryCardProps {
   countedIncomes: Income[]
   // Subset of countedIncomes inside the current cycle up to today
   variableIncomes: Income[]
-  onEditIncome: () => void
+  onEditIncome?: () => void
+  // Card payments due soon (days until payment day)
+  upcomingPayments?: { id: string; name: string; days: number }[]
 }
 
 const CORAL = '#FF6B6B'
@@ -52,7 +54,7 @@ function Row({ sign, label, hint, value, color, action }: {
 }
 
 export default function CycleSummaryCard({
-  cycle, cycleStartDay, expenses, countedIncomes, variableIncomes, onEditIncome,
+  cycle, cycleStartDay, expenses, countedIncomes, variableIncomes, onEditIncome, upcomingPayments = [],
 }: CycleSummaryCardProps) {
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false)
   const [showVariable, setShowVariable] = useState<boolean>(false)
@@ -73,6 +75,27 @@ export default function CycleSummaryCard({
 
       <BalanceFlowChart cycle={cycle} expenses={expenses} incomes={countedIncomes} />
 
+      {upcomingPayments.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40 mb-2">Pagos próximos</p>
+          <div className="flex flex-wrap gap-2">
+            {upcomingPayments.map(p => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)' }}
+              >
+                <CreditCard size={12} style={{ color: '#f59e0b' }} />
+                <span className="text-xs font-medium text-amber-800 dark:text-amber-300">{p.name}</span>
+                <span className="text-xs text-amber-700/70 dark:text-amber-300/60">
+                  {p.days === 0 ? 'Hoy' : p.days === 1 ? 'Mañana' : `${p.days} días`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <button
         onClick={() => setShowBreakdown(!showBreakdown)}
         className="mt-4 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
@@ -88,11 +111,11 @@ export default function CycleSummaryCard({
               label="Ingreso mensual"
               hint={cycleStartDay ? `Ciclo desde el día ${cycleStartDay}` : undefined}
               value={monthly}
-              action={
+              action={onEditIncome ? (
                 <button onClick={onEditIncome} className="p-1 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                   <Pencil size={12} />
                 </button>
-              }
+              ) : undefined}
             />
             <div>
               <Row

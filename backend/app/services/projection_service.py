@@ -1,6 +1,7 @@
 import calendar as cal_mod
 from decimal import Decimal
 from datetime import date, timedelta
+from app.core.clock import today_local
 from typing import List, Optional, Tuple
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -279,7 +280,7 @@ def calculate_projection(db: Session, user_id: UUID, months: int = 12) -> Projec
     installments = get_active_installment_purchases(db, user_id)
     goals = get_savings_goals(db, user_id)
 
-    today = date.today()
+    today = today_local()
     result = []
     for i in range(months):
         cycle_start, cycle_end = _nth_cycle_bounds(i, today, cycle_start_day)
@@ -306,7 +307,7 @@ def simulate_projection(
     installments = get_active_installment_purchases(db, user_id)
     goals = get_savings_goals(db, user_id)
 
-    today = date.today()
+    today = today_local()
     result = []
     for i in range(months):
         cycle_start, cycle_end = _nth_cycle_bounds(i, today, cycle_start_day)

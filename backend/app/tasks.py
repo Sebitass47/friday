@@ -4,6 +4,7 @@ import app.models  # noqa: F401 — registers all SQLAlchemy mappers before any 
 import logging
 import calendar as cal_mod
 from datetime import date, timedelta
+from app.core.clock import today_local
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ def auto_complete_overdue_recurring_tasks():
 
     db = SessionLocal()
     try:
-        today = date.today()
+        today = today_local()
         tasks = (
             db.query(Task)
             .filter(
@@ -180,7 +181,7 @@ def charge_recurring_expenses():
 
     db = SessionLocal()
     try:
-        today = date.today()
+        today = today_local()
         charged = 0
 
         expenses = (

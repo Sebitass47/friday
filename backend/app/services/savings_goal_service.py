@@ -2,6 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import date
+from app.core.clock import today_local
 import math
 from sqlalchemy.orm import Session
 from app.models.savings_goal import SavingsGoal
@@ -11,11 +12,11 @@ from app.schemas.savings_goal import SavingsGoalCreate, SavingsGoalUpdate
 def _estimated_completion(goal: SavingsGoal) -> Optional[date]:
     remaining = goal.target_amount - goal.current_amount
     if remaining <= 0:
-        return date.today()
+        return today_local()
     if not goal.monthly_contribution or goal.monthly_contribution <= 0:
         return None
     months_needed = math.ceil(float(remaining) / float(goal.monthly_contribution))
-    today = date.today()
+    today = today_local()
     year = today.year + (today.month - 1 + months_needed) // 12
     month = (today.month - 1 + months_needed) % 12 + 1
     return date(year, month, 1)
@@ -86,7 +87,7 @@ def mark_contribution(
     if not goal:
         return None
 
-    today = date.today()
+    today = today_local()
     goal.current_amount = (goal.current_amount or Decimal("0")) + amount
     goal.contributed_month = today.month
     goal.contributed_year = today.year

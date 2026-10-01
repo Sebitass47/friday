@@ -223,6 +223,8 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 
 Migraciones numeradas `0001`–`0020` en `backend/alembic/versions/`.
 
+**Zona horaria:** los contenedores corren en UTC. Nunca uses `date.today()` en el backend; usa `today_local()` de `app/core/clock.py` (America/Mexico_City). Si no, después de las 18:00 hora MX el backend ya cree que es el día siguiente (y puede saltar de ciclo).
+
 **Lógica de ciclo financiero:** Toda la proyección y cálculos se basan en ciclos definidos por `cycle_start_day`, no por meses calendario. El ciclo actual corre desde `cycle_start_day` del mes anterior/actual hasta el día antes del siguiente `cycle_start_day`. `MonthProjection` incluye `cycle_start`, `cycle_end` y `cash_debit_spent`. La home page usa `GET /projection/?months=1` en lugar de calcular localmente.
 
 ---

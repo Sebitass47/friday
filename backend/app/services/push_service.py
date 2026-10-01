@@ -2,6 +2,7 @@ import json
 import os
 import logging
 from datetime import date, timedelta
+from app.core.clock import today_local
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -105,7 +106,7 @@ def check_and_notify_upcoming_payments(db: Session) -> None:
     from app.models.account import Account
     from app.models.push_subscription import PushSubscription
 
-    target_day = (date.today() + timedelta(days=3)).day
+    target_day = (today_local() + timedelta(days=3)).day
 
     cards = db.query(Account).filter(Account.payment_day == target_day).all()
     for card in cards:

@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 from uuid import UUID
 from datetime import date
+from app.core.clock import today_local
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from app.models.account import Account, AccountType
@@ -93,7 +94,7 @@ def pay_card_month(
     if not account:
         return None
 
-    today = date.today()
+    today = today_local()
     active_msi = db.query(InstallmentPurchase).filter(
         InstallmentPurchase.account_id == account_id,
         InstallmentPurchase.remaining_installments > 0,
@@ -144,7 +145,7 @@ def transfer_between_accounts(
         raise ValueError("Las cuentas origen y destino deben ser distintas")
 
     payment_method = PaymentMethod.SAVINGS if from_account.account_type == AccountType.SAVINGS else PaymentMethod.DEBIT
-    today = date.today()
+    today = today_local()
 
     expense = Expense(
         user_id=user_id,

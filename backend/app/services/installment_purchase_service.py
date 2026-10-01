@@ -1,6 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from datetime import date
+from app.core.clock import today_local
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from app.models.installment_purchase import InstallmentPurchase
@@ -83,7 +84,7 @@ def mark_paid_this_month(db: Session, purchase_id: UUID, user_id: UUID) -> Optio
     if not db_purchase or db_purchase.remaining_installments <= 0:
         return None
 
-    today = date.today()
+    today = today_local()
     db_purchase.paid_month = today.month
     db_purchase.paid_year = today.year
     db_purchase.remaining_installments = db_purchase.remaining_installments - 1

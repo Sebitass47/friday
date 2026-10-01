@@ -2,6 +2,7 @@ from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import date
+from app.core.clock import today_local
 from sqlalchemy.orm import Session
 from app.models.recurring_expense import RecurringExpense
 from app.models.account import Account, AccountType
@@ -33,7 +34,7 @@ def get_recurring_expense(db: Session, expense_id: UUID, user_id: UUID) -> Optio
 
 
 def create_recurring_expense(db: Session, expense: RecurringExpenseCreate, user_id: UUID) -> RecurringExpense:
-    today = date.today()
+    today = today_local()
     db_expense = RecurringExpense(
         user_id=user_id,
         account_id=expense.account_id,

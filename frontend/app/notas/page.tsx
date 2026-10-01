@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { getNotes, createNote, updateNote, deleteNote, toggleNotePin } from '@/lib/api'
-import { Note } from '@/lib/types'
-import { Pin, Trash2, Plus, Search, X } from 'lucide-react'
+import { getNotes, createNote, updateNote, deleteNote, toggleNotePin, getMe, shareResource } from '@/lib/api'
+import { Note, SharedUser } from '@/lib/types'
+import ShareSection from '@/components/ShareSection'
+import { Pin, Trash2, Plus, Search, X, Users } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -140,8 +141,13 @@ function NoteCard({ note, isDark, onPin, onDelete, onEdit }: NoteCardProps) {
               {note.label}
             </span>
           )}
+          {(!note.is_owner || note.shared_with.length > 0) && (
+            <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-white/45' : 'text-gray-500'}`}>
+              <Users size={12} /> {note.is_owner ? note.shared_with.length : `de ${note.owner_name ?? 'alguien'}`}
+            </span>
+          )}
         </div>
-        <button
+        {note.is_owner && <button
           onClick={handleDelete}
           className={`transition-all duration-200 hover:scale-110 ${
             confirmDelete
@@ -151,7 +157,7 @@ function NoteCard({ note, isDark, onPin, onDelete, onEdit }: NoteCardProps) {
           title={confirmDelete ? 'Clic para confirmar' : 'Eliminar'}
         >
           <Trash2 size={15} />
-        </button>
+        </button>}
       </div>
     </div>
   )
@@ -172,12 +178,18 @@ const EMPTY_FORM: FormState = { title: '', content: '', label: '', color: 'defau
 interface NoteFormProps {
   isDark: boolean
   initial?: FormState
-  onSave: (data: FormState) => void
+  // Existing note being edited (undefined when creating)
+  note?: Note
+  meId?: string
+  onSharedChange?: (id: string, sharedWith: SharedUser[]) => void
+  onLeft?: (id: string) => void
+  onSave: (data: FormState, shareEmails: string[]) => void
   onCancel: () => void
 }
 
-function NoteForm({ isDark, initial, onSave, onCancel }: NoteFormProps) {
+function NoteForm({ isDark, initial, note, meId, onSharedChange, onLeft, onSave, onCancel }: NoteFormProps) {
   const [form, setForm] = useState<FormState>(initial ?? EMPTY_FORM)
+  const [pendingShare, setPendingShare] = useState<SharedUser[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -267,6 +279,22 @@ function NoteForm({ isDark, initial, onSave, onCancel }: NoteFormProps) {
         ))}
       </div>
 
+      {/* Sharing */}
+      <div className="mb-4">
+        <ShareSection
+          resourceType="note"
+          resourceId={note?.id}
+          isOwner={note?.is_owner ?? true}
+          ownerName={note?.owner_name}
+          sharedWith={note?.shared_with ?? []}
+          pending={pendingShare}
+          onPendingChange={setPendingShare}
+          meId={meId}
+          onSharedChange={sw => note && onSharedChange?.(note.id, sw)}
+          onLeft={() => note && onLeft?.(note.id)}
+        />
+      </div>
+
       {/* Footer row */}
       <div className="flex items-center justify-between">
         <button
@@ -292,7 +320,7 @@ function NoteForm({ isDark, initial, onSave, onCancel }: NoteFormProps) {
             Cancelar
           </button>
           <button
-            onClick={() => { if (form.title.trim()) onSave(form) }}
+            onClick={() => { if (form.title.trim()) onSave(form, pendingShare.map(p => p.email)) }}
             disabled={!form.title.trim()}
             className="text-sm px-5 py-1.5 rounded-xl font-semibold text-white transition-all duration-150 disabled:opacity-40 hover:opacity-90 active:scale-[0.98]"
             style={{ background: 'linear-gradient(135deg, #FF6B9D, #6B46E5)' }}
@@ -347,8 +375,10 @@ export default function NotasPage() {
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingNote, setEditingNote] = useState<Note | null>(null)
+  const [meId, setMeId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
+    getMe().then(u => setMeId(u.id)).catch(() => {})
     load()
     if (new URLSearchParams(window.location.search).get('new') === '1') {
       setShowForm(true)
@@ -364,16 +394,32 @@ export default function NotasPage() {
     }
   }
 
-  async function handleCreate(form: FormState) {
-    const note = await createNote({
+  async function handleCreate(form: FormState, shareEmails: string[]) {
+    let note = await createNote({
       title: form.title,
       content: form.content || null,
       label: form.label || null,
       color: form.color,
       is_pinned: form.is_pinned,
     })
+    for (const email of shareEmails) {
+      try {
+        const res = await shareResource('note', note.id, email)
+        note = { ...note, shared_with: res.shared_with }
+      } catch { /* the note exists; sharing can be retried from its form */ }
+    }
     setNotes(prev => [note, ...prev].sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0)))
     setShowForm(false)
+  }
+
+  function handleSharedChange(id: string, sharedWith: SharedUser[]) {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, shared_with: sharedWith } : n))
+    setEditingNote(prev => prev && prev.id === id ? { ...prev, shared_with: sharedWith } : prev)
+  }
+
+  function handleLeft(id: string) {
+    setNotes(prev => prev.filter(n => n.id !== id))
+    setEditingNote(null)
   }
 
   async function handleEdit(form: FormState) {
@@ -502,6 +548,10 @@ export default function NotasPage() {
                 color: editingNote.color,
                 is_pinned: editingNote.is_pinned,
               }}
+              note={editingNote}
+              meId={meId}
+              onSharedChange={handleSharedChange}
+              onLeft={handleLeft}
               onSave={handleEdit}
               onCancel={() => setEditingNote(null)}
             />

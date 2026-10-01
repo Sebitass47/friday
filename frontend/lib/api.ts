@@ -399,7 +399,7 @@ export async function clearCompletedListItems(listId: string): Promise<UserList>
 
 // ── Sharing ───────────────────────────────────────────────────────────────────
 
-export type ShareableType = 'task' | 'list'
+export type ShareableType = 'task' | 'list' | 'note'
 
 export async function lookupUser(email: string): Promise<SharedUser> {
   return req('/shares/lookup', { method: 'POST', body: JSON.stringify({ email }) })

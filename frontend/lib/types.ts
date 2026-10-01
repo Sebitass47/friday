@@ -155,6 +155,10 @@ export interface Note {
   label: string | null
   color: string
   is_pinned: boolean
+  is_owner: boolean
+  owner_email: string | null
+  owner_name: string | null
+  shared_with: SharedUser[]
   created_at: string
   updated_at: string
 }

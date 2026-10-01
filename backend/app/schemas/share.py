@@ -16,7 +16,7 @@ class LookupRequest(BaseModel):
 
 
 class ShareRequest(BaseModel):
-    resource_type: Literal["task", "list"]
+    resource_type: Literal["task", "list", "note"]
     resource_id: UUID
     email: str
 

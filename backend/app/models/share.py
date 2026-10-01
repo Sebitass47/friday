@@ -7,6 +7,7 @@ from app.core.database import Base
 # Resources that can be shared
 RESOURCE_TASK = "task"   # reminders and events (events are tasks with is_event)
 RESOURCE_LIST = "list"
+RESOURCE_NOTE = "note"
 
 
 class Share(Base):

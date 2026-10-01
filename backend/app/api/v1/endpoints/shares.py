@@ -46,7 +46,7 @@ def share(data: ShareRequest, db: Session = Depends(get_db), current_user: User 
 @router.delete("/shares/{resource_type}/{resource_id}/{user_id}", response_model=ShareResponse)
 def unshare(resource_type: str, resource_id: UUID, user_id: UUID,
             db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if resource_type not in ("task", "list"):
+    if resource_type not in ("task", "list", "note"):
         raise HTTPException(status_code=400, detail="Tipo de recurso inválido")
     try:
         return {"shared_with": svc.unshare(db, current_user, resource_type, resource_id, user_id)}

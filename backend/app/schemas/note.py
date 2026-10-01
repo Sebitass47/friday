@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel
+from typing import List
+from app.schemas.share import SharedUser
 
 
 class NoteCreate(BaseModel):
@@ -28,6 +30,10 @@ class NoteResponse(BaseModel):
     label: Optional[str]
     color: str
     is_pinned: bool
+    is_owner: bool = True
+    owner_email: Optional[str] = None
+    owner_name: Optional[str] = None
+    shared_with: List[SharedUser] = []
     created_at: datetime
     updated_at: datetime
 

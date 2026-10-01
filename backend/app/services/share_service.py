@@ -3,7 +3,8 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.share import Share, Contact, RESOURCE_TASK, RESOURCE_LIST
+from app.models.share import Share, Contact, RESOURCE_TASK, RESOURCE_LIST, RESOURCE_NOTE
+from app.models.note import Note
 from app.models.task import Task
 from app.models.user import User
 from app.models.user_list import UserList
@@ -56,7 +57,7 @@ def audience_user_ids(db: Session, resource_type: str, resource_id: UUID, owner_
 
 
 def _owner_of(db: Session, resource_type: str, resource_id: UUID) -> Optional[UUID]:
-    model = Task if resource_type == RESOURCE_TASK else UserList
+    model = {RESOURCE_TASK: Task, RESOURCE_LIST: UserList, RESOURCE_NOTE: Note}[resource_type]
     row = db.query(model.user_id).filter(model.id == resource_id).first()
     return row[0] if row else None
 

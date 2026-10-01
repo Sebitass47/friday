@@ -60,7 +60,7 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 
 **Secciones:**
 - Línea de saldo (`BalanceFlowChart.tsx`, dentro del resumen del ciclo) — línea suave y neutra del saldo disponible: arranca con ingreso − compromisos, sube con ingresos puntuales y baja con gastos (cash/débito por fecha, crédito por statement del ciclo; mismas reglas que `/projection/`, termina en `available`). Scrub con mouse/touch, badge de % vs inicio, resumen Inicio/↑/↓. Reemplazó al Spending Timeline y a la tarjeta de ritmo
-- Gastos por categoría — chips para ocultar/mostrar categorías (guardado en localStorage `friday_hidden_categories`, `Transferencia` oculta por default); % recalculado sobre lo visible
+- Gastos por categoría — chips para ocultar/mostrar categorías (barras y chips en blanco/negro neutro, guardado en localStorage `friday_hidden_categories`, `Transferencia` oculta por default); % recalculado sobre lo visible
 - Tarjetas de crédito — badge de uso con color dinámico (≤33% morado, 33–66% ámbar, >66% rojo), botón "Pagar este mes" que abre modal con monto y nuevo saldo
 - MSI (Meses Sin Intereses) — CRUD completo, botón "Liquidar"
 - Metas de ahorro — CRUD completo, botón "Ahorré este mes" (modal con monto editable)

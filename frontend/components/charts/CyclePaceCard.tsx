@@ -43,30 +43,49 @@ export default function CyclePaceCard({ expenses, cycleStart, cycleEnd, cycleSta
     const elapsed = Math.max(1, Math.min(daysBetween(start, today) + 1, daysBetween(start, end) + 1))
     const daysLeft = Math.max(1, daysBetween(today, end) + 1)
 
-    // Previous cycle: same start day, one month earlier (clamped to month length)
-    const py = start.getMonth() === 0 ? start.getFullYear() - 1 : start.getFullYear()
-    const pm = start.getMonth() === 0 ? 11 : start.getMonth() - 1
-    const prevStart = new Date(py, pm, Math.min(cycleStartDay, new Date(py, pm + 1, 0).getDate()))
+    // Cycle k back: same start day, k months earlier (clamped to month length)
+    const cycleStartK = (k: number) => {
+      const total = start.getFullYear() * 12 + start.getMonth() - k
+      const y = Math.floor(total / 12)
+      const mo = total % 12
+      return new Date(y, mo, Math.min(cycleStartDay, new Date(y, mo + 1, 0).getDate()))
+    }
 
-    const sumRange = (from: Date, days: number) => {
+    const sumRange = (from: Date, to: Date) => {
       const a = toISO(from)
-      const b = toISO(addDays(from, days - 1))
+      const b = toISO(to)
       return expenses
         .filter(e => isRealSpend(e) && e.date >= a && e.date <= b)
         .reduce((s, e) => s + Number(e.amount), 0)
     }
 
-    const spent = sumRange(start, elapsed)
-    const prevSpent = sumRange(prevStart, elapsed)
-    const avg = spent / elapsed
-    const allowed = available > 0 ? available / daysLeft : 0
-    const projectedClose = available - avg * daysLeft
+    const spent = sumRange(start, today)
+    const prevStart = cycleStartK(1)
+    const prevSpent = sumRange(prevStart, addDays(prevStart, elapsed - 1))
 
-    return { elapsed, daysLeft, spent, prevSpent, avg, allowed, projectedClose }
+    const spendDays = new Set(
+      expenses.filter(e => isRealSpend(e) && e.date >= toISO(start) && e.date <= toISO(today)).map(e => e.date)
+    ).size
+
+    // Expected spending for the rest of the cycle: what was spent in the same remaining
+    // stretch of the last (up to 3) cycles that have data. Spending is lumpy, so a daily
+    // average would badly overestimate.
+    const samples: number[] = []
+    for (let k = 1; k <= 3; k++) {
+      const ks = cycleStartK(k)
+      const ke = addDays(cycleStartK(k - 1), -1)
+      if (sumRange(ks, ke) <= 0) continue
+      samples.push(sumRange(addDays(ks, elapsed), ke))
+    }
+    const expectedRest = samples.length > 0 ? samples.reduce((a, b) => a + b, 0) / samples.length : null
+    const projectedClose = expectedRest === null ? null : available - expectedRest
+
+    const allowed = available > 0 ? available / daysLeft : 0
+
+    return { elapsed, daysLeft, spent, prevSpent, spendDays, allowed, expectedRest, projectedClose, sampleCount: samples.length }
   }, [expenses, cycleStart, cycleEnd, cycleStartDay, available])
 
   const over = available <= 0
-  const paceBad = m.avg > m.allowed
   const delta = m.prevSpent > 0 ? ((m.spent - m.prevSpent) / m.prevSpent) * 100 : null
   const barMax = Math.max(m.spent, m.prevSpent, 1)
 
@@ -94,19 +113,28 @@ export default function CyclePaceCard({ expenses, cycleStart, cycleEnd, cycleSta
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-black/[0.03] dark:bg-white/[0.04] p-3">
-          <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Tu ritmo actual</p>
-          <p className="text-base font-semibold tabular-nums" style={{ color: over || paceBad ? CORAL : undefined }}>
-            {fmt(m.avg)}<span className="text-[10px] font-normal text-black/40 dark:text-white/40"> / día</span>
+          <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Días con gasto</p>
+          <p className="text-base font-semibold tabular-nums text-black dark:text-white">
+            {m.spendDays}<span className="text-[10px] font-normal text-black/40 dark:text-white/40"> de {m.elapsed}</span>
           </p>
         </div>
         <div className="rounded-xl bg-black/[0.03] dark:bg-white/[0.04] p-3">
-          <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Cierre proyectado</p>
-          <p
-            className={`text-base font-semibold tabular-nums ${m.projectedClose >= 0 ? 'text-emerald-500 dark:text-emerald-400' : ''}`}
-            style={{ color: m.projectedClose < 0 ? CORAL : undefined }}
-          >
-            {fmt(m.projectedClose)}
-          </p>
+          <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Cierre estimado</p>
+          {m.projectedClose === null ? (
+            <p className="text-xs text-black/40 dark:text-white/40">Sin historial aún</p>
+          ) : (
+            <>
+              <p
+                className={`text-base font-semibold tabular-nums ${m.projectedClose >= 0 ? 'text-emerald-500 dark:text-emerald-400' : ''}`}
+                style={{ color: m.projectedClose < 0 ? CORAL : undefined }}
+              >
+                {fmt(m.projectedClose)}
+              </p>
+              <p className="text-[10px] text-black/30 dark:text-white/30 mt-0.5">
+                si gastas como en {m.sampleCount === 1 ? 'el ciclo pasado' : `tus últimos ${m.sampleCount} ciclos`} (~{fmt(m.expectedRest ?? 0)})
+              </p>
+            </>
+          )}
         </div>
       </div>
 

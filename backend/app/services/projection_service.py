@@ -97,13 +97,23 @@ def _recurring_cost_for_cycle(expenses, cycle_start: date, cycle_end: date) -> D
 
 
 def _installment_cost_for_cycle(
-    purchases, cycle_start: date, cycle_start_day: int
+    purchases, cycle_start: date, cycle_start_day: int, today: date
 ) -> Decimal:
     """
     Attribute installments to cycles based on the number of cycle boundaries
     elapsed since the purchase date.
+
+    Marking an installment as paid this cycle is only visual: it still counts as a
+    commitment of the current cycle (paying it records no expense), and the
+    decrement it caused is undone when attributing installments to other cycles.
     """
     total = Decimal("0")
+    current_start = _current_cycle_start(today, cycle_start_day)
+    current_end = _next_cycle_start(current_start, cycle_start_day) - timedelta(days=1)
+    current_months = {
+        (current_start.month, current_start.year),
+        (current_end.month, current_end.year),
+    }
     for p in purchases:
         purchase_cycle = _current_cycle_start(p.start_date, cycle_start_day)
         # Cycles elapsed = month difference between purchase cycle and target cycle
@@ -114,7 +124,12 @@ def _installment_cost_for_cycle(
         if 0 <= cycles_elapsed < p.total_installments:
             installment_number = cycles_elapsed + 1
             paid_installments = p.total_installments - p.remaining_installments
-            if installment_number > paid_installments:
+            paid_this_cycle = (p.paid_month, p.paid_year) in current_months
+            if paid_this_cycle:
+                paid_installments -= 1
+            if installment_number > paid_installments or (
+                paid_this_cycle and cycle_start == current_start
+            ):
                 total += p.monthly_amount
     return total
 
@@ -221,7 +236,7 @@ def _build_cycle_projection(
     is_current = cycle_start <= today <= cycle_end
 
     rec_total = _recurring_cost_for_cycle(recurring_expenses, cycle_start, cycle_end)
-    inst_total = _installment_cost_for_cycle(installments, cycle_start, cycle_start_day)
+    inst_total = _installment_cost_for_cycle(installments, cycle_start, cycle_start_day, today)
     sav_total = _savings_cost_for_cycle(savings_goals, cycle_start, cycle_end, today)
 
     # Credit expenses counted by statement month for ALL cycles (current and future).

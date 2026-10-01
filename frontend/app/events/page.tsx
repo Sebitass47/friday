@@ -402,14 +402,14 @@ export default function EventsPage() {
   return (
     <AppLayout>
       <div className="flex h-full">
-        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8 bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(107,70,229,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(107,70,229,0.12),transparent)]">
+        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-6 lg:px-8 bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(0,0,0,0.03),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_60%_-10%,rgba(255,255,255,0.05),transparent)]">
           {/* Hero */}
           <div className="flex gap-4 mb-6">
-            <div className="flex-1 rounded-2xl bg-gradient-to-br from-[#6B46E5] to-[#4a2fa0] p-5 flex items-center justify-between shadow-[0_8px_32px_rgba(107,70,229,0.35)]">
+            <div className="flex-1 rounded-2xl bg-gradient-to-br from-neutral-800 to-neutral-950 dark:from-white/[0.14] dark:to-white/[0.04] border border-black/10 dark:border-white/10 p-5 flex items-center justify-between shadow-[0_8px_32px_rgba(0,0,0,0.25)]">
               <div>
-                <p className="text-[12px] font-bold text-purple-200/80 uppercase tracking-widest mb-1">{dateLabel}</p>
+                <p className="text-[12px] font-bold text-white/60 uppercase tracking-widest mb-1">{dateLabel}</p>
                 <h1 className="text-[25px] font-extrabold text-white leading-tight">¡Vamos, {me?.full_name?.split(' ')[0] ?? ''}! 👍</h1>
-                <p className="text-[15px] font-semibold text-purple-200/80 mt-1">
+                <p className="text-[15px] font-semibold text-white/60 mt-1">
                   {upcoming.length === 0
                     ? 'Sin eventos próximos'
                     : `${upcoming.length} evento${upcoming.length !== 1 ? 's' : ''} próximo${upcoming.length !== 1 ? 's' : ''}`}
@@ -447,7 +447,7 @@ export default function EventsPage() {
               inputClassName={cn(
                 'py-2.5 rounded-xl text-sm',
                 filterDate
-                  ? 'bg-[#6B46E5]/10 border-[#6B46E5]/40 text-[#6B46E5] dark:text-[#AF9BFF] font-semibold'
+                  ? 'bg-black/[0.07] dark:bg-white/10 border-black/30 dark:border-white/30 text-black dark:text-white font-semibold'
                   : 'bg-black/[0.04] dark:bg-white/[0.04] border-black/10 dark:border-white/10 text-black/60 dark:text-white/60'
               )}
             />
@@ -462,7 +462,7 @@ export default function EventsPage() {
                 className={cn(
                   'text-xs px-3 py-1.5 rounded-full font-medium transition-all',
                   (l === 'Todas' && !filterLabel) || filterLabel === l
-                    ? 'bg-[#6B46E5] text-white'
+                    ? 'bg-black dark:bg-white text-white dark:text-black'
                     : 'bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/[0.07] dark:hover:bg-white/[0.07]'
                 )}
               >

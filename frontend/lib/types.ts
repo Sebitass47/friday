@@ -159,6 +159,20 @@ export interface Note {
   updated_at: string
 }
 
+export interface SharedUser {
+  id: string
+  email: string
+  name: string
+}
+
+// Present on every shareable resource (reminders, events, lists)
+export interface SharingInfo {
+  is_owner: boolean
+  owner_email: string | null
+  owner_name: string | null
+  shared_with: SharedUser[]
+}
+
 export interface ListItem {
   id: string
   list_id: string
@@ -174,6 +188,10 @@ export interface UserList {
   name: string
   emoji: string
   items: ListItem[]
+  is_owner: boolean
+  owner_email: string | null
+  owner_name: string | null
+  shared_with: SharedUser[]
   created_at: string
   updated_at: string
 }
@@ -194,6 +212,10 @@ export interface Task {
   reminder_at: string | null
   remind_day_before: boolean
   subtasks: Subtask[]
+  is_owner: boolean
+  owner_email: string | null
+  owner_name: string | null
+  shared_with: SharedUser[]
   created_at: string
   updated_at: string
 }

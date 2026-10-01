@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import {
   getLists, createList, updateList, deleteList,
-  addListItem, updateListItem, deleteListItem, clearCompletedListItems, getMe,
+  addListItem, updateListItem, deleteListItem, clearCompletedListItems, getMe, shareResource,
 } from '@/lib/api'
-import type { UserList, User } from '@/lib/types'
-import { Search, Plus, X, Trash2, Check, ListChecks, Pencil, Eraser } from 'lucide-react'
+import type { UserList, User, SharedUser } from '@/lib/types'
+import ShareSection from '@/components/ShareSection'
+import { Search, Plus, X, Trash2, Check, ListChecks, Pencil, Eraser, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const EMOJIS = [
@@ -41,7 +42,10 @@ interface PanelProps {
   list: UserList | null
   creating: boolean
   onClose: () => void
-  onCreate: (name: string, emoji: string) => Promise<void>
+  onCreate: (name: string, emoji: string, shareEmails: string[]) => Promise<void>
+  meId?: string
+  onSharedChange: (id: string, sharedWith: SharedUser[]) => void
+  onLeft: (id: string) => void
   onRename: (id: string, data: { name?: string; emoji?: string }) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onAddItem: (id: string, text: string) => Promise<void>
@@ -52,7 +56,7 @@ interface PanelProps {
 }
 
 function ListPanel({
-  list, creating, onClose, onCreate, onRename, onDelete,
+  list, creating, onClose, onCreate, meId, onSharedChange, onLeft, onRename, onDelete,
   onAddItem, onToggleItem, onEditItem, onRemoveItem, onClearDone,
 }: PanelProps) {
   const [name, setName] = useState(list?.name ?? '')
@@ -63,6 +67,7 @@ function ListPanel({
   const [editText, setEditText] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [pendingShare, setPendingShare] = useState<SharedUser[]>([])
 
   const panelLabel = 'text-[11px] font-extrabold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
   const pending = list?.items.filter(i => !i.is_done) ?? []
@@ -85,7 +90,7 @@ function ListPanel({
   async function handleCreate() {
     if (!name.trim()) return
     setSaving(true)
-    try { await onCreate(name.trim(), emoji) } finally { setSaving(false) }
+    try { await onCreate(name.trim(), emoji, pendingShare.map(p => p.email)) } finally { setSaving(false) }
   }
 
   async function handleAdd() {
@@ -106,7 +111,7 @@ function ListPanel({
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <span className="text-[14px] font-bold text-black/80 dark:text-white/80">{creating ? 'Nueva lista' : 'Lista'}</span>
         <div className="flex gap-1">
-          {!creating && list && (
+          {!creating && list && list.is_owner && (
             <button
               onClick={() => { if (confirmDelete) onDelete(list.id); else { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 2500) } }}
               className={cn('p-1.5 rounded-lg transition-colors', confirmDelete ? 'bg-red-500/15 text-red-500' : 'text-red-500 dark:text-red-400 hover:bg-red-500/10')}
@@ -166,6 +171,19 @@ function ListPanel({
             />
           </div>
         )}
+
+        <ShareSection
+          resourceType="list"
+          resourceId={creating ? undefined : list?.id}
+          isOwner={list?.is_owner ?? true}
+          ownerName={list?.owner_name}
+          sharedWith={list?.shared_with ?? []}
+          pending={pendingShare}
+          onPendingChange={setPendingShare}
+          meId={meId}
+          onSharedChange={sw => list && onSharedChange(list.id, sw)}
+          onLeft={() => list && onLeft(list.id)}
+        />
 
         {creating ? (
           <p className="text-xs text-black/40 dark:text-white/40 leading-relaxed">
@@ -332,6 +350,11 @@ function ListCard({ list, active, onClick }: { list: UserList; active: boolean; 
           </span>
         </div>
       </div>
+      {(!list.is_owner || list.shared_with.length > 0) && (
+        <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35 flex-shrink-0">
+          <Users size={12} /> {list.is_owner ? list.shared_with.length : `de ${list.owner_name ?? 'alguien'}`}
+        </span>
+      )}
       {p.pending > 0 && (
         <span className="text-[11.5px] px-2 py-1 rounded-lg bg-black/[0.05] dark:bg-white/[0.07] border border-black/10 dark:border-white/10 font-extrabold flex-shrink-0 text-black/60 dark:text-white/60">
           {p.pending} pendiente{p.pending !== 1 ? 's' : ''}
@@ -383,11 +406,26 @@ export default function ListasPage() {
   function openList(l: UserList) { setSelectedId(l.id); setCreating(false); setPanelOpen(true) }
   function closePanel() { setPanelOpen(false); setSelectedId(null); setCreating(false) }
 
-  async function handleCreate(name: string, emoji: string) {
-    const created = await createList({ name, emoji })
+  async function handleCreate(name: string, emoji: string, shareEmails: string[]) {
+    let created = await createList({ name, emoji })
+    for (const email of shareEmails) {
+      try {
+        const res = await shareResource('list', created.id, email)
+        created = { ...created, shared_with: res.shared_with }
+      } catch { /* the list exists; sharing can be retried from its panel */ }
+    }
     setLists(ls => sortByRecent([created, ...ls]))
     setSelectedId(created.id)
     setCreating(false)
+  }
+
+  function handleSharedChange(id: string, sharedWith: SharedUser[]) {
+    setLists(ls => ls.map(l => l.id === id ? { ...l, shared_with: sharedWith } : l))
+  }
+
+  function handleLeft(id: string) {
+    setLists(ls => ls.filter(l => l.id !== id))
+    closePanel()
   }
 
   async function handleRename(id: string, data: { name?: string; emoji?: string }) {
@@ -493,6 +531,9 @@ export default function ListasPage() {
                 creating={creating}
                 onClose={closePanel}
                 onCreate={handleCreate}
+                meId={me?.id}
+                onSharedChange={handleSharedChange}
+                onLeft={handleLeft}
                 onRename={handleRename}
                 onDelete={handleDelete}
                 onAddItem={handleAddItem}

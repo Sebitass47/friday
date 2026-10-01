@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
+from app.schemas.share import SharedUser
 
 
 class ListCreate(BaseModel):
@@ -40,6 +41,10 @@ class ListResponse(BaseModel):
     name: str
     emoji: str
     items: List[ListItemResponse]
+    is_owner: bool = True
+    owner_email: Optional[str] = None
+    owner_name: Optional[str] = None
+    shared_with: List[SharedUser] = []
     created_at: datetime
     updated_at: datetime
 

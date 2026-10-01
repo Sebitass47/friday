@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { getTasks, createTask, updateTask, deleteTask, getMe } from '@/lib/api'
-import type { Task, User } from '@/lib/types'
-import { Search, Plus, X, Trash2, MapPin, Clock, Calendar, AlarmClock, CalendarDays, History, ChevronDown, ChevronUp } from 'lucide-react'
+import { getTasks, createTask, updateTask, deleteTask, getMe, shareResource } from '@/lib/api'
+import type { Task, User, SharedUser } from '@/lib/types'
+import ShareSection from '@/components/ShareSection'
+import { Search, Plus, X, Trash2, MapPin, Clock, Calendar, AlarmClock, CalendarDays, History, ChevronDown, ChevronUp, Users } from 'lucide-react'
 import { DateInput } from '@/components/ui/date-input'
 import { cn } from '@/lib/utils'
 
@@ -102,12 +103,15 @@ interface PanelProps {
   event: Task | null
   creating: boolean
   onClose: () => void
-  onSave: (data: Parameters<typeof createTask>[0]) => Promise<void>
+  onSave: (data: Parameters<typeof createTask>[0], shareEmails: string[]) => Promise<void>
+  meId?: string
+  onSharedChange: (id: string, sharedWith: SharedUser[]) => void
+  onLeft: (id: string) => void
   onUpdate: (id: string, data: Parameters<typeof updateTask>[1]) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
-function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: PanelProps) {
+function EventPanel({ event, creating, onClose, onSave, meId, onSharedChange, onLeft, onUpdate, onDelete }: PanelProps) {
   const [title, setTitle] = useState(event?.title ?? '')
   const [label, setLabel] = useState<string | null>(event?.label ?? null)
   const [dueDate, setDueDate] = useState(event?.due_date ?? '')
@@ -116,6 +120,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
   const [location, setLocation] = useState(event?.location ?? '')
   const [notes, setNotes] = useState(event?.notes ?? '')
   const [saving, setSaving] = useState(false)
+  const [pendingShare, setPendingShare] = useState<SharedUser[]>([])
 
   const panelLabel = 'text-[11px] font-extrabold text-black/30 dark:text-white/30 uppercase tracking-widest mb-2'
   const panelInput = 'w-full text-[13px] bg-black/[0.04] dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 text-black/80 dark:text-white/80 placeholder-black/30 dark:placeholder-white/20 outline-none focus:border-black/40 dark:focus:border-white/40 transition-colors'
@@ -138,7 +143,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
     if (!title.trim()) return
     setSaving(true)
     try {
-      if (creating) await onSave(buildPayload())
+      if (creating) await onSave(buildPayload(), pendingShare.map(p => p.email))
       else if (event) await onUpdate(event.id, buildPayload())
     } finally { setSaving(false) }
   }
@@ -148,7 +153,7 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <span className="text-[14px] font-bold text-black/80 dark:text-white/80">{creating ? 'Nuevo evento' : 'Editar evento'}</span>
         <div className="flex gap-1">
-          {!creating && event && (
+          {!creating && event && event.is_owner && (
             <button onClick={() => onDelete(event.id)} className="p-1.5 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 transition-colors">
               <Trash2 size={15} />
             </button>
@@ -239,6 +244,20 @@ function EventPanel({ event, creating, onClose, onSave, onUpdate, onDelete }: Pa
           />
         </div>
 
+        {/* Sharing */}
+        <ShareSection
+          resourceType="task"
+          resourceId={creating ? undefined : event?.id}
+          isOwner={event?.is_owner ?? true}
+          ownerName={event?.owner_name}
+          sharedWith={event?.shared_with ?? []}
+          pending={pendingShare}
+          onPendingChange={setPendingShare}
+          meId={meId}
+          onSharedChange={sw => event && onSharedChange(event.id, sw)}
+          onLeft={() => event && onLeft(event.id)}
+        />
+
         {/* Auto-reminder info */}
         <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 p-3">
           <div className="flex items-start gap-2">
@@ -314,6 +333,11 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
               <MapPin size={11} /> {event.location}
             </span>
           )}
+          {(!event.is_owner || event.shared_with.length > 0) && (
+            <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35 truncate max-w-[160px]">
+              <Users size={11} /> {event.is_owner ? event.shared_with.length : `de ${event.owner_name ?? 'alguien'}`}
+            </span>
+          )}
         </div>
       </div>
 
@@ -371,8 +395,22 @@ export default function EventsPage() {
   function openEdit(e: Task) { setPanelEvent(e); setCreating(false); setPanelOpen(true) }
   function closePanel() { setPanelOpen(false); setPanelEvent(null) }
 
-  async function handleSave(data: Parameters<typeof createTask>[0]) {
-    await createTask(data); await load(); closePanel()
+  async function handleSave(data: Parameters<typeof createTask>[0], shareEmails: string[]) {
+    const created = await createTask(data)
+    for (const email of shareEmails) {
+      try { await shareResource('task', created.id, email) } catch { /* the item exists; sharing can be retried from its panel */ }
+    }
+    await load(); closePanel()
+  }
+
+  function handleSharedChange(id: string, sharedWith: SharedUser[]) {
+    setAllEvents(es => es.map(e => e.id === id ? { ...e, shared_with: sharedWith } : e))
+    setPanelEvent(p => p && p.id === id ? { ...p, shared_with: sharedWith } : p)
+  }
+
+  function handleLeft(id: string) {
+    setAllEvents(es => es.filter(e => e.id !== id))
+    closePanel()
   }
 
   async function handleUpdate(id: string, data: Parameters<typeof updateTask>[1]) {
@@ -555,6 +593,9 @@ export default function EventsPage() {
                 creating={creating}
                 onClose={closePanel}
                 onSave={handleSave}
+                meId={me?.id}
+                onSharedChange={handleSharedChange}
+                onLeft={handleLeft}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
               />

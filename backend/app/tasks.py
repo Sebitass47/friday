@@ -50,6 +50,14 @@ def check_habit_reminders(hour: int):
         db.close()
 
 
+def _task_subscriptions(db, task):
+    """Push subscriptions of the owner AND everyone the task is shared with."""
+    from app.models.push_subscription import PushSubscription
+    from app.services.share_service import audience_user_ids
+    ids = audience_user_ids(db, "task", task.id, task.user_id)
+    return db.query(PushSubscription).filter(PushSubscription.user_id.in_(ids)).all()
+
+
 @celery.task(name="app.tasks.check_task_reminders")
 def check_task_reminders():
     """Send push notifications for due todos and upcoming events."""
@@ -67,7 +75,7 @@ def check_task_reminders():
 
         # ── Todo reminders ────────────────────────────────────────────────────
         for task in get_pending_todo_reminders(db):
-            subs = db.query(PushSubscription).filter(PushSubscription.user_id == task.user_id).all()
+            subs = _task_subscriptions(db, task)
             reminder_dt = task.reminder_at
 
             # Day-before notification
@@ -97,7 +105,7 @@ def check_task_reminders():
             due_dt = _event_due_dt(task)
             if not due_dt:
                 continue
-            subs = db.query(PushSubscription).filter(PushSubscription.user_id == task.user_id).all()
+            subs = _task_subscriptions(db, task)
 
             if not task.reminded_3d and now >= due_dt - timedelta(days=3):
                 for sub in subs:

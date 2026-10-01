@@ -3,6 +3,7 @@ from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, field_validator
 from zoneinfo import ZoneInfo
+from app.schemas.share import SharedUser
 
 _MX = ZoneInfo("America/Mexico_City")
 
@@ -92,6 +93,11 @@ class TaskResponse(BaseModel):
     reminder_at: Optional[datetime]
     remind_day_before: bool
     subtasks: List[SubtaskResponse] = []
+    # Sharing: is_owner=False means someone else owns it and shared it with you
+    is_owner: bool = True
+    owner_email: Optional[str] = None
+    owner_name: Optional[str] = None
+    shared_with: List[SharedUser] = []
     created_at: datetime
     updated_at: datetime
 

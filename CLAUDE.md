@@ -186,6 +186,18 @@ Listas atemporales (compras, películas por ver, libros, viajes…). Mismo layou
 
 **Archivos:** `frontend/app/listas/page.tsx` (ListCard + ListPanel + ItemRow inline), `backend/app/{models/user_list.py, schemas/user_list.py, services/user_list_service.py, api/v1/endpoints/lists.py}`
 
+### Compartir (recordatorios, eventos y listas)
+
+Cada elemento **le pertenece a quien lo crea** y puede compartirse **por elemento** con otros usuarios de FRIDAY. Los hábitos NO se comparten (cada quien lleva sus propios registros).
+
+- Se comparte **por correo**: la persona debe tener cuenta de FRIDAY (el registro es por invitación, así que no se crean cuentas al invitar). Si el correo no existe sale "No hay ningún usuario de FRIDAY con ese correo".
+- Al compartir, esa persona queda guardada como **contacto** del dueño y aparece como chip "Sugeridos" en el selector la próxima vez (no hay que volver a escribir el correo). Se puede compartir con varias personas.
+- `ShareSection` (`components/ShareSection.tsx`) es el selector reutilizable: chips de personas, sugeridos, input de correo. Va en el panel de Eventos, Recordatorios y Listas. Al **crear**, junta las personas y las comparte al guardar; al **editar** (dueño), comparte/quita al instante.
+- **Permisos:** el dueño y los invitados ven y editan igual (título, fecha, completar, subtareas, elementos de lista). Solo el **dueño** puede borrar y administrar con quién se comparte. El invitado ve "Lo compartió contigo X" y un botón **Dejar de ver** (se quita a sí mismo).
+- Indicador en las tarjetas: 👥 N (dueño con N personas) o "de <nombre>" (compartido contigo).
+- **Notificaciones push:** los avisos de recordatorios y eventos compartidos le llegan al dueño y a todos los invitados (`_task_subscriptions` en `tasks.py`).
+- Backend: tablas `shares` (polimórfica: `resource_type` `task`|`list` + `resource_id`) y `contacts`; `share_service.py` (acceso, anotado de `is_owner/owner_name/shared_with`, share/unshare, contactos); las consultas de tareas y listas incluyen lo compartido contigo vía `_access()`.
+
 ### Eventos (`/events`)
 
 Lista de eventos tipo calendario. Mismo diseño que `/recordatorios` pero para cosas con fecha fija (citas, reuniones, etc.). **No tiene endpoint propio en el backend** — reutiliza la API de tareas (`/tasks/`) filtrando por `is_event=true`.
@@ -216,6 +228,7 @@ push.py              GET /push/vapid-public-key, POST /push/subscribe, DELETE /p
 tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
 notes.py             CRUD /notes/ + POST /{id}/toggle-pin
 lists.py             GET/POST /lists/, PUT/DELETE /lists/{id}, POST /lists/{id}/items, PUT/DELETE /lists/{id}/items/{item_id}, POST /lists/{id}/clear-completed
+shares.py            POST /shares/lookup, POST /shares/ {resource_type, resource_id, email}, DELETE /shares/{type}/{id}/{user_id}, GET /contacts/, DELETE /contacts/{user_id}
 habits.py            GET /habits/?week_start=YYYY-MM-DD, POST /habits/, PUT /habits/{id}?week_start=, DELETE /habits/{id}, POST /habits/{id}/toggle
 ```
 
@@ -239,11 +252,13 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `push_subscriptions` | endpoint VAPID por usuario, para notificaciones push |
 | `notes` | título, contenido, etiqueta, color (string key), is_pinned; FK a users |
 | `habits` | nombre, color (hex), `days_of_week` ("0,1,2,3,4", 0=Lun), FK a users |
+| `shares` | elemento compartido: `resource_type` (`task`/`list`), `resource_id`, `owner_id`, `shared_with_id`; unique por (tipo, id, persona) |
+| `contacts` | personas con las que el usuario ya compartió (`owner_id`, `contact_user_id`) |
 | `lists` | name, emoji, FK a users; `updated_at` se actualiza al cambiar sus elementos |
 | `list_items` | FK a lists, text, is_done, position |
 | `habit_logs` | FK a habits, date (Date); constraint unique (habit_id, date) — un log por hábito por día |
 
-Migraciones numeradas `0001`–`0024` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0025` en `backend/alembic/versions/`.
 
 **Zona horaria:** los contenedores corren en UTC. Nunca uses `date.today()` en el backend; usa `today_local()` de `app/core/clock.py` (America/Mexico_City). Si no, después de las 18:00 hora MX el backend ya cree que es el día siguiente (y puede saltar de ciclo).
 
@@ -283,6 +298,7 @@ frontend/
 │   │   ├── custom-select.tsx       # Dropdown custom (reemplaza <select> nativo)
 │   │   ├── glass-card.tsx          # Card con efecto glassmorphism
 │   │   └── ...                     # button, card, dialog, input, label
+│   ├── ShareSection.tsx            # Selector para compartir (personas, sugeridos, correo)
 │   ├── CycleSummaryCard.tsx        # Resumen del ciclo (disponible + desglose de ingresos/compromisos/gastos)
 │   ├── QuickTransactionFAB.tsx     # Botón flotante para registrar transacción rápida
 │   └── ThemeProvider.tsx

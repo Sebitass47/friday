@@ -6,10 +6,11 @@ import { CustomSelect } from '@/components/ui/custom-select'
 import { DateInput } from '@/components/ui/date-input'
 import {
   getTasks, createTask, updateTask, deleteTask, toggleTaskComplete,
-  createSubtask, updateSubtask, deleteSubtask, getMe,
+  createSubtask, updateSubtask, deleteSubtask, getMe, shareResource,
 } from '@/lib/api'
-import type { Task, User } from '@/lib/types'
-import { Search, Star, Plus, X, Trash2, Check, RotateCcw, AlarmClock, Calendar, CheckSquare, FileText } from 'lucide-react'
+import type { Task, User, SharedUser } from '@/lib/types'
+import ShareSection from '@/components/ShareSection'
+import { Search, Star, Plus, X, Trash2, Check, RotateCcw, AlarmClock, Calendar, CheckSquare, FileText, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LABELS = ['Trabajo', 'Personal', 'Hogar', 'Finanzas', 'Salud']
@@ -131,7 +132,10 @@ interface PanelProps {
   task: Task | null
   creating: boolean
   onClose: () => void
-  onSave: (data: Parameters<typeof createTask>[0]) => Promise<void>
+  onSave: (data: Parameters<typeof createTask>[0], shareEmails: string[]) => Promise<void>
+  meId?: string
+  onSharedChange: (id: string, sharedWith: SharedUser[]) => void
+  onLeft: (id: string) => void
   onUpdate: (id: string, data: Parameters<typeof updateTask>[1]) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onAddSubtask: (taskId: string, title: string) => Promise<void>
@@ -139,8 +143,9 @@ interface PanelProps {
   onDeleteSubtask: (taskId: string, subId: string) => Promise<void>
 }
 
-function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddSubtask, onToggleSubtask, onDeleteSubtask }: PanelProps) {
+function TaskPanel({ task, creating, onClose, onSave, meId, onSharedChange, onLeft, onUpdate, onDelete, onAddSubtask, onToggleSubtask, onDeleteSubtask }: PanelProps) {
   const [title, setTitle] = useState(task?.title ?? '')
+  const [pendingShare, setPendingShare] = useState<SharedUser[]>([])
   const [label, setLabel] = useState<string | null>(task?.label ?? (creating ? 'Personal' : null))
   const [dueDateType, setDueDateType] = useState<'hoy' | 'manana' | 'custom' | 'none'>(
     !task?.due_date ? 'none' : task.due_date === today() ? 'hoy' : task.due_date === tomorrow() ? 'manana' : 'custom'
@@ -216,7 +221,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
     if (!title.trim()) return
     setSaving(true)
     try {
-      if (creating) await onSave(buildPayload())
+      if (creating) await onSave(buildPayload(), pendingShare.map(p => p.email))
       else if (task) { await onUpdate(task.id, buildPayload()); onClose() }
     } finally { setSaving(false) }
   }
@@ -236,7 +241,7 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <span className="text-[14px] font-bold text-black/80 dark:text-white/80">{creating ? 'Nueva tarea' : 'Editar tarea'}</span>
         <div className="flex gap-1">
-          {!creating && task && (
+          {!creating && task && task.is_owner && (
             <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-500/10 transition-colors">
               <Trash2 size={15} />
             </button>
@@ -396,6 +401,20 @@ function TaskPanel({ task, creating, onClose, onSave, onUpdate, onDelete, onAddS
           />
         </div>
 
+        {/* Sharing */}
+        <ShareSection
+          resourceType="task"
+          resourceId={creating ? undefined : task?.id}
+          isOwner={task?.is_owner ?? true}
+          ownerName={task?.owner_name}
+          sharedWith={task?.shared_with ?? []}
+          pending={pendingShare}
+          onPendingChange={setPendingShare}
+          meId={meId}
+          onSharedChange={sw => task && onSharedChange(task.id, sw)}
+          onLeft={() => task && onLeft(task.id)}
+        />
+
         {/* Subtasks */}
         {!creating && task && (
           <div>
@@ -513,6 +532,12 @@ function TaskRow({ task, onToggle, onStar, onClick, isOverdue, isPast }: {
           {task.recurrence && (
             <RotateCcw size={11} className="text-black/30 dark:text-white/25" />
           )}
+          {(!task.is_owner || task.shared_with.length > 0) && (
+            <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35">
+              <Users size={11} />
+              {task.is_owner ? task.shared_with.length : `de ${task.owner_name ?? 'alguien'}`}
+            </span>
+          )}
         </div>
       </div>
 
@@ -564,8 +589,22 @@ export default function ToDoPage() {
   function openEdit(t: Task) { setPanelTask(t); setCreating(false); setPanelOpen(true) }
   function closePanel() { setPanelOpen(false); setPanelTask(null) }
 
-  async function handleSave(data: Parameters<typeof createTask>[0]) {
-    await createTask(data); await load(); closePanel()
+  async function handleSave(data: Parameters<typeof createTask>[0], shareEmails: string[]) {
+    const created = await createTask(data)
+    for (const email of shareEmails) {
+      try { await shareResource('task', created.id, email) } catch { /* the item exists; sharing can be retried from its panel */ }
+    }
+    await load(); closePanel()
+  }
+
+  function handleSharedChange(id: string, sharedWith: SharedUser[]) {
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, shared_with: sharedWith } : t))
+    setPanelTask(p => p && p.id === id ? { ...p, shared_with: sharedWith } : p)
+  }
+
+  function handleLeft(id: string) {
+    setTasks(ts => ts.filter(t => t.id !== id))
+    closePanel()
   }
 
   async function handleUpdate(id: string, data: Parameters<typeof updateTask>[1]) {
@@ -758,6 +797,9 @@ export default function ToDoPage() {
                 creating={creating}
                 onClose={closePanel}
                 onSave={handleSave}
+                meId={me?.id}
+                onSharedChange={handleSharedChange}
+                onLeft={handleLeft}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onAddSubtask={handleAddSubtask}

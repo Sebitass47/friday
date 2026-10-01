@@ -14,3 +14,4 @@ from app.models.note import Note
 from app.models.habit import Habit, HabitLog
 from app.models.category import UserCategory
 from app.models.user_list import UserList, ListItem
+from app.models.share import Share, Contact

@@ -1,7 +1,7 @@
 import type {
   User, Account, RecurringExpense, InstallmentPurchase,
   SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse,
-  Expense, CreditPayment, Income, Task, Subtask, Note, UserList,
+  Expense, CreditPayment, Income, Task, Subtask, Note, UserList, SharedUser,
   CategoriesResponse, CustomCategory,
 } from './types'
 
@@ -395,6 +395,26 @@ export async function deleteListItem(listId: string, itemId: string): Promise<Us
 
 export async function clearCompletedListItems(listId: string): Promise<UserList> {
   return req(`/lists/${listId}/clear-completed`, { method: 'POST' })
+}
+
+// ── Sharing ───────────────────────────────────────────────────────────────────
+
+export type ShareableType = 'task' | 'list'
+
+export async function lookupUser(email: string): Promise<SharedUser> {
+  return req('/shares/lookup', { method: 'POST', body: JSON.stringify({ email }) })
+}
+
+export async function shareResource(type: ShareableType, id: string, email: string): Promise<{ shared_with: SharedUser[] }> {
+  return req('/shares/', { method: 'POST', body: JSON.stringify({ resource_type: type, resource_id: id, email }) })
+}
+
+export async function unshareResource(type: ShareableType, id: string, userId: string): Promise<{ shared_with: SharedUser[] }> {
+  return req(`/shares/${type}/${id}/${userId}`, { method: 'DELETE' })
+}
+
+export async function getContacts(): Promise<SharedUser[]> {
+  return req('/contacts/')
 }
 
 // ── Habits ────────────────────────────────────────────────────────────────────

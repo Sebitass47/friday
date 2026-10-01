@@ -6,6 +6,13 @@ from sqlalchemy import and_, or_, func
 
 from app.models.task import Task, Subtask
 from app.schemas.task import TaskCreate, TaskUpdate, SubtaskCreate, SubtaskUpdate
+from app.models.share import RESOURCE_TASK
+from app.services import share_service
+
+
+def _access(db: Session, user_id: UUID):
+    """Tasks the user owns OR that were shared with them."""
+    return or_(Task.user_id == user_id, Task.id.in_(share_service.shared_resource_ids(db, user_id, RESOURCE_TASK)))
 
 
 def get_tasks(
@@ -20,7 +27,7 @@ def get_tasks(
     q = (
         db.query(Task)
         .options(joinedload(Task.subtasks))
-        .filter(Task.user_id == user_id, Task.is_event == is_event)
+        .filter(_access(db, user_id), Task.is_event == is_event)
     )
     if label:
         q = q.filter(Task.label == label)
@@ -34,16 +41,21 @@ def get_tasks(
         # Only hide completed tasks when not doing a search or date range lookup
         if not date_from and not date_to:
             q = q.filter(Task.is_completed == False)
-    return q.order_by(Task.due_date.asc().nullslast(), Task.created_at.desc()).all()
+    tasks = q.order_by(Task.due_date.asc().nullslast(), Task.created_at.desc()).all()
+    share_service.annotate(db, RESOURCE_TASK, tasks, user_id)
+    return tasks
 
 
 def get_task(db: Session, task_id: UUID, user_id: UUID) -> Optional[Task]:
-    return (
+    task = (
         db.query(Task)
         .options(joinedload(Task.subtasks))
-        .filter(Task.id == task_id, Task.user_id == user_id)
+        .filter(Task.id == task_id, _access(db, user_id))
         .first()
     )
+    if task:
+        share_service.annotate(db, RESOURCE_TASK, [task], user_id)
+    return task
 
 
 def create_task(db: Session, data: TaskCreate, user_id: UUID) -> Task:
@@ -55,7 +67,7 @@ def create_task(db: Session, data: TaskCreate, user_id: UUID) -> Task:
 
 
 def update_task(db: Session, task_id: UUID, data: TaskUpdate, user_id: UUID) -> Optional[Task]:
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
+    task = db.query(Task).filter(Task.id == task_id, _access(db, user_id)).first()
     if not task:
         return None
     for field, value in data.model_dump(exclude_unset=True).items():
@@ -74,16 +86,18 @@ def update_task(db: Session, task_id: UUID, data: TaskUpdate, user_id: UUID) -> 
 
 
 def delete_task(db: Session, task_id: UUID, user_id: UUID) -> bool:
+    # Only the owner can delete; recipients "leave" via the unshare endpoint
     task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
     if not task:
         return False
+    share_service.delete_shares_for(db, RESOURCE_TASK, task.id)
     db.delete(task)
     db.commit()
     return True
 
 
 def complete_task(db: Session, task_id: UUID, user_id: UUID) -> Optional[Task]:
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
+    task = db.query(Task).filter(Task.id == task_id, _access(db, user_id)).first()
     if not task:
         return None
 
@@ -103,7 +117,7 @@ def complete_task(db: Session, task_id: UUID, user_id: UUID) -> Optional[Task]:
 # ── Subtasks ─────────────────────────────────────────────────────────────────
 
 def create_subtask(db: Session, task_id: UUID, data: SubtaskCreate, user_id: UUID) -> Optional[Subtask]:
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
+    task = db.query(Task).filter(Task.id == task_id, _access(db, user_id)).first()
     if not task:
         return None
     sub = Subtask(task_id=task_id, **data.model_dump())
@@ -114,7 +128,7 @@ def create_subtask(db: Session, task_id: UUID, data: SubtaskCreate, user_id: UUI
 
 
 def update_subtask(db: Session, task_id: UUID, subtask_id: UUID, data: SubtaskUpdate, user_id: UUID) -> Optional[Subtask]:
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
+    task = db.query(Task).filter(Task.id == task_id, _access(db, user_id)).first()
     if not task:
         return None
     sub = db.query(Subtask).filter(Subtask.id == subtask_id, Subtask.task_id == task_id).first()
@@ -128,7 +142,7 @@ def update_subtask(db: Session, task_id: UUID, subtask_id: UUID, data: SubtaskUp
 
 
 def delete_subtask(db: Session, task_id: UUID, subtask_id: UUID, user_id: UUID) -> bool:
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == user_id).first()
+    task = db.query(Task).filter(Task.id == task_id, _access(db, user_id)).first()
     if not task:
         return False
     sub = db.query(Subtask).filter(Subtask.id == subtask_id, Subtask.task_id == task_id).first()

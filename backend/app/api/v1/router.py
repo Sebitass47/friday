@@ -15,6 +15,7 @@ from .endpoints.notes import router as notes_router
 from .endpoints.habits import router as habits_router
 from .endpoints.categories import router as categories_router
 from .endpoints.lists import router as lists_router
+from .endpoints.shares import router as shares_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -33,3 +34,4 @@ router.include_router(notes_router)
 router.include_router(habits_router)
 router.include_router(categories_router)
 router.include_router(lists_router)
+router.include_router(shares_router)

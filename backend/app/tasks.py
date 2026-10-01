@@ -228,3 +228,66 @@ def charge_recurring_expenses():
         db.rollback()
     finally:
         db.close()
+
+
+DEBT_CATEGORY = "Deuda"
+DEBT_EXPENSE_NAME = "Deuda del ciclo anterior"
+
+
+@celery.task(name="app.tasks.carry_over_negative_balance")
+def carry_over_negative_balance():
+    """
+    Runs every night at 23:55 (Mexico City). For each user whose financial cycle
+    ends today, if the available balance is negative, create a cash expense in the
+    next cycle (dated on its first day) for the amount owed, so the debt carries over.
+    The user can delete that expense if they don't want it.
+    """
+    from decimal import Decimal
+    from app.models.expense import Expense
+    from app.models.enums import PaymentMethod
+    from app.models.monthly_income import MonthlyIncome
+    from app.services.projection_service import calculate_projection
+
+    db = SessionLocal()
+    try:
+        today = today_local()
+        next_start = today + timedelta(days=1)
+        created = 0
+
+        for mi in db.query(MonthlyIncome).all():
+            # Only users whose cycle ends today (tomorrow starts a new cycle)
+            if _current_cycle_start(next_start, mi.cycle_start_day or 1) != next_start:
+                continue
+
+            already = db.query(Expense).filter(
+                Expense.user_id == mi.user_id,
+                Expense.date == next_start,
+                Expense.category == DEBT_CATEGORY,
+                Expense.name == DEBT_EXPENSE_NAME,
+            ).first()
+            if already:
+                continue
+
+            current = calculate_projection(db, mi.user_id, months=1).months[0]
+            available = Decimal(str(current.available))
+            if available >= 0:
+                continue
+
+            db.add(Expense(
+                user_id=mi.user_id,
+                account_id=None,
+                name=DEBT_EXPENSE_NAME,
+                amount=-available,
+                date=next_start,
+                payment_method=PaymentMethod.CASH,
+                category=DEBT_CATEGORY,
+            ))
+            created += 1
+
+        db.commit()
+        logger.info("carry_over_negative_balance: created %d debt expenses", created)
+    except Exception as e:
+        logger.error("Error in carry_over_negative_balance: %s", e)
+        db.rollback()
+    finally:
+        db.close()

@@ -69,6 +69,8 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 - Proyección 12 meses — `ProjectionChart.tsx`, gráfica de barras SVG pura (al fondo de la página)
 - Simulador MSI — integrado al fondo, después de la proyección (ya no es página separada)
 
+**Deuda automática del ciclo:** tarea Celery `carry_over_negative_balance` (23:55 hora MX, `app/tasks.py`). El último día de cada ciclo, si el disponible es negativo, crea un gasto en efectivo sin cuenta, categoría `Deuda`, nombre "Deuda del ciclo anterior", fechado el primer día del ciclo nuevo, por el monto adeudado (idempotente por usuario/fecha). El usuario puede borrarlo si no lo quiere.
+
 **Registrar transacción** (botón "Registrar" en header + FAB flotante `QuickTransactionFAB.tsx`):
 - Gasto: efectivo / débito / crédito, categoría opcional
 - Ingreso puntual: descripción, monto, categoría

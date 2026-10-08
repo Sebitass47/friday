@@ -349,10 +349,16 @@ function ListCard({ list, active, onClick }: { list: UserList; active: boolean; 
             {p.total === 0 ? 'Vacía' : `${p.done}/${p.total}`}
           </span>
         </div>
+        {!list.is_owner && (
+          <p className="flex items-center gap-1 mt-1 text-[12px] font-bold text-black/40 dark:text-white/35 min-w-0">
+            <Users size={12} className="flex-shrink-0" />
+            <span className="truncate">de {list.owner_name ?? 'alguien'}</span>
+          </p>
+        )}
       </div>
-      {(!list.is_owner || list.shared_with.length > 0) && (
+      {list.is_owner && list.shared_with.length > 0 && (
         <span className="flex items-center gap-1 text-[12px] font-bold text-black/40 dark:text-white/35 flex-shrink-0">
-          <Users size={12} /> {list.is_owner ? list.shared_with.length : `de ${list.owner_name ?? 'alguien'}`}
+          <Users size={12} /> {list.shared_with.length}
         </span>
       )}
       {p.pending > 0 && (

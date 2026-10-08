@@ -183,6 +183,7 @@ Listas atemporales (compras, películas por ver, libros, viajes…). Mismo layou
 - Elementos: clic para marcar/desmarcar (optimista), editar texto (lápiz), borrar, agregar con Enter; pendientes arriba y "Completados (n)" abajo con botón Limpiar
 - Renombrar/cambiar emoji desde el panel; borrar lista con doble clic en el bote
 - Orden por `updated_at` (cualquier cambio en sus elementos la sube)
+- En la tarjeta, "de <dueño>" (lista compartida contigo) va en una línea bajo el nombre y se trunca, para no aplastar el título en celular
 - `?new=1` abre el panel de crear; `?open=<id>` abre una lista (lo usa el Inicio)
 - Inicio: card "Listas" con las 5 más recientes (emoji + nombre + pendientes) → `/listas?open=<id>`
 

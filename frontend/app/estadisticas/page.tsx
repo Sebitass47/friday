@@ -184,6 +184,9 @@ function TasksTab({ s }: { s: Stats }) {
           <div className="flex justify-between text-[11px] text-black/45 dark:text-white/45"><span>Últimos 30 días</span><span>{r.month.done} de {r.month.done + r.month.missed}</span></div>
           <Bar pct={r.month.pct} color={GREEN} />
         </div>
+        <p className="text-[11px] text-black/35 dark:text-white/35 mt-3">
+          Los recordatorios que se repiten se cuentan desde que se activó este historial, así que estos números irán creciendo con los días.
+        </p>
       </Panel>
 
       <Panel title="Listas">

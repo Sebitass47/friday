@@ -40,7 +40,7 @@ Dashboard personal central. Reemplaza el redirect que había a `/dashboard`.
 
 **Layout escritorio (`xl`):** cuadrícula de 12 columnas, ancho hasta 1600px. Fila 1: Recordatorios (3) · Finanzas (6, partida en gráfica + desglose siempre visible vía `splitOnWide`) · Próximos 7 días (3). Fila 2: Hábitos y Listas 50/50; si hay notas recientes, Listas · Hábitos · Notas (4/4/4). En celular/tablet Finanzas va primero (el orden en `xl` se logra con `xl:order-*`). Listas muestra 7 en `xl` y 5 en el resto.
 
-**Tu progreso** (franja al final, 100% de ancho en `xl`): racha de hábitos, % de hábitos a 30 días, recordatorios cumplidos de la semana, elementos tachados en listas y gasto vs ciclo pasado. Todo clicable → `/estadisticas`. **Campana** en el header (`components/DigestSettings.tsx`): activa/desactiva y configura hora del resumen semanal, con botón "Enviarme uno ahora" y vista previa.
+**Tu progreso** (franja al final, 100% de ancho en `xl`): racha de hábitos, % de hábitos a 30 días, recordatorios cumplidos de la semana, elementos tachados en listas y gasto vs ciclo pasado. Todo clicable → `/estadisticas`. **Campana** en el header (`components/DigestControls.tsx` + `DigestSettings.tsx`): activa/desactiva y configura hora del resumen semanal, con botón "Enviarme uno ahora" y vista previa.
 
 **FAB speed-dial** (bottom-right, siempre visible):
 - Botón + con gradiente rosa-morado; al abrir rota a X y expande 4 opciones animadas
@@ -216,7 +216,9 @@ Tres pestañas, todo se calcula en el backend (`stats_service.py`, `GET /stats/`
 
 ### Resumen semanal (push)
 
-Domingo = "tu semana" (eventos, recordatorios por hacer, pagos de tarjeta, cierre de ciclo y cuánto te queda); viernes = "es viernes" (hoy y fin de semana, hábitos de la semana, lo cumplido/tachado y cuánto te queda). Son plantillas sobre datos propios (`digest_service.py`), **sin IA**. Celery Beat corre `send_weekly_digests` cada hora en punto y cada usuario recibe el suyo cuando coincide día y hora con su `digest_settings` (defaults: domingo 19:00, viernes 8:00, activado para quien tenga push; `last_sent_key` evita duplicados). Endpoints: `GET/PUT /digest/settings`, `POST /digest/test?kind=sunday|friday&send=true|false`.
+Domingo = "tu semana" (eventos, recordatorios por hacer, pagos de tarjeta, cierre de ciclo y cuánto te queda); viernes = "es viernes" (hoy y fin de semana, hábitos de la semana, lo cumplido/tachado y cuánto te queda). Son plantillas sobre datos propios (`digest_service.py`), **sin IA**. Celery Beat corre `send_weekly_digests` cada hora en punto y cada usuario recibe el suyo cuando coincide día y hora con su `digest_settings` (defaults: domingo 19:00, viernes 8:00, activado para quien tenga push; `last_sent_key` evita duplicados). **Dos versiones del texto:** la **notificación es corta** (`build_push`: una línea principal + cuánto te queda + "Toca para ver el resumen completo", porque las notificaciones se colapsan a ~2 líneas) y el **resumen completo** vive dentro de la app (`build_digest`, todas las líneas). El push apunta a `/?digest=<kind>`, que abre el modal del resumen en el Inicio (`DigestControls.tsx` lee el param y limpia la URL). Por si la notificación no llega, el Inicio muestra un botón **"Resumen de hoy/de la semana"** junto a la campana **solo los días configurados** (viernes/domingo y con ese día activado). Desde los ajustes de la campana también hay "Ver completo".
+
+Endpoints: `GET/PUT /digest/settings`, `GET /digest/preview?kind=` (resumen completo), `POST /digest/test?kind=sunday|friday&send=true|false` (genera/envía la versión corta).
 
 ### Notificaciones de compartir y cambios
 
@@ -330,7 +332,8 @@ frontend/
 │   │   ├── custom-select.tsx       # Dropdown custom (reemplaza <select> nativo)
 │   │   ├── glass-card.tsx          # Card con efecto glassmorphism
 │   │   └── ...                     # button, card, dialog, input, label
-│   ├── DigestSettings.tsx          # Campana del Inicio: ajustes del resumen semanal
+│   ├── DigestControls.tsx          # Campana + botón "Resumen" (días configurados) + modal del resumen completo
+│   ├── DigestSettings.tsx          # Modal de ajustes del resumen semanal (lo controla DigestControls)
 │   ├── ShareSection.tsx            # Selector para compartir (personas, sugeridos, correo)
 │   ├── CycleSummaryCard.tsx        # Resumen del ciclo (disponible + desglose de ingresos/compromisos/gastos)
 │   ├── QuickTransactionFAB.tsx     # Botón flotante para registrar transacción rápida

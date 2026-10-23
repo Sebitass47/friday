@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import HabitsWeekTable from '@/components/HabitsWeekTable'
 import CycleSummaryCard from '@/components/CycleSummaryCard'
-import DigestSettings from '@/components/DigestSettings'
+import DigestControls from '@/components/DigestControls'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -170,16 +170,29 @@ function SpeedDial() {
 function ProgressStrip({ stats, isDark, onOpen }: { stats: Stats; isDark: boolean; onOpen: () => void }) {
   const { habits, reminders, lists, finance } = stats
   const delta = finance?.spent_vs_prev_pct ?? null
+  const money = (n: number) => `$${Math.round(n).toLocaleString('es-MX')}`
   const items: { label: string; value: string; sub: string; color?: string }[] = []
   if (habits) {
-    items.push({ label: 'Racha', value: `🔥 ${habits.streak_days}`, sub: habits.streak_days === 1 ? 'día seguido' : 'días seguidos' })
-    items.push({ label: 'Hábitos · 30 días', value: `${habits.month_pct}%`, sub: `${habits.week_pct}% esta semana` })
+    items.push({ label: 'Racha de hábitos', value: `🔥 ${habits.streak_days}`, sub: `${habits.streak_days === 1 ? 'día' : 'días'} seguidos con al menos un hábito` })
+    items.push({ label: 'Hábitos cumplidos · 30 días', value: `${habits.month_pct}%`, sub: `de lo programado · ${habits.week_pct}% esta semana` })
   }
   const rTotal = reminders.week.done + reminders.week.missed
-  items.push({ label: 'Recordatorios · semana', value: `${reminders.week.done}/${rTotal}`, sub: rTotal === 0 ? 'nada vencido' : `${reminders.week.pct}% cumplido`, color: reminders.week.done > 0 ? '#34d399' : undefined })
-  items.push({ label: 'Tachado en listas · semana', value: `${lists.checked_week}`, sub: `${lists.pending_items} pendientes` })
-  if (finance && delta !== null) {
-    items.push({ label: 'Gasto vs ciclo pasado', value: `${delta > 0 ? '+' : ''}${delta}%`, sub: delta <= 0 ? 'vas mejor' : 'vas más alto', color: delta > 0 ? '#FF6B6B' : '#34d399' })
+  items.push({
+    label: 'Recordatorios cumplidos · semana',
+    value: rTotal === 0 ? '—' : `${reminders.week.done} de ${rTotal}`,
+    sub: rTotal === 0 ? 'ninguno vencido esta semana' : reminders.week.missed === 0 ? '¡todos cumplidos!' : `${reminders.week.missed} sin cumplir`,
+    color: reminders.week.done > 0 ? '#34d399' : undefined,
+  })
+  items.push({ label: 'Tachado en listas · semana', value: `${lists.checked_week}`, sub: `${lists.pending_items} elementos pendientes` })
+  if (finance) {
+    items.push({
+      label: 'Gastado este ciclo',
+      value: money(finance.spent_current),
+      sub: finance.spent_prev_same_point > 0
+        ? `${money(finance.spent_prev_same_point)} el ciclo pasado a esta fecha${delta !== null ? ` (${delta > 0 ? '+' : ''}${delta}%)` : ''}`
+        : 'sin ciclo anterior para comparar',
+      color: delta === null ? undefined : delta > 0 ? '#FF6B6B' : '#34d399',
+    })
   }
 
   return (
@@ -363,7 +376,7 @@ export default function HomePage() {
               </span>{' '}👋
             </h1>
           </div>
-          <DigestSettings />
+          <DigestControls />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 sm:gap-5">

@@ -71,9 +71,12 @@ def _money_line(db: Session, user_id: UUID, today: date) -> Tuple[Optional[str],
     return f"💰 Te quedan {_money(cur.available)} · {_plural(left, 'día', 'días')} de ciclo", cur.cycle_end
 
 
-def build_digest(db: Session, user_id: UUID, kind: str, today: Optional[date] = None) -> Tuple[str, str]:
-    today = today or today_local()
-    lines: List[str] = []
+Line = Tuple[str, str]  # (section key, text)
+
+
+def _compose(db: Session, user_id: UUID, kind: str, today: date) -> Tuple[str, List[Line]]:
+    """Every line of the digest, tagged by section so the push can pick the essentials."""
+    lines: List[Line] = []
 
     if kind == SUNDAY:
         frm, to = today + timedelta(days=1), today + timedelta(days=7)
@@ -82,19 +85,19 @@ def build_digest(db: Session, user_id: UUID, kind: str, today: Optional[date] = 
         if events:
             shown = " · ".join(f"{_day(e.due_date)} {e.title}" for e in events[:3])
             more = f" (+{len(events) - 3})" if len(events) > 3 else ""
-            lines.append(f"📅 {_plural(len(events), 'evento', 'eventos')}: {shown}{more}")
+            lines.append(("events", f"📅 {_plural(len(events), 'evento', 'eventos')}: {shown}{more}"))
         if todos:
-            lines.append(f"✅ {_plural(len(todos), 'recordatorio', 'recordatorios')} por hacer")
+            lines.append(("todos", f"✅ {_plural(len(todos), 'recordatorio', 'recordatorios')} por hacer"))
         pays = _card_payments(db, user_id, frm, to)
         if pays:
-            lines.append("💳 Pagos: " + " · ".join(f"{n} ({_day(d)})" for n, d in pays[:3]))
+            lines.append(("payments", "💳 Pagos: " + " · ".join(f"{n} ({_day(d)})" for n, d in pays[:3])))
         money, cycle_end = _money_line(db, user_id, today)
         if cycle_end and frm <= cycle_end <= to:
-            lines.append(f"🔚 Tu ciclo cierra el {_day(cycle_end)} {cycle_end.day}")
+            lines.append(("cycle", f"🔚 Tu ciclo cierra el {_day(cycle_end)} {cycle_end.day}"))
         if money:
-            lines.append(money)
+            lines.append(("money", money))
         if not events and not todos and not pays:
-            lines.insert(0, "Semana libre: nada agendado por ahora ✨")
+            lines.insert(0, ("free", "Semana libre: nada agendado por ahora ✨"))
     else:
         weekend_end = today + timedelta(days=2)
         events, todos = _items(db, user_id, today, weekend_end)
@@ -107,25 +110,51 @@ def build_digest(db: Session, user_id: UUID, kind: str, today: Optional[date] = 
                 bits.append(_plural(len(today_events), "evento", "eventos"))
             if today_todos:
                 bits.append(_plural(len(today_todos), "recordatorio", "recordatorios"))
-            lines.append("Hoy: " + " y ".join(bits))
+            lines.append(("today", "Hoy: " + " y ".join(bits)))
             if today_events:
                 e = today_events[0]
-                lines.append(f"📅 {e.title}" + (f" · {e.due_time.strftime('%H:%M')}" if e.due_time else ""))
+                lines.append(("today_event", f"📅 {e.title}" + (f" · {e.due_time.strftime('%H:%M')}" if e.due_time else "")))
         weekend = [e for e in events if e.due_date > today]
         if weekend:
-            lines.append("🎈 Fin de semana: " + " · ".join(f"{_day(e.due_date)} {e.title}" for e in weekend[:3]))
+            lines.append(("weekend", "🎈 Fin de semana: " + " · ".join(f"{_day(e.due_date)} {e.title}" for e in weekend[:3])))
         habits = stats_service.habit_stats(db, user_id, today)
         if habits:
-            lines.append(f"🎯 Hábitos esta semana: {habits['week_pct']}%")
+            lines.append(("habits", f"🎯 Hábitos esta semana: {habits['week_pct']}%"))
         checked = stats_service._activity_count(db, user_id, "list_item_done", stats_service._monday(today))
         done = stats_service._activity_count(db, user_id, "task_done", stats_service._monday(today))
         if checked or done:
-            lines.append(f"💪 Esta semana cumpliste {_plural(done, 'recordatorio', 'recordatorios')} y tachaste {checked} de tus listas")
+            lines.append(("wins", f"💪 Esta semana cumpliste {_plural(done, 'recordatorio', 'recordatorios')} y tachaste {checked} de tus listas"))
         money, _ = _money_line(db, user_id, today)
         if money:
-            lines.append(money)
+            lines.append(("money", money))
 
-    return title, "\n".join(lines) or "Abre FRIDAY para ver cómo va tu semana."
+    return title, lines
+
+
+# What goes in the push: one headline line + the money line. The rest lives in the in-app summary.
+_HEADLINE_KEYS = {SUNDAY: ("events", "todos", "free", "payments"), FRIDAY: ("today", "weekend", "habits")}
+
+
+def build_digest(db: Session, user_id: UUID, kind: str, today: Optional[date] = None) -> Tuple[str, List[str]]:
+    """Full digest for the in-app view: (title, lines)."""
+    title, lines = _compose(db, user_id, kind, today or today_local())
+    return title, [text for _k, text in lines] or ["Abre FRIDAY para ver cómo va tu semana."]
+
+
+def build_push(db: Session, user_id: UUID, kind: str, today: Optional[date] = None) -> Tuple[str, str]:
+    """Short version for the notification (they collapse to ~2 lines on most devices)."""
+    title, lines = _compose(db, user_id, kind, today or today_local())
+    by_key = dict(lines)
+    key = next((k for k in _HEADLINE_KEYS[kind] if k in by_key), None)
+    picked = []
+    if key:
+        text = by_key[key]
+        # "📅 5 eventos: Sáb …, Dom …" -> "📅 5 eventos esta semana": the names go in the full view
+        picked.append(f"{text.split(':')[0]} esta semana" if key == "events" else text)
+    if "money" in by_key:
+        picked.append(by_key["money"])
+    picked.append("Toca para ver el resumen completo")
+    return title, "\n".join(picked)
 
 
 # ── Settings & scheduling ─────────────────────────────────────────────────────
@@ -141,8 +170,8 @@ def get_settings(db: Session, user_id: UUID) -> DigestSettings:
 
 
 def send_digest(db: Session, user_id: UUID, kind: str) -> Tuple[str, str, int]:
-    title, body = build_digest(db, user_id, kind)
-    sent = send_push_to_users(db, [user_id], title, body, url="/", tag=f"digest-{kind}")
+    title, body = build_push(db, user_id, kind)
+    sent = send_push_to_users(db, [user_id], title, body, url=f"/?digest={kind}", tag=f"digest-{kind}")
     return title, body, sent
 
 

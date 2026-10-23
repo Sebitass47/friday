@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Bell, X, Send } from 'lucide-react'
-import { getDigestSettings, updateDigestSettings, sendDigestTest } from '@/lib/api'
+import { sendDigestTest } from '@/lib/api'
 import type { DigestSettings as DigestSettingsData } from '@/lib/types'
 import { CustomSelect } from '@/components/ui/custom-select'
 
@@ -22,20 +22,16 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   )
 }
 
-export default function DigestSettings() {
+interface DigestSettingsProps {
+  settings: DigestSettingsData | null
+  onSave: (next: DigestSettingsData) => void
+  onView: (kind: 'sunday' | 'friday') => void
+}
+
+export default function DigestSettings({ settings, onSave: save, onView }: DigestSettingsProps) {
   const [open, setOpen] = useState<boolean>(false)
-  const [settings, setSettings] = useState<DigestSettingsData | null>(null)
   const [preview, setPreview] = useState<{ title: string; body: string; sent: number } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (open && !settings) getDigestSettings().then(setSettings).catch(() => {})
-  }, [open, settings])
-
-  function save(next: DigestSettingsData) {
-    setSettings(next)
-    updateDigestSettings(next).catch(() => getDigestSettings().then(setSettings))
-  }
 
   async function test(kind: 'sunday' | 'friday') {
     setBusy(kind)
@@ -108,6 +104,12 @@ export default function DigestSettings() {
                       >
                         <Send size={12} /> {busy === r.kind ? 'Generando…' : 'Enviarme uno ahora'}
                       </button>
+                      <button
+                        onClick={() => { setOpen(false); onView(r.kind) }}
+                        className="px-3 py-2 rounded-xl text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                      >
+                        Ver completo
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -115,7 +117,7 @@ export default function DigestSettings() {
                 {preview && (
                   <div className="rounded-xl bg-black/[0.04] dark:bg-white/[0.06] p-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40 mb-1">
-                      Vista previa {preview.sent === 0 ? '· sin notificaciones activadas en este dispositivo' : ''}
+                      Así llega la notificación {preview.sent === 0 ? '· sin notificaciones activadas en este dispositivo' : ''}
                     </p>
                     <p className="text-sm font-semibold text-black dark:text-white">{preview.title}</p>
                     <p className="text-xs text-black/70 dark:text-white/70 whitespace-pre-line mt-1">{preview.body}</p>

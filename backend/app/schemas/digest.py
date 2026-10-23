@@ -23,3 +23,8 @@ class DigestPreview(BaseModel):
     title: str
     body: str
     sent: int = 0
+
+
+class DigestFull(BaseModel):
+    title: str
+    lines: list[str]

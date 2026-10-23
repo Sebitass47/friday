@@ -467,6 +467,10 @@ export async function updateDigestSettings(data: import('./types').DigestSetting
   return req('/digest/settings', { method: 'PUT', body: JSON.stringify(data) })
 }
 
+export async function getDigestSummary(kind: 'sunday' | 'friday'): Promise<{ title: string; lines: string[] }> {
+  return req(`/digest/preview?kind=${kind}`)
+}
+
 export async function sendDigestTest(kind: 'sunday' | 'friday'): Promise<{ title: string; body: string; sent: number }> {
   return req(`/digest/test?kind=${kind}`, { method: 'POST' })
 }

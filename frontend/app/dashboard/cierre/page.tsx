@@ -138,7 +138,7 @@ function CardPanel({ card, month, year, onCollect, onChanged }: {
                   <div className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-black dark:text-white truncate">{c.name}</p>
-                      <p className="text-[11px] text-black/35 dark:text-white/35">{fmtDate(c.date)}{c.kind === 'installment' ? ' · MSI' : ''}</p>
+                      <p className="text-[11px] text-black/35 dark:text-white/35">{fmtDate(c.date)}{c.kind === 'installment' ? ' · MSI' : c.kind === 'recurring' ? ' · Recurrente' : ''}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold tabular-nums text-black dark:text-white">{money(c.total)}</p>

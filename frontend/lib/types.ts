@@ -31,6 +31,10 @@ export interface RecurringExpense {
   frequency: 'monthly' | 'weekly' | 'custom'
   interval_days: number | null
   last_charged_date?: string | null
+  // Other people's parts of each charge (amount is YOUR part)
+  shares?: ExpenseShare[]
+  // What is charged each time: your part + everyone else's
+  total_amount?: number | null
   created_at: string
   updated_at: string
 }
@@ -367,7 +371,7 @@ export interface PendingDebt {
   amount: number
   pending: number
   charge_date: string
-  source: 'expense' | 'installment'
+  source: 'expense' | 'installment' | 'recurring'
   account_name: string | null
 }
 
@@ -392,7 +396,7 @@ export interface ClosingPerson {
 }
 
 export interface ClosingCharge {
-  kind: 'expense' | 'installment'
+  kind: 'expense' | 'installment' | 'recurring'
   id: string
   name: string
   date: string

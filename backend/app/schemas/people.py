@@ -88,7 +88,7 @@ class ClosingShare(BaseModel):
 
 
 class ClosingCharge(BaseModel):
-    kind: str  # "expense" | "installment"
+    kind: str  # "expense" | "installment" | "recurring"
     id: UUID
     name: str
     date: date

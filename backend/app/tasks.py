@@ -232,21 +232,29 @@ def charge_recurring_expenses():
     from app.models.recurring_expense import RecurringExpense
     from app.models.account import Account, AccountType
     from app.models.monthly_income import MonthlyIncome
+    from app.models.people import RecurringShare
+    from app.services import debt_service
 
     db = SessionLocal()
     try:
         today = today_local()
         charged = 0
 
+        # Card-linked recurrings, plus any that are split with someone (even without a card)
+        has_shares = db.query(RecurringShare.recurring_id).distinct()
         expenses = (
             db.query(RecurringExpense)
-            .filter(RecurringExpense.account_id.isnot(None))
+            .filter((RecurringExpense.account_id.isnot(None)) | (RecurringExpense.id.in_(has_shares)))
             .all()
         )
 
         for expense in expenses:
-            account = db.query(Account).filter(Account.id == expense.account_id).first()
-            if not account or account.account_type != AccountType.CREDIT_CARD:
+            account = (
+                db.query(Account).filter(Account.id == expense.account_id).first() if expense.account_id else None
+            )
+            is_card = bool(account and account.account_type == AccountType.CREDIT_CARD)
+            split = debt_service.recurring_total(db, expense) > Decimal(str(expense.amount))
+            if not is_card and not split:
                 continue
 
             mi = db.query(MonthlyIncome).filter(MonthlyIncome.user_id == expense.user_id).first()
@@ -260,11 +268,14 @@ def charge_recurring_expenses():
             if already_charged:
                 continue
 
-            amount = Decimal(str(expense.amount))
-            account.current_balance_used = (account.current_balance_used or Decimal(0)) + amount
-            if account.credit_limit:
-                account.available_credit = account.credit_limit - account.current_balance_used
+            if is_card:
+                # The bank charges your part + everyone else's
+                total = debt_service.recurring_total(db, expense)
+                account.current_balance_used = (account.current_balance_used or Decimal(0)) + total
+                if account.credit_limit:
+                    account.available_credit = account.credit_limit - account.current_balance_used
             expense.last_charged_date = today
+            debt_service.record_recurring_charge(db, expense.user_id, expense, today)
             charged += 1
 
         db.commit()

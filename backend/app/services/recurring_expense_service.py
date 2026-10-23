@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.recurring_expense import RecurringExpense
 from app.models.account import Account, AccountType
 from app.schemas.recurring_expense import RecurringExpenseCreate, RecurringExpenseUpdate
+from app.services import debt_service
 
 
 def _adjust_card_balance(account: Account, delta: Decimal) -> None:
@@ -23,14 +24,19 @@ def _load_credit_account(db: Session, account_id: UUID, user_id: UUID) -> Option
 
 
 def get_recurring_expenses(db: Session, user_id: UUID) -> List[RecurringExpense]:
-    return db.query(RecurringExpense).filter(RecurringExpense.user_id == user_id).all()
+    rows = db.query(RecurringExpense).filter(RecurringExpense.user_id == user_id).all()
+    debt_service.annotate_recurring(db, rows)
+    return rows
 
 
 def get_recurring_expense(db: Session, expense_id: UUID, user_id: UUID) -> Optional[RecurringExpense]:
-    return db.query(RecurringExpense).filter(
+    row = db.query(RecurringExpense).filter(
         RecurringExpense.id == expense_id,
         RecurringExpense.user_id == user_id
     ).first()
+    if row:
+        debt_service.annotate_recurring(db, [row])
+    return row
 
 
 def create_recurring_expense(db: Session, expense: RecurringExpenseCreate, user_id: UUID) -> RecurringExpense:
@@ -44,15 +50,24 @@ def create_recurring_expense(db: Session, expense: RecurringExpenseCreate, user_
         interval_days=expense.interval_days,
     )
 
-    if expense.account_id:
-        card = _load_credit_account(db, expense.account_id, user_id)
-        if card:
-            _adjust_card_balance(card, Decimal(str(expense.amount)))
-            db_expense.last_charged_date = today
+    # The card is charged your part + everyone else's of each charge
+    others = sum((Decimal(str(s.amount)) for s in expense.shares), Decimal(0))
+    card = _load_credit_account(db, expense.account_id, user_id) if expense.account_id else None
+    if card:
+        _adjust_card_balance(card, Decimal(str(expense.amount)) + others)
+    # A split recurring "charges" now even without a card, so people owe their part from the first cycle
+    if card or others > 0:
+        db_expense.last_charged_date = today
 
     db.add(db_expense)
+    db.flush()
+    if expense.shares:
+        debt_service.set_recurring_shares(db, user_id, db_expense, expense.shares)
+    if db_expense.last_charged_date:
+        debt_service.record_recurring_charge(db, user_id, db_expense, today)
     db.commit()
     db.refresh(db_expense)
+    debt_service.annotate_recurring(db, [db_expense])
     return db_expense
 
 
@@ -64,11 +79,16 @@ def update_recurring_expense(
         return None
 
     update_data = expense.model_dump(exclude_unset=True)
+    update_data.pop('shares', None)
     for key, value in update_data.items():
         setattr(db_expense, key, value)
 
+    if expense.shares is not None:
+        debt_service.set_recurring_shares(db, user_id, db_expense, expense.shares)
+
     db.commit()
     db.refresh(db_expense)
+    debt_service.annotate_recurring(db, [db_expense])
     return db_expense
 
 

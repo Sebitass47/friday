@@ -83,7 +83,7 @@ def pending_debts(db: Session, user_id: UUID, person_id: UUID) -> List[dict]:
     return [{
         "id": d.id, "description": d.description, "amount": d.amount,
         "pending": _dec(d.amount) - _dec(d.settled_amount), "charge_date": d.charge_date,
-        "source": "installment" if d.installment_id else "expense",
+        "source": "installment" if d.installment_id else "recurring" if d.recurring_charge_id else "expense",
         "account_name": accounts.get(d.account_id),
     } for d in debts]
 

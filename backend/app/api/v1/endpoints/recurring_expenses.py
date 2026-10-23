@@ -35,7 +35,10 @@ def create_recurring_expense_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return create_recurring_expense(db, expense, current_user.id)
+    try:
+        return create_recurring_expense(db, expense, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{expense_id}", response_model=RecurringExpenseResponse)
@@ -57,7 +60,10 @@ def update_recurring_expense_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    db_expense = update_recurring_expense(db, expense_id, expense, current_user.id)
+    try:
+        db_expense = update_recurring_expense(db, expense_id, expense, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not db_expense:
         raise HTTPException(status_code=404, detail="Gasto recurrente no encontrado")
     return db_expense

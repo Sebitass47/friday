@@ -45,6 +45,7 @@ class PersonDebt(Base):
     expense_id = Column(UUID(as_uuid=True), ForeignKey("expenses.id", ondelete="CASCADE"), nullable=True)
     installment_id = Column(UUID(as_uuid=True), ForeignKey("installment_purchases.id", ondelete="CASCADE"), nullable=True)
     installment_index = Column(Integer, nullable=True)
+    recurring_charge_id = Column(UUID(as_uuid=True), ForeignKey("recurring_charges.id", ondelete="CASCADE"), nullable=True)
     account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     statement_month = Column(Integer, nullable=True)
     statement_year = Column(Integer, nullable=True)
@@ -95,3 +96,36 @@ class StatementCheck(Base):
     __table_args__ = (
         UniqueConstraint("account_id", "statement_year", "statement_month", name="uq_statement_check"),
     )
+
+
+class RecurringShare(Base):
+    """A person's slice of every charge of a recurring expense (`amount` on the recurring is YOUR slice)."""
+    __tablename__ = "recurring_shares"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    recurring_id = Column(UUID(as_uuid=True), ForeignKey("recurring_expenses.id", ondelete="CASCADE"), nullable=False)
+    person_id = Column(UUID(as_uuid=True), ForeignKey("people.id", ondelete="CASCADE"), nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
+
+    __table_args__ = (UniqueConstraint("recurring_id", "person_id", name="uq_recurring_share_person"),)
+
+
+class RecurringCharge(Base):
+    """One time a recurring expense hit a card (or was split). Recurring charges don't create expenses,
+    so this is the only record that lets the closing view show them on the statement."""
+    __tablename__ = "recurring_charges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # SET NULL: cancelling the subscription must not erase what people still owe from past charges
+    recurring_id = Column(UUID(as_uuid=True), ForeignKey("recurring_expenses.id", ondelete="SET NULL"), nullable=True)
+    name = Column(String, nullable=False)
+    account_id = Column(UUID(as_uuid=True), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    charge_date = Column(Date, nullable=False)
+    statement_month = Column(Integer, nullable=True)
+    statement_year = Column(Integer, nullable=True)
+    mine = Column(Numeric(12, 2), nullable=False)
+    total = Column(Numeric(12, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (Index("ix_rcharges_statement", "account_id", "statement_year", "statement_month"),)

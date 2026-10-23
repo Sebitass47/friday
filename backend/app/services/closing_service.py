@@ -15,7 +15,7 @@ from app.models.credit_payment import CreditPayment
 from app.models.enums import PaymentMethod
 from app.models.expense import Expense
 from app.models.installment_purchase import InstallmentPurchase
-from app.models.people import Person, PersonDebt, StatementCheck, InstallmentShare
+from app.models.people import Person, PersonDebt, StatementCheck, InstallmentShare, RecurringCharge
 from app.services.debt_service import add_months, statement_of
 from app.services.projection_service import MONTHS_ES
 
@@ -83,11 +83,14 @@ def get_closing(db: Session, user_id: UUID, month: Optional[int], year: Optional
         all_debts += debts
         by_expense: Dict[UUID, list] = defaultdict(list)
         by_msi: Dict[Tuple[UUID, int], list] = defaultdict(list)
+        by_rc: Dict[UUID, list] = defaultdict(list)
         for d in debts:
             if d.expense_id:
                 by_expense[d.expense_id].append(d)
             elif d.installment_id is not None:
                 by_msi[(d.installment_id, d.installment_index)].append(d)
+            elif d.recurring_charge_id:
+                by_rc[d.recurring_charge_id].append(d)
 
         def shares_of(ds: List[PersonDebt]) -> List[dict]:
             return [{"person_id": d.person_id, "person_name": names.get(d.person_id, "?"),
@@ -127,6 +130,17 @@ def get_closing(db: Session, user_id: UUID, month: Optional[int], year: Optional
                 mine += _dec(p.monthly_amount)
                 others += o
                 msi_total += _dec(p.monthly_amount) + o
+
+        for rc in db.query(RecurringCharge).filter(
+            RecurringCharge.user_id == user_id, RecurringCharge.account_id == card.id,
+            RecurringCharge.statement_month == month, RecurringCharge.statement_year == year,
+        ).all():
+            ds = by_rc.get(rc.id, [])
+            o = sum((_dec(d.amount) for d in ds), ZERO)
+            charges.append({"kind": "recurring", "id": rc.id, "name": rc.name, "date": rc.charge_date,
+                            "mine": _dec(rc.mine), "total": _dec(rc.mine) + o, "shares": shares_of(ds)})
+            mine += _dec(rc.mine)
+            others += o
 
         charges.sort(key=lambda c: c["date"])
         total = mine + others

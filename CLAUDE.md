@@ -94,6 +94,7 @@ Para cuando prestas la tarjeta, divides una cuenta o compras un MSI con alguien.
 - **Registrar** (modal "Registrar" de `/dashboard`): el monto que escribes es lo que cobra el banco; el selector ofrece *Todo mío · Dividir (por "partes", ej. yo 2 / ella 1) · Personalizado (montos exactos) · De alguien más*. El front manda `amount` = tu parte y `shares` = las de los demás (`lib/split.ts`, `computeSplit`). Igual en el modal de MSI (reparto de cada pago mensual → una deuda por mensualidad restante, con su statement según el día de corte).
 - **Cobro** (3ª pestaña del modal Registrar, `CobroForm`): eliges persona, marcas qué te pagó (autocompleta el monto) o escribes un monto suelto; lo que sobra se aplica a lo más antiguo (FIFO). `person_payments` + `payment_allocations`. **No es un `Income`**: no sube el disponible; si eliges cuenta de depósito sí suma a su `balance`. Si borras un cobro se deshace todo.
 - **Cierre** (`/dashboard/cierre`, botón "Cierre" en el header de Finanzas con chip "Te deben $X"): por *estado de cuenta* (mes/año del statement; abre en el último corte ya pasado, con flechas ±1 mes). Por tarjeta: pagar al banco, tuyo / de otros / de MSI, "Te depositan" por persona (Cobrar / Listo ✓), movimientos con a quién le toca cada parte, y **total real del estado de cuenta** (`statement_checks`) con la diferencia ("Faltan $X por registrar" / "Cuadra con el banco").
+- **Recurrentes compartidos** (ej. Totalplay $1,250 en tu tarjeta, tu mamá paga $1,100): `RecurringExpense.amount` también es **tu parte** (por eso el compromiso del ciclo ya cuenta solo tus $150) y las de los demás van en `recurring_shares`. Cada cobro genera una fila en `recurring_charges` (única huella de un recurrente en el estado de cuenta, porque los recurrentes **no crean `Expense`**) y una deuda por persona ("Totalplay · oct 2026"). La tarjeta se carga por tu parte + las de ellos, tanto al crearlo como en la tarea diaria `charge_recurring_expenses`, que ahora también procesa los recurrentes divididos sin tarjeta. Sigue habiendo **un cobro por ciclo sea cual sea la frecuencia** (así ya funcionaba con el saldo de la tarjeta). Cambiar el reparto solo afecta cobros futuros; si borras el recurrente, lo que ya te debían se conserva (`recurring_charges.recurring_id` es `SET NULL`). El Cierre muestra estos cargos como "Recurrente"; solo existen desde la migración 0028 (no hay historial anterior).
 - Reparto bloqueado si el gasto ya tiene cobros aplicados (400). Pendiente: exportar el cierre a Excel; editar el reparto de un gasto desde la UI (el backend ya lo soporta con `shares` en `PUT /expenses/{id}`).
 
 ### Recordatorios (`/recordatorios`)
@@ -301,15 +302,16 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `lists` | name, emoji, FK a users; `updated_at` se actualiza al cambiar sus elementos |
 | `list_items` | FK a lists, text, is_done, position |
 | `people` | personas con las que compartes gastos (solo nombre, `user_id`) |
-| `person_debts` | lo que una persona te debe: su parte de un gasto (`expense_id`) o de una mensualidad MSI (`installment_id` + `installment_index`); `settled_amount`, `charge_date`, `account_id` y `statement_month/year` para agrupar por cierre |
+| `person_debts` | lo que una persona te debe: su parte de un gasto (`expense_id`), de una mensualidad MSI (`installment_id` + `installment_index`) o de un cobro recurrente (`recurring_charge_id`); `settled_amount`, `charge_date`, `account_id` y `statement_month/year` para agrupar por cierre |
 | `installment_shares` | parte mensual de cada persona en un MSI |
 | `person_payments` / `payment_allocations` | cobros recibidos y a qué deudas se aplicaron |
+| `recurring_shares` / `recurring_charges` | parte de cada persona en un recurrente / bitácora de cada cobro recurrente (nombre, tarjeta, statement, tu parte y total) |
 | `statement_checks` | total real del estado de cuenta por tarjeta+mes (para calcular la diferencia) |
 | `activity_log` | historial append-only para estadísticas: `kind` (`task_done`/`task_missed`/`list_item_done`), `resource_id` (sin FK, sobrevive a borrados), `due_date`, `occurred_at` |
 | `digest_settings` | un registro por usuario: `enabled`, `sunday_on/hour`, `friday_on/hour`, `last_sent_key` |
 | `habit_logs` | FK a habits, date (Date); constraint unique (habit_id, date) — un log por hábito por día |
 
-Migraciones numeradas `0001`–`0027` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0028` en `backend/alembic/versions/`.
 
 **Zona horaria:** los contenedores corren en UTC. Nunca uses `date.today()` en el backend; usa `today_local()` de `app/core/clock.py` (America/Mexico_City). Si no, después de las 18:00 hora MX el backend ya cree que es el día siguiente (y puede saltar de ciclo).
 

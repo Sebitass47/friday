@@ -213,6 +213,7 @@ export default function DashboardPage() {
   const [regMode, setRegMode] = useState<'expense' | 'income' | 'cobro'>('expense')
   const [regSplit, setRegSplit] = useState<SplitState>(emptySplit())
   const [msiSplit, setMsiSplit] = useState<SplitState>(emptySplit())
+  const [recSplit, setRecSplit] = useState<SplitState>(emptySplit())
   const [people, setPeople] = useState<Person[]>([])
   const [regAmount, setRegAmount] = useState('')
   const [regDesc, setRegDesc] = useState('')
@@ -508,18 +509,24 @@ export default function DashboardPage() {
   }
 
   // Recurring CRUD
-  function openNewRec() { setRecForm(REC_EMPTY); setRecError(''); setActiveModal('recurring') }
+  function openNewRec() { setRecForm(REC_EMPTY); setRecSplit(emptySplit()); setRecError(''); setActiveModal('recurring') }
   function openEditRec(e: RecurringExpense) {
-    setRecForm({ name: e.name, amount: Number(e.amount), frequency: e.frequency, interval_days: e.interval_days, account_id: e.account_id, id: e.id })
+    // For a shared charge the form works with the full amount; the split is rebuilt from the saved shares
+    setRecForm({ name: e.name, amount: Number(e.total_amount ?? e.amount), frequency: e.frequency, interval_days: e.interval_days, account_id: e.account_id, id: e.id })
+    setRecSplit(splitFromShares((e.shares ?? []).map(sh => ({ person_id: sh.person_id, amount: Number(sh.amount) }))))
     setRecError(''); setActiveModal('recurring')
   }
   async function saveRec() {
     if (!recForm.name.trim()) { setRecError('El nombre es requerido'); return }
     const recAmount = Number(recForm.amount)
     if (!recAmount || recAmount <= 0) { setRecError('El monto debe ser mayor a 0'); return }
+    const split = computeSplit(recAmount, recSplit)
+    if (split.error) { setRecError(split.error); return }
     setRecSaving(true); setRecError('')
     try {
-      const payload = { ...recForm, amount: recAmount }
+      // `amount` is saved as YOUR part of each charge; the others' parts go in `shares`
+      const { id: _id, ...rest } = recForm
+      const payload = { ...rest, amount: split.mine, shares: split.shares }
       if (recForm.id) await updateRecurringExpense(recForm.id, payload)
       else await createRecurringExpense(payload)
       setRecurring(await getRecurringExpenses()); setActiveModal(null)
@@ -1091,6 +1098,9 @@ export default function DashboardPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {e.shares && e.shares.length > 0 && (
+                            <span title={`De ${fmt(Number(e.total_amount))} · con ${e.shares.map(sh => sh.person_name).join(', ')}`} className="text-[10px] cursor-help">👥</span>
+                          )}
                           <span className="text-xs font-semibold text-black/70 dark:text-white/70 tabular-nums">{fmt(Number(e.amount))}</span>
                           <button onClick={() => openEditRec(e)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
                           <button onClick={() => deleteRec(e.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
@@ -1562,6 +1572,9 @@ export default function DashboardPage() {
               )}
             </FormField>
           )}
+          <FormField label="¿Quién paga este gasto?">
+            <SplitPicker total={Number(recForm.amount) || 0} value={recSplit} onChange={setRecSplit} people={people} onCreatePerson={addPerson} subject="cada cobro" />
+          </FormField>
           <FormActions onCancel={() => setActiveModal(null)} onSave={saveRec} saving={recSaving} error={recError} />
         </Modal>
       )}

@@ -96,10 +96,10 @@ export async function transferBetweenAccounts(data: {
 export async function getRecurringExpenses(): Promise<RecurringExpense[]> {
   return req('/recurring-expenses/')
 }
-export async function createRecurringExpense(data: Omit<RecurringExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<RecurringExpense> {
+export async function createRecurringExpense(data: Omit<RecurringExpense, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'shares' | 'total_amount'> & { shares?: { person_id: string; amount: number }[] }): Promise<RecurringExpense> {
   return req('/recurring-expenses/', { method: 'POST', body: JSON.stringify(data) })
 }
-export async function updateRecurringExpense(id: string, data: Partial<RecurringExpense>): Promise<RecurringExpense> {
+export async function updateRecurringExpense(id: string, data: Partial<Omit<RecurringExpense, 'shares'>> & { shares?: { person_id: string; amount: number }[] }): Promise<RecurringExpense> {
   return req(`/recurring-expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 export async function deleteRecurringExpense(id: string): Promise<void> {

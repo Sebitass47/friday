@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from app.models.account import Account
 from app.models.expense import Expense
 from app.models.installment_purchase import InstallmentPurchase
-from app.models.people import Person, PersonDebt, InstallmentShare
+from app.models.people import Person, PersonDebt, InstallmentShare, RecurringShare, RecurringCharge
+from app.models.recurring_expense import RecurringExpense
 from app.schemas.people import ShareIn, InstallmentShareIn
 
 ZERO = Decimal("0")
@@ -166,3 +167,74 @@ def annotate_installments(db: Session, purchases: List[InstallmentPurchase]) -> 
         shares = by_p.get(p.id, [])
         p.shares = shares
         p.total_monthly = Decimal(str(p.monthly_amount)) + sum((Decimal(str(s["monthly_amount"])) for s in shares), ZERO)
+
+
+# ── Recurring expenses ────────────────────────────────────────────────────────
+
+MONTHS_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+
+def recurring_total(db: Session, rec: RecurringExpense) -> Decimal:
+    """What each charge really is: your part + everyone else's."""
+    others = db.query(func.coalesce(func.sum(RecurringShare.amount), 0)).filter(RecurringShare.recurring_id == rec.id).scalar()
+    return Decimal(str(rec.amount)) + Decimal(str(others))
+
+
+def set_recurring_shares(db: Session, user_id: UUID, rec: RecurringExpense, shares: List[ShareIn]) -> None:
+    """Replaces the split used for FUTURE charges; debts from past charges are untouched."""
+    _check_people(db, user_id, (s.person_id for s in shares))
+    db.query(RecurringShare).filter(RecurringShare.recurring_id == rec.id).delete()
+    for s in shares:
+        db.add(RecurringShare(recurring_id=rec.id, person_id=s.person_id, amount=s.amount))
+    db.flush()
+
+
+def annotate_recurring(db: Session, items: List[RecurringExpense]) -> None:
+    if not items:
+        return
+    rows = (
+        db.query(RecurringShare, Person.name)
+        .join(Person, Person.id == RecurringShare.person_id)
+        .filter(RecurringShare.recurring_id.in_([r.id for r in items]))
+        .all()
+    )
+    by_r: Dict[UUID, list] = {}
+    for sh, name in rows:
+        by_r.setdefault(sh.recurring_id, []).append(
+            {"person_id": sh.person_id, "person_name": name, "amount": sh.amount, "settled": ZERO}
+        )
+    for r in items:
+        shares = by_r.get(r.id, [])
+        r.shares = shares
+        r.total_amount = Decimal(str(r.amount)) + sum((Decimal(str(s["amount"])) for s in shares), ZERO)
+
+
+def record_recurring_charge(db: Session, user_id: UUID, rec: RecurringExpense, charge_date: date):
+    """Log one charge of a recurring expense and create what each person owes for it.
+    Only logs when it hit a credit card or is split (otherwise it never mattered to the closing)."""
+    from app.models.account import AccountType
+
+    shares = db.query(RecurringShare).filter(RecurringShare.recurring_id == rec.id).all()
+    account = db.query(Account).filter(Account.id == rec.account_id).first() if rec.account_id else None
+    is_card = bool(account and account.account_type == AccountType.CREDIT_CARD)
+    if not is_card and not shares:
+        return None
+
+    month = year = None
+    if is_card and account.closing_day:
+        month, year = statement_of(charge_date, account.closing_day)
+    others = sum((Decimal(str(s.amount)) for s in shares), ZERO)
+    charge = RecurringCharge(
+        user_id=user_id, recurring_id=rec.id, name=rec.name, account_id=rec.account_id, charge_date=charge_date,
+        statement_month=month, statement_year=year, mine=rec.amount, total=Decimal(str(rec.amount)) + others,
+    )
+    db.add(charge)
+    db.flush()
+    label = f"{rec.name} · {MONTHS_ES[charge_date.month - 1]} {charge_date.year}"
+    for s in shares:
+        db.add(PersonDebt(
+            user_id=user_id, person_id=s.person_id, description=label, amount=s.amount, charge_date=charge_date,
+            recurring_charge_id=charge.id, account_id=rec.account_id, statement_month=month, statement_year=year,
+        ))
+    db.flush()
+    return charge

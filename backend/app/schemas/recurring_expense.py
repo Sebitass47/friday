@@ -1,9 +1,10 @@
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime, date
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, field_validator
 from app.models.recurring_expense import ExpenseFrequency
+from app.schemas.people import ShareIn, ShareOut
 
 
 class RecurringExpenseBase(BaseModel):
@@ -23,7 +24,8 @@ class RecurringExpenseBase(BaseModel):
 
 
 class RecurringExpenseCreate(RecurringExpenseBase):
-    pass
+    # `amount` is YOUR part of each charge; these are other people's parts
+    shares: List[ShareIn] = []
 
 
 class RecurringExpenseUpdate(BaseModel):
@@ -32,12 +34,17 @@ class RecurringExpenseUpdate(BaseModel):
     frequency: Optional[ExpenseFrequency] = None
     interval_days: Optional[int] = None
     account_id: Optional[UUID] = None
+    # None = leave the split as it is; a list (even empty) replaces it for future charges
+    shares: Optional[List[ShareIn]] = None
 
 
 class RecurringExpenseResponse(RecurringExpenseBase):
     id: UUID
     user_id: UUID
     last_charged_date: Optional[date] = None
+    shares: List[ShareOut] = []
+    # What is charged each time: your part + everyone else's
+    total_amount: Optional[Decimal] = None
     created_at: datetime
     updated_at: datetime
 

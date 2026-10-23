@@ -426,17 +426,6 @@ export interface ClosingCard {
   charges: ClosingCharge[]
 }
 
-export interface UpcomingDebt {
-  person_id: string
-  person_name: string
-  description: string
-  charge_date: string
-  amount: number
-  account_name: string | null
-  statement_month: number | null
-  statement_year: number | null
-}
-
 export interface Closing {
   month: number
   year: number
@@ -447,6 +436,4 @@ export interface Closing {
   others: number
   to_collect: number
   people: ClosingPerson[]
-  // Owed later (charge date still in the future), e.g. a shared MSI that starts next month
-  upcoming?: UpcomingDebt[]
 }

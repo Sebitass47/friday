@@ -190,19 +190,6 @@ def get_closing(db: Session, user_id: UUID, month: Optional[int], year: Optional
 
     people = _person_rows(all_debts, names)
 
-    # Debts dated in the near future don't count as collectable yet, but they must not be invisible:
-    # a shared MSI that starts next month would otherwise show up nowhere until its first charge date.
-    horizon = today_local() + timedelta(days=75)
-    card_names = {a.id: a.name for a in cards}
-    upcoming = [{
-        "person_id": d.person_id, "person_name": names.get(d.person_id, "?"), "description": d.description,
-        "charge_date": d.charge_date, "amount": _dec(d.amount) - _dec(d.settled_amount),
-        "account_name": card_names.get(d.account_id), "statement_month": d.statement_month, "statement_year": d.statement_year,
-    } for d in db.query(PersonDebt).filter(
-        PersonDebt.user_id == user_id, PersonDebt.charge_date > today_local(), PersonDebt.charge_date <= horizon,
-        PersonDebt.amount > PersonDebt.settled_amount,
-    ).order_by(PersonDebt.charge_date, PersonDebt.created_at).limit(40).all()]
-
     return {
         "month": month, "year": year, "label": f"{MONTHS_ES[month - 1]} {year}",
         "cards": out_cards,
@@ -211,7 +198,6 @@ def get_closing(db: Session, user_id: UUID, month: Optional[int], year: Optional
         "others": sum((c["others"] for c in out_cards), ZERO),
         "to_collect": sum((p["pending"] for p in people), ZERO),
         "people": people,
-        "upcoming": upcoming,
     }
 
 

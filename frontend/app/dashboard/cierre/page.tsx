@@ -11,7 +11,6 @@ import type { Account, Closing, ClosingCard, ClosingCharge, ClosingPerson } from
 const money = (n: number) =>
   `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const fmtDate = (iso: string) => iso.split('-').reverse().join('/')
-const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const GREEN = '#34d399'
 const CORAL = '#FF6B6B'
 
@@ -329,27 +328,6 @@ export default function CierrePage() {
                       open={openPerson === p.person_id} onToggle={() => setOpenPerson(o => o === p.person_id ? null : p.person_id)}>
                       <PersonDetails groups={movementsOf(p.person_id, data.cards)} overallPending={overall[p.person_id]} />
                     </PersonRow>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {data.upcoming && data.upcoming.length > 0 && (
-              <section className="glass rounded-2xl p-4 sm:p-5">
-                <h2 className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">Próximos cobros</h2>
-                <p className="text-[11px] text-black/40 dark:text-white/40 mt-0.5">Ya registrados, pero su fecha aún no llega: todavía no cuentan en “Por cobrar”.</p>
-                <div className="mt-2 divide-y divide-black/[0.06] dark:divide-white/[0.08]">
-                  {data.upcoming.map((u, i) => (
-                    <div key={`${u.person_id}-${u.description}-${i}`} className="flex items-center gap-3 py-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-black dark:text-white truncate">{u.person_name} · {u.description}</p>
-                        <p className="text-[11px] text-black/40 dark:text-white/40">
-                          {fmtDate(u.charge_date)}{u.account_name ? ` · ${u.account_name}` : ''}
-                          {u.statement_month && u.statement_year ? ` · cae en el cierre de ${MONTHS_SHORT[u.statement_month - 1]} ${u.statement_year}` : ''}
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold tabular-nums text-black dark:text-white">{money(Number(u.amount))}</span>
-                    </div>
                   ))}
                 </div>
               </section>

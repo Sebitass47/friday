@@ -753,8 +753,8 @@ export default function DashboardPage() {
     <AppLayout>
       <div className="max-w-7xl mx-auto space-y-5">
 
-        {/* Header */}
-        <div className="flex items-start justify-between">
+        {/* Header: on phones the title takes the full width and the buttons stack below it */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs text-black/40 dark:text-white/40 capitalize">
               {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -763,22 +763,22 @@ export default function DashboardPage() {
               💸 Tu dinero, bajo control
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Link
               href="/dashboard/cierre"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold border border-black/10 dark:border-white/10 text-black/70 dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              className="flex-[1.4] sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 sm:py-2 rounded-xl text-sm font-semibold border border-black/10 dark:border-white/10 text-black/70 dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               <ClipboardCheck size={15} />
               Cierre
               {people.some(p => Number(p.pending_total) > 0) && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <span className="whitespace-nowrap text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                   Te deben {fmt(people.reduce((a, p) => a + Number(p.pending_total), 0))}
                 </span>
               )}
             </Link>
             <button
               onClick={openRegister}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white dark:text-black transition-all hover:opacity-90 active:scale-95 ${ACCENT_BG}`}
+              className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 sm:py-2 rounded-xl text-sm font-semibold text-white dark:text-black transition-all hover:opacity-90 active:scale-95 ${ACCENT_BG}`}
             >
               <Plus size={15} strokeWidth={2.5} />
               Registrar

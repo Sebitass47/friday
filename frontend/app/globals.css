@@ -166,3 +166,11 @@
     inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 }
 }
+
+/* Tailwind v4 no longer gives buttons a pointer cursor; restore it app-wide */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}

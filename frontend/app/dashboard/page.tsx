@@ -214,6 +214,7 @@ export default function DashboardPage() {
   const [regSplit, setRegSplit] = useState<SplitState>(emptySplit())
   const [msiSplit, setMsiSplit] = useState<SplitState>(emptySplit())
   const [recSplit, setRecSplit] = useState<SplitState>(emptySplit())
+  const [editSplit, setEditSplit] = useState<SplitState>(emptySplit())
   const [people, setPeople] = useState<Person[]>([])
   const [regAmount, setRegAmount] = useState('')
   const [regDesc, setRegDesc] = useState('')
@@ -326,7 +327,9 @@ export default function DashboardPage() {
   function openEditExpense(exp: Expense) {
     setEditingExpense(exp)
     setEditExpDesc(exp.name)
-    setEditExpAmount(String(exp.amount))
+    // For a shared expense the form works with what the bank charged; the split is rebuilt from the saved shares
+    setEditExpAmount(String(Number(exp.total_amount ?? exp.amount)))
+    setEditSplit(splitFromShares((exp.shares ?? []).map(sh => ({ person_id: sh.person_id, amount: Number(sh.amount) }))))
     setEditExpDate(exp.date)
     setEditExpMethod(exp.payment_method)
     setEditExpAccountId(exp.account_id ?? '')
@@ -337,19 +340,30 @@ export default function DashboardPage() {
   async function handleUpdateExpense() {
     if (!editingExpense || !editExpDesc || !editExpAmount) { setEditExpError('Completa descripción y monto'); return }
     if (!editExpCategory) { setEditExpError('Selecciona una categoría'); return }
+    const split = computeSplit(parseFloat(editExpAmount), editSplit)
+    if (split.error) { setEditExpError(split.error); return }
+    // Only send the split when it actually changed, so editing a name/amount of an expense that
+    // already has cobros applied doesn't trip the "can't change the split" guard
+    const keyOf = (xs: { person_id: string; amount: number }[]) =>
+      JSON.stringify(xs.map(x => [x.person_id, Math.round(Number(x.amount) * 100)]).sort())
+    const originalShares = (editingExpense.shares ?? []).map(sh => ({ person_id: sh.person_id, amount: Number(sh.amount) }))
+    const splitChanged = keyOf(split.shares) !== keyOf(originalShares)
     setEditExpSaving(true); setEditExpError('')
     try {
       await updateExpense(editingExpense.id, {
         name: editExpDesc,
-        amount: parseFloat(editExpAmount),
+        amount: split.mine,
         date: editExpDate,
         payment_method: editExpMethod,
         account_id: editExpAccountId || undefined,
         category: editExpCategory || null,
+        ...(splitChanged ? { shares: split.shares } : {}),
       })
       setExpenses(await getExpenses())
+      const [a, ppl] = await Promise.all([getAccounts(), getPeople()])
+      setAccounts(a); setPeople(ppl)
       setEditingExpense(null)
-    } catch { setEditExpError('Error al guardar') }
+    } catch (e: unknown) { setEditExpError(e instanceof Error ? e.message : 'Error al guardar') }
     finally { setEditExpSaving(false) }
   }
 
@@ -1918,6 +1932,17 @@ export default function DashboardPage() {
 
           <FormField label="Categoría">
             <CategorySelector value={editExpCategory} onChange={setEditExpCategory} required />
+          </FormField>
+
+          <FormField label="¿De quién es este gasto?">
+            {editingExpense.shares?.some(sh => Number(sh.settled) > 0) && (
+              <p className="text-[11px] text-amber-500 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mb-2">
+                Ya tiene cobros aplicados: el reparto no se puede cambiar. Borra primero ese cobro si necesitas ajustarlo.
+              </p>
+            )}
+            <div className={editingExpense.shares?.some(sh => Number(sh.settled) > 0) ? 'opacity-50 pointer-events-none' : ''}>
+              <SplitPicker total={parseFloat(editExpAmount) || 0} value={editSplit} onChange={setEditSplit} people={people} onCreatePerson={addPerson} subject="este gasto" />
+            </div>
           </FormField>
 
           {editExpError && <p className="text-xs text-red-400">{editExpError}</p>}

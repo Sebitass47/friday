@@ -193,6 +193,8 @@ export async function updateExpense(id: string, data: {
   date?: string
   payment_method?: 'cash' | 'debit' | 'credit' | 'savings'
   category?: string | null
+  // Omit to keep the current split; a list (even empty) replaces it
+  shares?: { person_id: string; amount: number }[]
 }): Promise<Expense> {
   return req(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }

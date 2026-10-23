@@ -126,6 +126,18 @@ class ClosingCard(BaseModel):
     charges: List[ClosingCharge] = []
 
 
+class UpcomingDebt(BaseModel):
+    """Something a person will owe you but whose charge date hasn't arrived (e.g. a shared MSI that starts next month)."""
+    person_id: UUID
+    person_name: str
+    description: str
+    charge_date: date
+    amount: Decimal
+    account_name: Optional[str] = None
+    statement_month: Optional[int] = None
+    statement_year: Optional[int] = None
+
+
 class ClosingResponse(BaseModel):
     month: int
     year: int
@@ -136,6 +148,7 @@ class ClosingResponse(BaseModel):
     others: Decimal
     to_collect: Decimal     # still pending from people for this closing
     people: List[ClosingPerson]
+    upcoming: List[UpcomingDebt] = []
 
 
 class StatementCheckIn(BaseModel):

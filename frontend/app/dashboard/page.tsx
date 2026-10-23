@@ -457,8 +457,9 @@ export default function DashboardPage() {
     // For a shared MSI the form works with what the card charges (your part + theirs); the split is rebuilt from the saved shares
     const mine = Number(item.monthly_amount)
     const full = Number(item.total_monthly ?? mine)
-    const scale = mine > 0 ? full / mine : 1
-    setMsiForm({ name: item.name, total_amount: Math.round(Number(item.total_amount) * scale * 100) / 100, monthly_amount: full, total_installments: item.total_installments, remaining_installments: item.remaining_installments, start_date: item.start_date, account_id: item.account_id, is_new_charge: false, id: item.id })
+    // If it's 100% someone else's, `mine` (and the saved total) is 0: rebuild the total from the monthly charge
+    const fullTotal = mine > 0 ? Number(item.total_amount) * (full / mine) : full * item.total_installments
+    setMsiForm({ name: item.name, total_amount: Math.round(fullTotal * 100) / 100, monthly_amount: full, total_installments: item.total_installments, remaining_installments: item.remaining_installments, start_date: item.start_date, account_id: item.account_id, is_new_charge: false, id: item.id })
     setMsiSplit(splitFromShares((item.shares ?? []).map(sh => ({ person_id: sh.person_id, amount: Number(sh.monthly_amount) }))))
     setMsiError(''); setActiveModal('msi')
   }

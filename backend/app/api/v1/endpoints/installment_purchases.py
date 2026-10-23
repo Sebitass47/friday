@@ -37,7 +37,10 @@ def create_installment_purchase_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return create_installment_purchase(db, purchase, current_user.id)
+    try:
+        return create_installment_purchase(db, purchase, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{purchase_id}", response_model=InstallmentPurchaseResponse)
@@ -59,7 +62,10 @@ def update_installment_purchase_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    db_purchase = update_installment_purchase(db, purchase_id, purchase, current_user.id)
+    try:
+        db_purchase = update_installment_purchase(db, purchase_id, purchase, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not db_purchase:
         raise HTTPException(status_code=404, detail="MSI no encontrado")
     return db_purchase

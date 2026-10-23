@@ -47,6 +47,10 @@ export interface InstallmentPurchase {
   start_date: string
   paid_month: number | null
   paid_year: number | null
+  // Other people's parts of each monthly payment (monthly_amount is YOUR part)
+  shares?: InstallmentShare[]
+  // What the card is charged each month: your part + everyone else's
+  total_monthly?: number | null
   created_at: string
   updated_at: string
 }
@@ -112,6 +116,9 @@ export interface Expense {
   credit_statement_month: number | null
   credit_statement_year: number | null
   paid: boolean
+  // `amount` is YOUR part; the bank is charged total_amount (your part + shares)
+  total_amount?: number | null
+  shares?: ExpenseShare[]
   created_at: string
   updated_at: string
 }
@@ -330,4 +337,97 @@ export interface DigestSettings {
   sunday_hour: number
   friday_on: boolean
   friday_hour: number
+}
+
+// ── People & shared charges ──────────────────────────────────────────────────
+
+export interface Person {
+  id: string
+  name: string
+  pending_total: number
+  pending_count: number
+}
+
+export interface ExpenseShare {
+  person_id: string
+  person_name: string
+  amount: number
+  settled: number
+}
+
+export interface InstallmentShare {
+  person_id: string
+  person_name: string
+  monthly_amount: number
+}
+
+export interface PendingDebt {
+  id: string
+  description: string
+  amount: number
+  pending: number
+  charge_date: string
+  source: 'expense' | 'installment'
+  account_name: string | null
+}
+
+export interface PersonPayment {
+  id: string
+  person_id: string
+  person_name: string
+  amount: number
+  date: string
+  account_id: string | null
+  note: string | null
+  allocated: { debt_id: string; description: string; amount: number }[]
+  unallocated: number
+}
+
+export interface ClosingPerson {
+  person_id: string
+  person_name: string
+  owed: number
+  settled: number
+  pending: number
+}
+
+export interface ClosingCharge {
+  kind: 'expense' | 'installment'
+  id: string
+  name: string
+  date: string
+  mine: number
+  total: number
+  shares: { person_id: string; person_name: string; amount: number; settled: number }[]
+}
+
+export interface ClosingCard {
+  account_id: string
+  name: string
+  closing_day: number
+  payment_day: number | null
+  period_start: string
+  period_end: string
+  total: number
+  mine: number
+  others: number
+  msi_total: number
+  paid: number
+  real_total: number | null
+  // real_total - total: > 0 means something is missing in FRIDAY
+  difference: number | null
+  people: ClosingPerson[]
+  charges: ClosingCharge[]
+}
+
+export interface Closing {
+  month: number
+  year: number
+  label: string
+  cards: ClosingCard[]
+  total: number
+  mine: number
+  others: number
+  to_collect: number
+  people: ClosingPerson[]
 }

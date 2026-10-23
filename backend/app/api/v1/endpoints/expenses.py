@@ -66,7 +66,10 @@ def update_expense_endpoint(
     current_user: User = Depends(get_current_user),
 ):
     """Actualizar un gasto"""
-    db_expense = update_expense(db, expense_id, expense_update, current_user.id)
+    try:
+        db_expense = update_expense(db, expense_id, expense_update, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not db_expense:
         raise HTTPException(status_code=404, detail="Gasto no encontrado")
     return db_expense

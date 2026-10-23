@@ -166,7 +166,7 @@ export default function Sidebar({ hideExternalToggle = false }: { hideExternalTo
         <p className="text-[10px] font-semibold text-black/30 dark:text-white/30 uppercase tracking-widest px-2 mb-2">Espacio</p>
         <nav className="space-y-0.5">
           {NAV.map(({ href, icon: Icon, label }) => {
-            const active = pathname === href || (href !== '/' && href !== '/dashboard' && pathname.startsWith(href))
+            const active = pathname === href || (href !== '/' && pathname.startsWith(href + '/')) || (href !== '/' && href !== '/dashboard' && pathname.startsWith(href))
             return (
               <Link
                 key={href}

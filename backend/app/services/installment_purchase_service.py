@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.installment_purchase import InstallmentPurchase
 from app.models.account import Account
 from app.schemas.installment_purchase import InstallmentPurchaseCreate, InstallmentPurchaseUpdate
+from app.services import debt_service
 
 
 def _adjust_card_balance(account: Account, delta: Decimal) -> None:
@@ -17,7 +18,9 @@ def _adjust_card_balance(account: Account, delta: Decimal) -> None:
 
 
 def get_installment_purchases(db: Session, user_id: UUID) -> List[InstallmentPurchase]:
-    return db.query(InstallmentPurchase).filter(InstallmentPurchase.user_id == user_id).all()
+    rows = db.query(InstallmentPurchase).filter(InstallmentPurchase.user_id == user_id).all()
+    debt_service.annotate_installments(db, rows)
+    return rows
 
 
 def get_active_installment_purchases(db: Session, user_id: UUID) -> List[InstallmentPurchase]:
@@ -28,10 +31,13 @@ def get_active_installment_purchases(db: Session, user_id: UUID) -> List[Install
 
 
 def get_installment_purchase(db: Session, purchase_id: UUID, user_id: UUID) -> Optional[InstallmentPurchase]:
-    return db.query(InstallmentPurchase).filter(
+    row = db.query(InstallmentPurchase).filter(
         InstallmentPurchase.id == purchase_id,
         InstallmentPurchase.user_id == user_id,
     ).first()
+    if row:
+        debt_service.annotate_installments(db, [row])
+    return row
 
 
 def create_installment_purchase(db: Session, purchase: InstallmentPurchaseCreate, user_id: UUID) -> InstallmentPurchase:
@@ -53,12 +59,18 @@ def create_installment_purchase(db: Session, purchase: InstallmentPurchaseCreate
             Account.user_id == user_id,
         ).first()
         if account:
-            remaining_total = purchase.monthly_amount * purchase.remaining_installments
+            # The card is charged your part + everyone else's of each month
+            others = sum((s.monthly_amount for s in purchase.shares), Decimal(0))
+            remaining_total = (purchase.monthly_amount + others) * purchase.remaining_installments
             _adjust_card_balance(account, remaining_total)
 
     db.add(db_purchase)
+    db.flush()
+    if purchase.shares:
+        debt_service.set_installment_shares(db, user_id, db_purchase, purchase.shares)
     db.commit()
     db.refresh(db_purchase)
+    debt_service.annotate_installments(db, [db_purchase])
     return db_purchase
 
 
@@ -70,11 +82,19 @@ def update_installment_purchase(
         return None
 
     update_data = purchase.model_dump(exclude_unset=True)
+    update_data.pop('shares', None)
     for key, value in update_data.items():
         setattr(db_purchase, key, value)
 
+    db.flush()
+    if purchase.shares is not None:
+        debt_service.set_installment_shares(db, user_id, db_purchase, purchase.shares)
+    else:
+        debt_service.ensure_installment_debts(db, user_id, db_purchase)
+
     db.commit()
     db.refresh(db_purchase)
+    debt_service.annotate_installments(db, [db_purchase])
     return db_purchase
 
 
@@ -92,7 +112,7 @@ def mark_paid_this_month(db: Session, purchase_id: UUID, user_id: UUID) -> Optio
     if db_purchase.account_id:
         account = db.query(Account).filter(Account.id == db_purchase.account_id, Account.user_id == user_id).first()
         if account:
-            _adjust_card_balance(account, -db_purchase.monthly_amount)
+            _adjust_card_balance(account, -debt_service.total_monthly(db, db_purchase))
 
     db.commit()
     db.refresh(db_purchase)
@@ -105,7 +125,7 @@ def liquidate(db: Session, purchase_id: UUID, user_id: UUID) -> Optional[Install
     if not db_purchase or db_purchase.remaining_installments <= 0:
         return None
 
-    remaining_total = db_purchase.monthly_amount * db_purchase.remaining_installments
+    remaining_total = debt_service.total_monthly(db, db_purchase) * db_purchase.remaining_installments
     db_purchase.remaining_installments = 0
 
     if db_purchase.account_id:

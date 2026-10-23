@@ -84,6 +84,18 @@ Todo vive en `frontend/app/dashboard/page.tsx` (un archivo grande, ~1200 líneas
 
 Ya no es una página separada. Vive al final de la página de Finanzas, debajo de la Proyección 12 meses. Simula el impacto de una compra a MSI en los próximos 12 meses. Llama a `POST /projection/simulate/`.
 
+### Gastos compartidos, cobros y Cierre (`/dashboard/cierre`)
+
+Para cuando prestas la tarjeta, divides una cuenta o compras un MSI con alguien.
+
+**⚠️ Convención clave:** `Expense.amount` y `InstallmentPurchase.monthly_amount` siguen siendo **TU parte**, así que todo lo de disponible/proyección/gráficas/estadísticas no cambió. Lo de los demás vive en `person_debts` (gastos) e `installment_shares` (MSI). Lo que el banco realmente cobra = tu parte + las de los demás (`debt_service.expense_total` / `total_monthly`), y **eso** es lo que mueve `current_balance_used` / `balance` al crear, editar y borrar (nunca uses solo `amount` para saldos de cuentas). Un gasto 100% de otra persona tiene `amount = 0`.
+
+- **Personas** (`people`): solo un nombre, sin cuenta de FRIDAY. Se crean al vuelo desde el selector (`SplitPicker`, que autocompleta con las existentes).
+- **Registrar** (modal "Registrar" de `/dashboard`): el monto que escribes es lo que cobra el banco; el selector ofrece *Todo mío · Dividir (por "partes", ej. yo 2 / ella 1) · Personalizado (montos exactos) · De alguien más*. El front manda `amount` = tu parte y `shares` = las de los demás (`lib/split.ts`, `computeSplit`). Igual en el modal de MSI (reparto de cada pago mensual → una deuda por mensualidad restante, con su statement según el día de corte).
+- **Cobro** (3ª pestaña del modal Registrar, `CobroForm`): eliges persona, marcas qué te pagó (autocompleta el monto) o escribes un monto suelto; lo que sobra se aplica a lo más antiguo (FIFO). `person_payments` + `payment_allocations`. **No es un `Income`**: no sube el disponible; si eliges cuenta de depósito sí suma a su `balance`. Si borras un cobro se deshace todo.
+- **Cierre** (`/dashboard/cierre`, botón "Cierre" en el header de Finanzas con chip "Te deben $X"): por *estado de cuenta* (mes/año del statement; abre en el último corte ya pasado, con flechas ±1 mes). Por tarjeta: pagar al banco, tuyo / de otros / de MSI, "Te depositan" por persona (Cobrar / Listo ✓), movimientos con a quién le toca cada parte, y **total real del estado de cuenta** (`statement_checks`) con la diferencia ("Faltan $X por registrar" / "Cuadra con el banco").
+- Reparto bloqueado si el gasto ya tiene cobros aplicados (400). Pendiente: exportar el cierre a Excel; editar el reparto de un gasto desde la UI (el backend ya lo soporta con `shares` en `PUT /expenses/{id}`).
+
 ### Recordatorios (`/recordatorios`)
 
 Lista de recordatorios/tareas personales. Diseño minimalista dark con panel lateral derecho para crear/editar.
@@ -258,6 +270,7 @@ tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
 notes.py             CRUD /notes/ + POST /{id}/toggle-pin
 lists.py             GET/POST /lists/, PUT/DELETE /lists/{id}, POST /lists/{id}/items, PUT/DELETE /lists/{id}/items/{item_id}, POST /lists/{id}/clear-completed
 stats.py             GET /stats/ (hábitos, recordatorios, listas y finanzas en una sola respuesta)
+people.py            CRUD /people/, GET /people/{id}/pending, GET|POST /people/{id}/payments, DELETE /people/payments/{id}, GET /closing/?month=&year=, PUT /closing/check
 digest.py            GET/PUT /digest/settings, POST /digest/test?kind=&send=
 shares.py            POST /shares/lookup, POST /shares/ {resource_type, resource_id, email}, DELETE /shares/{type}/{id}/{user_id}, GET /contacts/, DELETE /contacts/{user_id}
 habits.py            GET /habits/?week_start=YYYY-MM-DD, POST /habits/, PUT /habits/{id}?week_start=, DELETE /habits/{id}, POST /habits/{id}/toggle
@@ -287,11 +300,16 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `contacts` | personas con las que el usuario ya compartió (`owner_id`, `contact_user_id`) |
 | `lists` | name, emoji, FK a users; `updated_at` se actualiza al cambiar sus elementos |
 | `list_items` | FK a lists, text, is_done, position |
+| `people` | personas con las que compartes gastos (solo nombre, `user_id`) |
+| `person_debts` | lo que una persona te debe: su parte de un gasto (`expense_id`) o de una mensualidad MSI (`installment_id` + `installment_index`); `settled_amount`, `charge_date`, `account_id` y `statement_month/year` para agrupar por cierre |
+| `installment_shares` | parte mensual de cada persona en un MSI |
+| `person_payments` / `payment_allocations` | cobros recibidos y a qué deudas se aplicaron |
+| `statement_checks` | total real del estado de cuenta por tarjeta+mes (para calcular la diferencia) |
 | `activity_log` | historial append-only para estadísticas: `kind` (`task_done`/`task_missed`/`list_item_done`), `resource_id` (sin FK, sobrevive a borrados), `due_date`, `occurred_at` |
 | `digest_settings` | un registro por usuario: `enabled`, `sunday_on/hour`, `friday_on/hour`, `last_sent_key` |
 | `habit_logs` | FK a habits, date (Date); constraint unique (habit_id, date) — un log por hábito por día |
 
-Migraciones numeradas `0001`–`0026` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0027` en `backend/alembic/versions/`.
 
 **Zona horaria:** los contenedores corren en UTC. Nunca uses `date.today()` en el backend; usa `today_local()` de `app/core/clock.py` (America/Mexico_City). Si no, después de las 18:00 hora MX el backend ya cree que es el día siguiente (y puede saltar de ciclo).
 
@@ -317,6 +335,7 @@ frontend/
 │   ├── notas/page.tsx              # Notas con colores
 │   ├── habitos/page.tsx            # Tracker semanal de hábitos
 │   ├── estadisticas/page.tsx       # Estadísticas (Hábitos · Recordatorios y listas · Finanzas)
+│   ├── dashboard/cierre/page.tsx   # Cierre de tarjetas (qué pagar, qué te deben, diferencia con el banco)
 │   ├── listas/page.tsx             # Listas con emoji y elementos marcables
 │   ├── layout.tsx                  # Root layout con ThemeProvider
 │   └── globals.css
@@ -332,6 +351,8 @@ frontend/
 │   │   ├── custom-select.tsx       # Dropdown custom (reemplaza <select> nativo)
 │   │   ├── glass-card.tsx          # Card con efecto glassmorphism
 │   │   └── ...                     # button, card, dialog, input, label
+│   ├── SplitPicker.tsx             # Selector Todo mío / Dividir / Personalizado / De alguien más + personas
+│   ├── CobroForm.tsx               # Registrar un cobro (alguien te pagó)
 │   ├── DigestControls.tsx          # Campana + botón "Resumen" (días configurados) + modal del resumen completo
 │   ├── DigestSettings.tsx          # Modal de ajustes del resumen semanal (lo controla DigestControls)
 │   ├── ShareSection.tsx            # Selector para compartir (personas, sugeridos, correo)

@@ -17,3 +17,4 @@ from app.models.user_list import UserList, ListItem
 from app.models.share import Share, Contact
 from app.models.activity_log import ActivityLog
 from app.models.digest_settings import DigestSettings
+from app.models.people import Person, InstallmentShare, PersonDebt, PersonPayment, PaymentAllocation, StatementCheck

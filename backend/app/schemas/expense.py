@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 from datetime import date, datetime
 from decimal import Decimal
 from app.models.enums import PaymentMethod
+from app.schemas.people import ShareIn, ShareOut
 
 
 class ExpenseBase(BaseModel):
@@ -18,7 +19,8 @@ class ExpenseBase(BaseModel):
 
 
 class ExpenseCreate(ExpenseBase):
-    pass
+    # `amount` is YOUR part; these are other people's parts (the card is charged amount + shares)
+    shares: List[ShareIn] = []
 
 
 class ExpenseUpdate(BaseModel):
@@ -28,6 +30,8 @@ class ExpenseUpdate(BaseModel):
     expense_date: Optional[date] = Field(None, alias="date")
     payment_method: Optional[PaymentMethod] = None
     category: Optional[str] = None
+    # None = leave the split as it is; a list (even empty) replaces it
+    shares: Optional[List[ShareIn]] = None
 
 
 class ExpenseResponse(ExpenseBase):
@@ -36,6 +40,9 @@ class ExpenseResponse(ExpenseBase):
     credit_statement_month: Optional[int] = None
     credit_statement_year: Optional[int] = None
     paid: bool
+    # What the bank is actually charged (your part + everyone else's); `amount` stays your part
+    total_amount: Optional[Decimal] = None
+    shares: List[ShareOut] = []
     created_at: datetime
     updated_at: datetime
 

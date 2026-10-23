@@ -8,6 +8,7 @@ from app.models.enums import PaymentMethod
 from app.models.account import Account
 from app.schemas.expense import ExpenseCreate, ExpenseUpdate
 from decimal import Decimal
+from app.services import debt_service
 
 
 def _calculate_credit_statement_month(expense_date: date, closing_day: int) -> tuple[int, int]:
@@ -37,6 +38,12 @@ def create_expense(db: Session, expense: ExpenseCreate, user_id: UUID) -> Expens
         if not account:
             raise ValueError("Cuenta no encontrada")
 
+    others = sum((s.amount for s in expense.shares), Decimal(0))
+    if expense.amount <= 0 and others <= 0:
+        raise ValueError("El monto debe ser mayor a 0")
+    # The card/account really moves by your part + everyone else's
+    total = expense.amount + others
+
     db_expense = Expense(
         user_id=user_id,
         account_id=expense.account_id,
@@ -54,26 +61,32 @@ def create_expense(db: Session, expense: ExpenseCreate, user_id: UUID) -> Expens
             stmt_month, stmt_year = _calculate_credit_statement_month(expense.expense_date, account.closing_day)
             db_expense.credit_statement_month = stmt_month
             db_expense.credit_statement_year = stmt_year
-            account.current_balance_used = (account.current_balance_used or 0) + expense.amount
+            account.current_balance_used = (account.current_balance_used or 0) + total
             if account.credit_limit:
                 account.available_credit = account.credit_limit - account.current_balance_used
         elif expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
-            account.balance = (account.balance or 0) - expense.amount
+            account.balance = (account.balance or 0) - total
 
     db.add(db_expense)
+    db.flush()
+    if expense.shares:
+        debt_service.set_expense_shares(db, user_id, db_expense, expense.shares)
     db.commit()
     db.refresh(db_expense)
+    debt_service.annotate_expenses(db, [db_expense])
     return db_expense
 
 
 def get_expenses(db: Session, user_id: UUID) -> List[Expense]:
     """Get all user expenses."""
-    return db.query(Expense).filter(Expense.user_id == user_id).all()
+    rows = db.query(Expense).filter(Expense.user_id == user_id).all()
+    debt_service.annotate_expenses(db, rows)
+    return rows
 
 
 def get_expenses_for_month(db: Session, user_id: UUID, year: int, month: int) -> List[Expense]:
     """Get expenses for a specific month (by date for non-credit, by statement month for credit)."""
-    return db.query(Expense).filter(
+    rows = db.query(Expense).filter(
         Expense.user_id == user_id,
         and_(
             Expense.date >= date(year, month, 1),
@@ -83,6 +96,8 @@ def get_expenses_for_month(db: Session, user_id: UUID, year: int, month: int) ->
             Expense.date < date(year + 1, 1, 1)
         )
     ).all()
+    debt_service.annotate_expenses(db, rows)
+    return rows
 
 
 def get_expenses_for_credit_statement(db: Session, user_id: UUID, account_id: UUID, year: int, month: int) -> List[Expense]:
@@ -98,10 +113,13 @@ def get_expenses_for_credit_statement(db: Session, user_id: UUID, account_id: UU
 
 def get_expense(db: Session, expense_id: UUID, user_id: UUID) -> Optional[Expense]:
     """Get a specific expense."""
-    return db.query(Expense).filter(
+    row = db.query(Expense).filter(
         Expense.id == expense_id,
         Expense.user_id == user_id
     ).first()
+    if row:
+        debt_service.annotate_expenses(db, [row])
+    return row
 
 
 def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate, user_id: UUID) -> Optional[Expense]:
@@ -113,19 +131,11 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
     # Get account for potential balance updates
     account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first()
 
-    # If amount changed and it's a credit expense, update balances
-    if expense_update.amount and expense_update.amount != db_expense.amount and db_expense.payment_method == PaymentMethod.CREDIT:
-        diff = expense_update.amount - db_expense.amount
-        account.current_balance_used = (account.current_balance_used or 0) + diff
-        if account.credit_limit:
-            account.available_credit = account.credit_limit - account.current_balance_used
-
-    # Similar logic for debit/cash/savings
-    if expense_update.amount and expense_update.amount != db_expense.amount and db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
-        diff = expense_update.amount - db_expense.amount
-        account.balance = (account.balance or 0) - diff
+    old_total = debt_service.expense_total(db, db_expense)
 
     update_data = expense_update.dict(exclude_unset=True)
+    new_shares = expense_update.shares
+    update_data.pop('shares', None)
     # 'expense_date' is the Pydantic field name for the 'date' column
     if 'expense_date' in update_data:
         update_data['date'] = update_data.pop('expense_date')
@@ -139,8 +149,25 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
         db_expense.credit_statement_month = stmt_month
         db_expense.credit_statement_year = stmt_year
 
+    db.flush()
+    if new_shares is not None:
+        debt_service.set_expense_shares(db, user_id, db_expense, new_shares)
+    else:
+        debt_service.sync_expense_debts(db, db_expense)
+
+    # Card / account follow the real charge (your part + others'), not just your part
+    diff = debt_service.expense_total(db, db_expense) - old_total
+    if diff and account:
+        if db_expense.payment_method == PaymentMethod.CREDIT:
+            account.current_balance_used = (account.current_balance_used or 0) + diff
+            if account.credit_limit:
+                account.available_credit = account.credit_limit - account.current_balance_used
+        elif db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
+            account.balance = (account.balance or 0) - diff
+
     db.commit()
     db.refresh(db_expense)
+    debt_service.annotate_expenses(db, [db_expense])
     return db_expense
 
 
@@ -152,13 +179,14 @@ def delete_expense(db: Session, expense_id: UUID, user_id: UUID) -> bool:
 
     account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first()
 
-    # Refund balance
+    # Refund what was really charged (your part + others'); the debts go away with the expense (FK cascade)
+    total = debt_service.expense_total(db, db_expense)
     if db_expense.payment_method == PaymentMethod.CREDIT:
-        account.current_balance_used = (account.current_balance_used or 0) - db_expense.amount
+        account.current_balance_used = (account.current_balance_used or 0) - total
         if account.credit_limit:
             account.available_credit = account.credit_limit - account.current_balance_used
     elif db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
-        account.balance = (account.balance or 0) + db_expense.amount
+        account.balance = (account.balance or 0) + total
 
     db.delete(db_expense)
     db.commit()

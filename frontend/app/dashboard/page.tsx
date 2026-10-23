@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import AppLayout from '@/components/layout/AppLayout'
+import SplitPicker from '@/components/SplitPicker'
+import CobroForm from '@/components/CobroForm'
+import { emptySplit, computeSplit, splitFromShares, type SplitState } from '@/lib/split'
 import ProjectionChart from '@/components/charts/ProjectionChart'
 import CycleSummaryCard from '@/components/CycleSummaryCard'
 import CategorySpendingChart from '@/components/charts/CategorySpendingChart'
@@ -14,16 +18,16 @@ import {
   createExpense, updateExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
   createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard, transferBetweenAccounts,
   getExpenses, deleteExpense, getIncomes, updateIncome, deleteIncome,
-  simulateProjection,
+  simulateProjection, getPeople, createPerson,
 } from '@/lib/api'
 import type {
   ProjectionResponse, SimulationResponse, InstallmentPurchase, SavingsGoal,
-  RecurringExpense, User, Account, Expense, MonthlyIncome, Income,
+  RecurringExpense, User, Account, Expense, MonthlyIncome, Income, Person,
 } from '@/lib/types'
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
   RefreshCw, Plus, X, Pencil, Trash2, CheckCircle2, CalendarDays,
-  Wallet, PiggyBank, Banknote, Zap, Sparkles, AlertTriangle, ArrowLeftRight,
+  Wallet, PiggyBank, Banknote, Zap, Sparkles, AlertTriangle, ArrowLeftRight, ClipboardCheck,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { DateInput } from '@/components/ui/date-input'
@@ -206,7 +210,10 @@ export default function DashboardPage() {
   const [transferError, setTransferError] = useState('')
 
   // Register (quick transaction)
-  const [regMode, setRegMode] = useState<'expense' | 'income'>('expense')
+  const [regMode, setRegMode] = useState<'expense' | 'income' | 'cobro'>('expense')
+  const [regSplit, setRegSplit] = useState<SplitState>(emptySplit())
+  const [msiSplit, setMsiSplit] = useState<SplitState>(emptySplit())
+  const [people, setPeople] = useState<Person[]>([])
   const [regAmount, setRegAmount] = useState('')
   const [regDesc, setRegDesc] = useState('')
   const [regDate, setRegDate] = useState(today())
@@ -250,14 +257,22 @@ export default function DashboardPage() {
   const [editIncomeError, setEditIncomeError] = useState('')
 
   async function loadAll() {
-    const [u, p, m, g, r, a, ex, ptInc, monthInc] = await Promise.all([
+    const [u, p, m, g, r, a, ex, ptInc, monthInc, ppl] = await Promise.all([
       getMe(), getProjection(12), getInstallmentPurchases(), getSavingsGoals(), getRecurringExpenses(), getAccounts(), getExpenses(),
       getIncomes(),
       getMonthlyIncome().catch(() => null),
+      getPeople().catch(() => [] as Person[]),
     ])
     setUser(u); setProjection(p); setMsi(m); setGoals(g); setRecurring(r); setAccounts(a); setExpenses(ex)
     setIncomes(ptInc)
     setMonthlyIncomeData(monthInc)
+    setPeople(ppl)
+  }
+
+  async function addPerson(name: string): Promise<Person> {
+    const p = await createPerson(name)
+    setPeople(prev => prev.some(x => x.id === p.id) ? prev : [...prev, p])
+    return p
   }
 
   const autoOpenedRef = useRef(false)
@@ -277,7 +292,7 @@ export default function DashboardPage() {
 
   function openRegister() {
     setRegAmount(''); setRegDesc(''); setRegDate(today()); setRegMethod('cash'); setRegAccountId(''); setRegIncomeAccountId(''); setRegCategory('')
-    setRegIsMonthly(false)
+    setRegIsMonthly(false); setRegSplit(emptySplit()); setRegMode('expense')
     setRegCycleStartDay(monthlyIncomeData?.cycle_start_day ?? 1)
     setRegError('')
     setActiveModal('register')
@@ -289,7 +304,10 @@ export default function DashboardPage() {
     setRegSaving(true); setRegError('')
     try {
       if (regMode === 'expense') {
-        await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: parseFloat(regAmount), date: regDate, payment_method: derivedRegMethod, category: regCategory || undefined })
+        // The amount typed is what the bank charges; `amount` sent is YOUR part and the rest goes to the people
+        const split = computeSplit(parseFloat(regAmount), regSplit)
+        if (split.error) { setRegError(split.error); setRegSaving(false); return }
+        await createExpense({ account_id: regAccountId || undefined, name: regDesc, amount: split.mine, date: regDate, payment_method: derivedRegMethod, category: regCategory || undefined, shares: split.shares })
       } else {
         if (!regIsMonthly) {
           await createIncome({ description: regDesc, amount: parseFloat(regAmount), date: regDate, category: regCategory || undefined, account_id: regIncomeAccountId || null })
@@ -402,18 +420,34 @@ export default function DashboardPage() {
   }
 
   // MSI CRUD
-  function openNewMsi() { setMsiForm({ ...MSI_EMPTY, start_date: today() }); setMsiError(''); setActiveModal('msi') }
+  function openNewMsi() { setMsiForm({ ...MSI_EMPTY, start_date: today() }); setMsiSplit(emptySplit()); setMsiError(''); setActiveModal('msi') }
   function openEditMsi(item: InstallmentPurchase) {
-    setMsiForm({ name: item.name, total_amount: Number(item.total_amount), monthly_amount: Number(item.monthly_amount), total_installments: item.total_installments, remaining_installments: item.remaining_installments, start_date: item.start_date, account_id: item.account_id, is_new_charge: false, id: item.id })
+    // For a shared MSI the form works with what the card charges (your part + theirs); the split is rebuilt from the saved shares
+    const mine = Number(item.monthly_amount)
+    const full = Number(item.total_monthly ?? mine)
+    const scale = mine > 0 ? full / mine : 1
+    setMsiForm({ name: item.name, total_amount: Math.round(Number(item.total_amount) * scale * 100) / 100, monthly_amount: full, total_installments: item.total_installments, remaining_installments: item.remaining_installments, start_date: item.start_date, account_id: item.account_id, is_new_charge: false, id: item.id })
+    setMsiSplit(splitFromShares((item.shares ?? []).map(sh => ({ person_id: sh.person_id, amount: Number(sh.monthly_amount) }))))
     setMsiError(''); setActiveModal('msi')
   }
   async function saveMsi() {
     if (!msiForm.name.trim()) { setMsiError('El nombre es requerido'); return }
     if (msiForm.monthly_amount <= 0) { setMsiError('El pago mensual debe ser mayor a 0'); return }
+    const split = computeSplit(msiForm.monthly_amount, msiSplit)
+    if (split.error) { setMsiError(split.error); return }
     setMsiSaving(true); setMsiError('')
     try {
-      if (msiForm.id) await updateInstallmentPurchase(msiForm.id, msiForm)
-      else await createInstallmentPurchase(msiForm)
+      // monthly_amount / total_amount are saved as YOUR part; each person's part goes in `shares`
+      const ratio = msiForm.monthly_amount > 0 ? split.mine / msiForm.monthly_amount : 1
+      const { id: _id, ...rest } = msiForm
+      const payload = {
+        ...rest,
+        monthly_amount: split.mine,
+        total_amount: Math.round(msiForm.total_amount * ratio * 100) / 100,
+        shares: split.shares.map(sh => ({ person_id: sh.person_id, monthly_amount: sh.amount })),
+      }
+      if (msiForm.id) await updateInstallmentPurchase(msiForm.id, payload)
+      else await createInstallmentPurchase(payload)
       const [m, a] = await Promise.all([getInstallmentPurchases(), getAccounts()])
       setMsi(m); setAccounts(a); setActiveModal(null)
     } catch (e: unknown) { setMsiError(e instanceof Error ? e.message : 'Error') }
@@ -691,6 +725,18 @@ export default function DashboardPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/cierre"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold border border-black/10 dark:border-white/10 text-black/70 dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            >
+              <ClipboardCheck size={15} />
+              Cierre
+              {people.some(p => Number(p.pending_total) > 0) && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                  Te deben {fmt(people.reduce((a, p) => a + Number(p.pending_total), 0))}
+                </span>
+              )}
+            </Link>
             <button
               onClick={openRegister}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white dark:text-black transition-all hover:opacity-90 active:scale-95 ${ACCENT_BG}`}
@@ -1102,6 +1148,9 @@ export default function DashboardPage() {
                         {fmtDate(mov.date)}
                         {mov.kind === 'expense' ? ` · ${pmLabel(mov.payment_method)}` : ' · Ingreso'}
                         {mov.category ? ` · ${mov.category}` : ''}
+                        {mov.kind === 'expense' && mov.data.shares && mov.data.shares.length > 0
+                          ? ` · de ${fmt(Number(mov.data.total_amount))} con ${mov.data.shares.map(sh => sh.person_name).join(', ')}`
+                          : ''}
                       </p>
                     </div>
                     <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#34D399]'}`}>
@@ -1246,14 +1295,26 @@ export default function DashboardPage() {
       {activeModal === 'register' && (
         <Modal title="Registrar" subtitle={`Captura rápida · ${new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`} onClose={() => setActiveModal(null)}>
           <div className="flex rounded-xl border border-black/10 dark:border-white/10 overflow-hidden p-0.5 bg-black/[0.03] dark:bg-white/[0.03]">
-            {(['expense', 'income'] as const).map(m => (
+            {(['expense', 'income', 'cobro'] as const).map(m => (
               <button key={m} onClick={() => setRegMode(m)}
                 className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${regMode === m ? `${ACCENT_BG} text-white dark:text-black` : 'text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white'}`}>
-                {m === 'expense' ? 'Gasto' : 'Ingreso'}
+                {m === 'expense' ? 'Gasto' : m === 'income' ? 'Ingreso' : 'Cobro'}
               </button>
             ))}
           </div>
 
+          {regMode === 'cobro' ? (
+            <CobroForm
+              accounts={accounts}
+              onCancel={() => setActiveModal(null)}
+              onDone={async () => {
+                setActiveModal(null)
+                const [a, ppl] = await Promise.all([getAccounts(), getPeople()])
+                setAccounts(a); setPeople(ppl)
+              }}
+            />
+          ) : (
+          <>
           <FormField label="Monto">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-black/40 dark:text-white/40">$</span>
@@ -1354,7 +1415,15 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {regMode === 'expense' && (
+            <FormField label="¿De quién es este gasto?">
+              <SplitPicker total={parseFloat(regAmount) || 0} value={regSplit} onChange={setRegSplit} people={people} onCreatePerson={addPerson} subject="este gasto" />
+            </FormField>
+          )}
+
           <FormActions onCancel={() => setActiveModal(null)} onSave={handleRegister} saving={regSaving} saveLabel={regMode === 'expense' ? 'Guardar gasto' : 'Guardar ingreso'} error={regError} />
+          </>
+          )}
         </Modal>
       )}
 
@@ -1368,7 +1437,7 @@ export default function DashboardPage() {
             <FormField label="Monto total">
               <input type="number" value={msiForm.total_amount === 0 ? '' : msiForm.total_amount} onChange={e => setMsiForm(f => ({ ...f, total_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
             </FormField>
-            <FormField label="Pago mensual">
+            <FormField label="Pago mensual (lo que cobra el banco)">
               <input type="number" value={msiForm.monthly_amount === 0 ? '' : msiForm.monthly_amount} onChange={e => setMsiForm(f => ({ ...f, monthly_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
             </FormField>
             <FormField label="Total cuotas">
@@ -1398,6 +1467,10 @@ export default function DashboardPage() {
               />
             </FormField>
           )}
+
+          <FormField label="¿Quién paga este MSI?">
+            <SplitPicker total={msiForm.monthly_amount} value={msiSplit} onChange={setMsiSplit} people={people} onCreatePerson={addPerson} subject="cada pago" />
+          </FormField>
 
           {msiForm.account_id && !msiForm.id && (
             <button

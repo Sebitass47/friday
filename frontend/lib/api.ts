@@ -2,7 +2,7 @@ import type {
   User, Account, RecurringExpense, InstallmentPurchase,
   SavingsGoal, MonthlyIncome, ProjectionResponse, SimulationResponse,
   Expense, CreditPayment, Income, Task, Subtask, Note, UserList, SharedUser,
-  CategoriesResponse, CustomCategory,
+  CategoriesResponse, CustomCategory, Person, PendingDebt, PersonPayment, Closing,
 } from './types'
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -111,10 +111,10 @@ export async function deleteRecurringExpense(id: string): Promise<void> {
 export async function getInstallmentPurchases(): Promise<InstallmentPurchase[]> {
   return req('/installment-purchases/')
 }
-export async function createInstallmentPurchase(data: Omit<InstallmentPurchase, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'paid_month' | 'paid_year'> & { is_new_charge?: boolean }): Promise<InstallmentPurchase> {
+export async function createInstallmentPurchase(data: Omit<InstallmentPurchase, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'paid_month' | 'paid_year' | 'shares' | 'total_monthly'> & { is_new_charge?: boolean; shares?: { person_id: string; monthly_amount: number }[] }): Promise<InstallmentPurchase> {
   return req('/installment-purchases/', { method: 'POST', body: JSON.stringify(data) })
 }
-export async function updateInstallmentPurchase(id: string, data: Partial<InstallmentPurchase>): Promise<InstallmentPurchase> {
+export async function updateInstallmentPurchase(id: string, data: Partial<Omit<InstallmentPurchase, 'shares'>> & { shares?: { person_id: string; monthly_amount: number }[] }): Promise<InstallmentPurchase> {
   return req(`/installment-purchases/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 export async function deleteInstallmentPurchase(id: string): Promise<void> {
@@ -181,6 +181,8 @@ export async function createExpense(data: {
   date: string
   payment_method: 'cash' | 'debit' | 'credit' | 'savings'
   category?: string
+  // `amount` is your part; the rest of the charge is split among these people
+  shares?: { person_id: string; amount: number }[]
 }): Promise<Expense> {
   return req('/expenses/', { method: 'POST', body: JSON.stringify(data) })
 }
@@ -473,4 +475,38 @@ export async function getDigestSummary(kind: 'sunday' | 'friday'): Promise<{ tit
 
 export async function sendDigestTest(kind: 'sunday' | 'friday'): Promise<{ title: string; body: string; sent: number }> {
   return req(`/digest/test?kind=${kind}`, { method: 'POST' })
+}
+
+// ── People, cobros & cierre ──────────────────────────────────────────────────
+
+export async function getPeople(): Promise<Person[]> {
+  return req('/people/')
+}
+
+export async function createPerson(name: string): Promise<Person> {
+  return req('/people/', { method: 'POST', body: JSON.stringify({ name }) })
+}
+
+export async function deletePerson(id: string): Promise<void> {
+  return req(`/people/${id}`, { method: 'DELETE' })
+}
+
+export async function getPendingDebts(personId: string): Promise<PendingDebt[]> {
+  return req(`/people/${personId}/pending`)
+}
+
+export async function createPersonPayment(
+  personId: string,
+  data: { amount: number; date: string; account_id?: string | null; debt_ids?: string[]; note?: string },
+): Promise<PersonPayment> {
+  return req(`/people/${personId}/payments`, { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function getClosing(month?: number, year?: number): Promise<Closing> {
+  const q = month && year ? `?month=${month}&year=${year}` : ''
+  return req(`/closing/${q}`)
+}
+
+export async function setStatementCheck(data: { account_id: string; month: number; year: number; real_total: number | null }): Promise<void> {
+  return req('/closing/check', { method: 'PUT', body: JSON.stringify(data) })
 }

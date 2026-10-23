@@ -1,8 +1,9 @@
 from uuid import UUID
 from decimal import Decimal
 from datetime import date, datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, field_validator
+from app.schemas.people import InstallmentShareIn, InstallmentShareOut
 
 
 class InstallmentPurchaseBase(BaseModel):
@@ -41,6 +42,8 @@ class InstallmentPurchaseBase(BaseModel):
 
 class InstallmentPurchaseCreate(InstallmentPurchaseBase):
     is_new_charge: bool = True
+    # `monthly_amount` is YOUR part; these are other people's parts of each payment
+    shares: List[InstallmentShareIn] = []
 
 
 class InstallmentPurchaseUpdate(BaseModel):
@@ -53,6 +56,8 @@ class InstallmentPurchaseUpdate(BaseModel):
     account_id: Optional[UUID] = None
     payment_day: Optional[int] = None
     closing_day: Optional[int] = None
+    # None = leave the split as it is; a list (even empty) replaces it
+    shares: Optional[List[InstallmentShareIn]] = None
 
 
 class InstallmentPurchaseResponse(InstallmentPurchaseBase):
@@ -60,6 +65,9 @@ class InstallmentPurchaseResponse(InstallmentPurchaseBase):
     user_id: UUID
     paid_month: Optional[int] = None
     paid_year: Optional[int] = None
+    shares: List[InstallmentShareOut] = []
+    # What the card is charged each month (your part + everyone else's)
+    total_monthly: Optional[Decimal] = None
     created_at: datetime
     updated_at: datetime
 

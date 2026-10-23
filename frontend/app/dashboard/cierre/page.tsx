@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Check, X } from 'lucide-react'
 import AppLayout from '@/components/layout/AppLayout'
 import CobroForm from '@/components/CobroForm'
-import { getClosing, getAccounts, setStatementCheck } from '@/lib/api'
-import type { Account, Closing, ClosingCard, ClosingPerson } from '@/lib/types'
+import { getClosing, getAccounts, getPeople, setStatementCheck } from '@/lib/api'
+import type { Account, Closing, ClosingCard, ClosingPerson, Person } from '@/lib/types'
 
 const money = (n: number) =>
   `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -24,11 +24,13 @@ function Kpi({ label, value, sub, color }: { label: string; value: string; sub?:
   )
 }
 
-function PersonRow({ p, onCollect }: { p: ClosingPerson; onCollect: (personId: string) => void }) {
+function PersonRow({ p, onCollect, onOpen }: { p: ClosingPerson; onCollect: (personId: string) => void; onOpen: (personId: string) => void }) {
   const done = p.pending <= 0.004
   return (
     <div className="flex items-center gap-3 py-2">
-      <span className="flex-1 min-w-0 text-sm text-black dark:text-white truncate">{p.person_name}</span>
+      <button onClick={() => onOpen(p.person_id)} className="flex-1 min-w-0 text-left text-sm text-black dark:text-white truncate hover:underline underline-offset-2 decoration-black/30 dark:decoration-white/30" title={`Ver movimientos de ${p.person_name}`}>
+        {p.person_name}
+      </button>
       <span className="text-xs text-black/40 dark:text-white/40 tabular-nums hidden sm:inline">de {money(p.owed)}</span>
       {done ? (
         <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: GREEN }}><Check size={13} strokeWidth={3} /> Listo</span>
@@ -44,8 +46,8 @@ function PersonRow({ p, onCollect }: { p: ClosingPerson; onCollect: (personId: s
   )
 }
 
-function CardPanel({ card, month, year, onCollect, onChanged }: {
-  card: ClosingCard; month: number; year: number; onCollect: (personId: string) => void; onChanged: () => void
+function CardPanel({ card, month, year, onCollect, onOpen, onChanged }: {
+  card: ClosingCard; month: number; year: number; onCollect: (personId: string) => void; onOpen: (personId: string) => void; onChanged: () => void
 }) {
   const [open, setOpen] = useState<boolean>(false)
   const [real, setReal] = useState<string>(card.real_total !== null ? String(card.real_total) : '')
@@ -120,7 +122,7 @@ function CardPanel({ card, month, year, onCollect, onChanged }: {
         <div className="mt-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40 mb-1">Te depositan</p>
           <div className="divide-y divide-black/[0.06] dark:divide-white/[0.08]">
-            {card.people.map(p => <PersonRow key={p.person_id} p={p} onCollect={onCollect} />)}
+            {card.people.map(p => <PersonRow key={p.person_id} p={p} onCollect={onCollect} onOpen={onOpen} />)}
           </div>
         </div>
       )}
@@ -138,7 +140,7 @@ function CardPanel({ card, month, year, onCollect, onChanged }: {
                   <div className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-black dark:text-white truncate">{c.name}</p>
-                      <p className="text-[11px] text-black/35 dark:text-white/35">{fmtDate(c.date)}{c.kind === 'installment' ? ' · MSI' : c.kind === 'recurring' ? ' · Recurrente' : ''}</p>
+                      <p className="text-[11px] text-black/35 dark:text-white/35">{fmtDate(c.date)}{c.kind === 'installment' ? ' · MSI' : c.kind === 'recurring' ? (c.estimated ? ' · Recurrente (estimado)' : ' · Recurrente') : ''}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold tabular-nums text-black dark:text-white">{money(c.total)}</p>
@@ -170,11 +172,102 @@ function CardPanel({ card, month, year, onCollect, onChanged }: {
   )
 }
 
+/** Everything one person owes in this closing, across all cards, so you don't hunt card by card. */
+function PersonMovements({ closing, personId, onClose, onCollect }: {
+  closing: Closing; personId: string; onClose: () => void; onCollect: (personId: string) => void
+}) {
+  const [overall, setOverall] = useState<Person | null>(null)
+  useEffect(() => { getPeople().then(ps => setOverall(ps.find(p => p.id === personId) ?? null)).catch(() => {}) }, [personId])
+
+  const summary = closing.people.find(p => p.person_id === personId)
+  const groups = closing.cards
+    .map(card => ({
+      card,
+      rows: card.charges.flatMap(c => c.shares.filter(sh => sh.person_id === personId).map(sh => ({
+        key: `${c.kind}-${c.id}`, name: c.name, date: c.date, kind: c.kind, total: c.total,
+        amount: Number(sh.amount), settled: Number(sh.settled),
+      }))),
+    }))
+    .filter(g => g.rows.length > 0)
+  const name = summary?.person_name ?? groups[0]?.card.charges.flatMap(c => c.shares).find(sh => sh.person_id === personId)?.person_name ?? ''
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 bg-white dark:bg-[#141414] border border-black/10 dark:border-white/10 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40">Cierre {closing.label}</p>
+            <h2 className="text-lg font-semibold text-black dark:text-white mt-0.5">{name}</h2>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"><X size={16} /></button>
+        </div>
+
+        {summary && (
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {[
+              { l: 'Te debe', v: summary.owed },
+              { l: 'Ya pagó', v: summary.settled },
+              { l: 'Falta', v: summary.pending },
+            ].map(x => (
+              <div key={x.l} className="rounded-xl bg-black/[0.04] dark:bg-white/[0.06] px-3 py-2">
+                <p className="text-[10px] text-black/45 dark:text-white/45">{x.l}</p>
+                <p className="text-sm font-semibold tabular-nums text-black dark:text-white">{money(x.v)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {groups.length === 0 ? (
+          <p className="text-sm text-black/50 dark:text-white/50">Sin movimientos de esta persona en este cierre.</p>
+        ) : groups.map(g => (
+          <div key={g.card.account_id} className="mb-4 last:mb-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40 mb-1">{g.card.name}</p>
+            <div className="divide-y divide-black/[0.06] dark:divide-white/[0.08]">
+              {g.rows.map(r => {
+                const done = r.settled >= r.amount - 0.004
+                return (
+                  <div key={r.key} className="flex items-center gap-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-black dark:text-white truncate">{r.name}</p>
+                      <p className="text-[11px] text-black/35 dark:text-white/35">
+                        {fmtDate(r.date)}{r.kind === 'installment' ? ' · MSI' : r.kind === 'recurring' ? ' · Recurrente' : ''}
+                        {r.total !== r.amount ? ` · total ${money(r.total)}` : ''}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-semibold tabular-nums text-black dark:text-white">{money(r.amount)}</p>
+                      <p className="text-[11px]" style={{ color: done ? GREEN : undefined }}>
+                        {done ? 'Pagado ✓' : r.settled > 0 ? `Falta ${money(r.amount - r.settled)}` : 'Pendiente'}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+
+        {overall && Number(overall.pending_total) > 0.004 && (
+          <p className="text-[11px] text-black/45 dark:text-white/45 mt-3">En todos tus cierres te debe {money(Number(overall.pending_total))} en total.</p>
+        )}
+
+        {summary && summary.pending > 0.004 && (
+          <button onClick={() => onCollect(personId)} className="w-full mt-4 py-2.5 rounded-xl text-sm font-semibold bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">
+            Registrar cobro de {name}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function CierrePage() {
   const [data, setData] = useState<Closing | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [error, setError] = useState<boolean>(false)
   const [collect, setCollect] = useState<{ personId?: string } | null>(null)
+  const [viewPerson, setViewPerson] = useState<string | null>(null)
 
   const load = useCallback((month?: number, year?: number) => {
     setError(false)
@@ -241,7 +334,7 @@ export default function CierrePage() {
                   <button onClick={() => setCollect({})} className="text-xs font-medium text-black/60 dark:text-white/60 hover:text-black dark:hover:text-white">Registrar cobro</button>
                 </div>
                 <div className="mt-1 divide-y divide-black/[0.06] dark:divide-white/[0.08]">
-                  {data.people.map(p => <PersonRow key={p.person_id} p={p} onCollect={id => setCollect({ personId: id })} />)}
+                  {data.people.map(p => <PersonRow key={p.person_id} p={p} onCollect={id => setCollect({ personId: id })} onOpen={setViewPerson} />)}
                 </div>
               </section>
             )}
@@ -249,12 +342,21 @@ export default function CierrePage() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5 items-start">
               {data.cards.map(c => (
                 <CardPanel key={c.account_id} card={c} month={data.month} year={data.year}
-                  onCollect={id => setCollect({ personId: id })} onChanged={() => load(data.month, data.year)} />
+                  onCollect={id => setCollect({ personId: id })} onOpen={setViewPerson} onChanged={() => load(data.month, data.year)} />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {viewPerson && data && (
+        <PersonMovements
+          closing={data}
+          personId={viewPerson}
+          onClose={() => setViewPerson(null)}
+          onCollect={id => { setViewPerson(null); setCollect({ personId: id }) }}
+        />
+      )}
 
       {collect && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setCollect(null)}>

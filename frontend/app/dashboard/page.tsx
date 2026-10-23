@@ -45,6 +45,23 @@ const CORAL = '#FF6B6B'
 
 type ActiveModal = 'register' | 'msi' | 'goal' | 'recurring' | 'account' | 'edit-income' | null
 
+// "Not mine" gets its own colour: income is green and spending is red, so neither fits
+const OTHER_COLOR = '#60A5FA'
+
+/** Whose expense it is: yours, shared, or entirely someone else's (then `display` is the full charge instead of a misleading $0). */
+function ownerOf(e: Expense): { label: string; others: boolean; allOthers: boolean; display: number } {
+  const shares = e.shares ?? []
+  if (shares.length === 0) return { label: 'Tú', others: false, allOthers: false, display: Number(e.amount) }
+  const names = Array.from(new Set(shares.map(s => s.person_name)))
+  const allOthers = Number(e.amount) <= 0
+  return {
+    label: allOthers ? names.join(', ') : `Tú + ${names.join(', ')}`,
+    others: true,
+    allOthers,
+    display: allOthers ? Number(e.total_amount ?? 0) : Number(e.amount),
+  }
+}
+
 const MSI_EMPTY = { name: '', total_amount: 0, monthly_amount: 0, total_installments: 12, remaining_installments: 12, start_date: today(), account_id: null as string | null, is_new_charge: true }
 const GOAL_EMPTY = { name: '', target_amount: 0, current_amount: 0, monthly_contribution: 0 }
 const REC_EMPTY = { name: '', amount: '' as string | number, frequency: 'monthly' as RecurringExpense['frequency'], interval_days: null as number | null, account_id: null as string | null }
@@ -1165,20 +1182,32 @@ export default function DashboardPage() {
                     onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : openEditIncome_pt(mov.incData)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
                   >
-                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#34D399]'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? (ownerOf(mov.data).allOthers ? 'bg-[#60A5FA]' : 'bg-[#FF4444]') : 'bg-[#34D399]'}`} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-black dark:text-white truncate">{mov.name}</p>
                       <p className="text-[11px] text-black/30 dark:text-white/30">
                         {fmtDate(mov.date)}
                         {mov.kind === 'expense' ? ` · ${pmLabel(mov.payment_method)}` : ' · Ingreso'}
                         {mov.category ? ` · ${mov.category}` : ''}
-                        {mov.kind === 'expense' && mov.data.shares && mov.data.shares.length > 0
-                          ? ` · de ${fmt(Number(mov.data.total_amount))} con ${mov.data.shares.map(sh => sh.person_name).join(', ')}`
-                          : ''}
+                        {mov.kind === 'expense' && ownerOf(mov.data).others && (
+                          <span className="sm:hidden" style={{ color: OTHER_COLOR }}> · {ownerOf(mov.data).label}</span>
+                        )}
                       </p>
                     </div>
-                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#34D399]'}`}>
-                      {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
+                    {mov.kind === 'expense' && (
+                      <span
+                        className={`hidden sm:block w-28 shrink-0 truncate text-xs text-right ${ownerOf(mov.data).others ? '' : 'text-black/35 dark:text-white/35'}`}
+                        style={ownerOf(mov.data).others ? { color: OTHER_COLOR } : undefined}
+                        title={ownerOf(mov.data).label}
+                      >
+                        {ownerOf(mov.data).label}
+                      </span>
+                    )}
+                    <span
+                      className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? (ownerOf(mov.data).allOthers ? '' : 'text-[#FF4444]') : 'text-[#34D399]'}`}
+                      style={mov.kind === 'expense' && ownerOf(mov.data).allOthers ? { color: OTHER_COLOR } : undefined}
+                    >
+                      {mov.kind === 'expense' ? (ownerOf(mov.data).allOthers ? '' : '−') : '+'}{fmt(mov.kind === 'expense' ? ownerOf(mov.data).display : mov.amount)}
                     </span>
                     <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
                   </button>
@@ -1865,13 +1894,30 @@ export default function DashboardPage() {
                     onClick={() => mov.kind === 'expense' ? openEditExpense(mov.data) : openEditIncome_pt(mov.incData)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.04] transition-colors text-left group"
                   >
-                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? 'bg-[#FF4444]' : 'bg-[#34D399]'}`} />
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${mov.kind === 'expense' ? (ownerOf(mov.data).allOthers ? 'bg-[#60A5FA]' : 'bg-[#FF4444]') : 'bg-[#34D399]'}`} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-black dark:text-white truncate">{mov.label}</p>
-                      <p className="text-[11px] text-black/30 dark:text-white/30">{mov.sub}</p>
+                      <p className="text-[11px] text-black/30 dark:text-white/30">
+                        {mov.sub}
+                        {mov.kind === 'expense' && ownerOf(mov.data).others && (
+                          <span className="sm:hidden" style={{ color: OTHER_COLOR }}> · {ownerOf(mov.data).label}</span>
+                        )}
+                      </p>
                     </div>
-                    <span className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? 'text-[#FF4444]' : 'text-[#34D399]'}`}>
-                      {mov.kind === 'expense' ? '−' : '+'}{fmt(mov.amount)}
+                    {mov.kind === 'expense' && (
+                      <span
+                        className={`hidden sm:block w-28 shrink-0 truncate text-xs text-right ${ownerOf(mov.data).others ? '' : 'text-black/35 dark:text-white/35'}`}
+                        style={ownerOf(mov.data).others ? { color: OTHER_COLOR } : undefined}
+                        title={ownerOf(mov.data).label}
+                      >
+                        {ownerOf(mov.data).label}
+                      </span>
+                    )}
+                    <span
+                      className={`text-sm font-semibold shrink-0 tabular-nums ${mov.kind === 'expense' ? (ownerOf(mov.data).allOthers ? '' : 'text-[#FF4444]') : 'text-[#34D399]'}`}
+                      style={mov.kind === 'expense' && ownerOf(mov.data).allOthers ? { color: OTHER_COLOR } : undefined}
+                    >
+                      {mov.kind === 'expense' ? (ownerOf(mov.data).allOthers ? '' : '−') : '+'}{fmt(mov.kind === 'expense' ? ownerOf(mov.data).display : mov.amount)}
                     </span>
                     <Pencil size={11} className="text-black/20 dark:text-white/20 group-hover:text-black/40 dark:group-hover:text-white/40 shrink-0 transition-colors" />
                   </button>

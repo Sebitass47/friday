@@ -9,13 +9,14 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.core.clock import today_local
+from app.core.clock import APP_TZ, today_local
 from app.models.account import Account, AccountType
 from app.models.credit_payment import CreditPayment
 from app.models.enums import PaymentMethod
 from app.models.expense import Expense
 from app.models.installment_purchase import InstallmentPurchase
 from app.models.people import Person, PersonDebt, StatementCheck, InstallmentShare, RecurringCharge
+from app.models.recurring_expense import RecurringExpense, ExpenseFrequency
 from app.services.debt_service import add_months, statement_of
 from app.services.projection_service import MONTHS_ES
 
@@ -98,6 +99,8 @@ def get_closing(db: Session, user_id: UUID, month: Optional[int], year: Optional
 
         charges: List[dict] = []
         mine = others = msi_total = ZERO
+        end = _closing_date(year, month, card.closing_day)
+        start = _closing_date(*_prev(year, month), card.closing_day) + timedelta(days=1)
 
         expenses = db.query(Expense).filter(
             Expense.user_id == user_id, Expense.account_id == card.id, Expense.payment_method == PaymentMethod.CREDIT,
@@ -131,16 +134,41 @@ def get_closing(db: Session, user_id: UUID, month: Optional[int], year: Optional
                 others += o
                 msi_total += _dec(p.monthly_amount) + o
 
-        for rc in db.query(RecurringCharge).filter(
+        logged = db.query(RecurringCharge).filter(
             RecurringCharge.user_id == user_id, RecurringCharge.account_id == card.id,
             RecurringCharge.statement_month == month, RecurringCharge.statement_year == year,
-        ).all():
+        ).all()
+        for rc in logged:
             ds = by_rc.get(rc.id, [])
             o = sum((_dec(d.amount) for d in ds), ZERO)
             charges.append({"kind": "recurring", "id": rc.id, "name": rc.name, "date": rc.charge_date,
                             "mine": _dec(rc.mine), "total": _dec(rc.mine) + o, "shares": shares_of(ds)})
             mine += _dec(rc.mine)
             others += o
+
+        # Recurring expenses on this card that were never logged for this statement (anything created before
+        # the charge history existed, or a statement the daily job hasn't reached): estimate from the recurring itself
+        logged_ids = {rc.recurring_id for rc in logged}
+        period_days = (end - start).days + 1
+        for rec in db.query(RecurringExpense).filter(
+            RecurringExpense.user_id == user_id, RecurringExpense.account_id == card.id
+        ).all():
+            if rec.id in logged_ids:
+                continue
+            created = rec.created_at.astimezone(APP_TZ).date() if rec.created_at else None
+            if created and created > end:
+                continue  # didn't exist yet in this statement
+            if rec.frequency == ExpenseFrequency.WEEKLY:
+                times = max(period_days // 7, 1)
+            elif rec.frequency == ExpenseFrequency.CUSTOM and rec.interval_days:
+                times = max(period_days // rec.interval_days, 1)
+            else:
+                times = 1
+            amount = _dec(rec.amount) * times
+            charges.append({"kind": "recurring", "id": rec.id, "name": rec.name + (f" ×{times}" if times > 1 else ""),
+                            "date": max(start, created) if created else start,
+                            "mine": amount, "total": amount, "shares": [], "estimated": True})
+            mine += amount
 
         charges.sort(key=lambda c: c["date"])
         total = mine + others
@@ -152,8 +180,6 @@ def get_closing(db: Session, user_id: UUID, month: Optional[int], year: Optional
             CreditPayment.user_id == user_id, CreditPayment.account_id == card.id,
             CreditPayment.statement_month == month, CreditPayment.statement_year == year).all()), ZERO)
 
-        end = _closing_date(year, month, card.closing_day)
-        start = _closing_date(*_prev(year, month), card.closing_day) + timedelta(days=1)
         out_cards.append({
             "account_id": card.id, "name": card.name, "closing_day": card.closing_day, "payment_day": card.payment_day,
             "period_start": start, "period_end": end,

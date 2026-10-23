@@ -95,6 +95,9 @@ class ClosingCharge(BaseModel):
     mine: Decimal
     total: Decimal
     shares: List[ClosingShare] = []
+    # True for recurring charges that were never logged (created before the history existed):
+    # computed from the recurring expense itself
+    estimated: bool = False
 
 
 class ClosingPerson(BaseModel):

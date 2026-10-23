@@ -403,6 +403,8 @@ export interface ClosingCharge {
   mine: number
   total: number
   shares: { person_id: string; person_name: string; amount: number; settled: number }[]
+  // Recurring charge computed from the recurring expense (never logged for this statement)
+  estimated?: boolean
 }
 
 export interface ClosingCard {

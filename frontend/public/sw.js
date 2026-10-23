@@ -289,18 +289,26 @@ self.addEventListener('push', function (event) {
   event.waitUntil(self.registration.showNotification(title, options))
 })
 
+// Open the notification's page. WindowClient.navigate() rejects for clients the SW doesn't control
+// (common in installed PWAs), and it used to be fire-and-forget, so the app just stayed on whatever
+// page was open (usually Inicio). Await it and fall back to asking the page to route itself.
 self.addEventListener('notificationclick', function (event) {
   event.notification.close()
-  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/'
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
-      for (const client of clientList) {
-        if ('focus' in client) {
-          client.navigate(targetUrl)
-          return client.focus()
-        }
+  const path = (event.notification.data && event.notification.data.url) ? event.notification.data.url : '/'
+  const targetUrl = new URL(path, self.location.origin).href
+
+  event.waitUntil((async function () {
+    const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const client of clientList) {
+      if (new URL(client.url).origin !== self.location.origin) continue
+      try {
+        const navigated = await client.navigate(targetUrl)
+        return (navigated || client).focus()
+      } catch (e) {
+        client.postMessage({ type: 'navigate', url: path })
+        return client.focus()
       }
-      if (clients.openWindow) return clients.openWindow(targetUrl)
-    })
-  )
+    }
+    if (clients.openWindow) return clients.openWindow(targetUrl)
+  })())
 })

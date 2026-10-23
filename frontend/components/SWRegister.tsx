@@ -18,7 +18,19 @@ export default function SWRegister() {
       }, 800)
     }
     window.addEventListener('online', handleOnline)
-    return () => window.removeEventListener('online', handleOnline)
+
+    // The SW can't always navigate an open window itself (see notificationclick in sw.js): it asks us to.
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'navigate' && typeof e.data.url === 'string') {
+        window.location.assign(e.data.url)
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', handleMessage)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      navigator.serviceWorker.removeEventListener('message', handleMessage)
+    }
   }, [])
 
   return null

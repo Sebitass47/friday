@@ -330,9 +330,8 @@ function ListCard({ list, active, onClick }: { list: UserList; active: boolean; 
     <div
       onClick={onClick}
       className={cn(
-        'flex items-center gap-4 px-4 py-3.5 rounded-xl border cursor-pointer group transition-all duration-200',
-        'bg-white dark:bg-white/[0.04] dark:backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)]',
-        active ? 'border-black/30 dark:border-white/30' : 'border-black/[0.06] dark:border-white/[0.08]',
+        'glass flex items-center gap-4 px-4 py-3.5 rounded-xl cursor-pointer group transition-all duration-200',
+        active && 'border-black/30 dark:border-white/30',
         complete && 'opacity-60'
       )}
     >

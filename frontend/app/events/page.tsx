@@ -295,10 +295,10 @@ function EventCard({ event, onClick }: { event: Task; onClick: () => void }) {
     <div
       onClick={onClick}
       className={cn(
-        'flex items-center gap-4 px-4 py-3.5 rounded-xl border-y border-r border-l-4 cursor-pointer group transition-all duration-200',
+        'glass flex items-center gap-4 px-4 py-3.5 rounded-xl border-y border-r border-l-4 cursor-pointer group transition-all duration-200',
         isPast
           ? 'bg-black/[0.02] dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] opacity-50 shadow-none'
-          : 'bg-white dark:bg-white/[0.04] dark:backdrop-blur-sm border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.45)] hover:-translate-y-px'
+          : 'hover:-translate-y-px'
       )}
       style={{ borderLeftColor: accentColor ?? 'transparent' }}
     >

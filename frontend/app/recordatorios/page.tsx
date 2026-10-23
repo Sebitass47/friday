@@ -484,12 +484,12 @@ function TaskRow({ task, onToggle, onStar, onClick, isOverdue, isPast }: {
   return (
     <div
       className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-xl border-y border-r border-l-4 cursor-pointer group transition-all duration-200',
+        'glass flex items-center gap-3 px-4 py-3 rounded-xl border-y border-r border-l-4 cursor-pointer group transition-all duration-200',
         task.is_completed
           ? 'bg-black/[0.02] dark:bg-white/[0.02] border-black/[0.04] dark:border-white/[0.04] opacity-55 shadow-none'
           : highlighted
             ? 'bg-red-500/[0.04] dark:bg-red-500/[0.06] border-red-400/25 shadow-[0_2px_8px_rgba(239,68,68,0.08)] hover:shadow-[0_4px_16px_rgba(239,68,68,0.14)] hover:-translate-y-px'
-            : 'bg-white dark:bg-white/[0.04] dark:backdrop-blur-sm border-black/[0.06] dark:border-white/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.10)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.45)] hover:-translate-y-px'
+            : 'hover:-translate-y-px'
       )}
       style={{ borderLeftColor: highlighted ? '#ef4444' : (accentColor ?? 'transparent') }}
       onClick={onClick}

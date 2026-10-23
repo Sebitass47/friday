@@ -8,6 +8,8 @@ interface BalanceFlowChartProps {
   expenses: Expense[]
   // Point incomes that count toward "disponible" (already filtered by account type)
   incomes: Income[]
+  // Shorter plot on wide screens (used when the card is split in two columns)
+  compact?: boolean
 }
 
 const CORAL = '#FF6B6B'
@@ -60,7 +62,7 @@ const H = 170
 const PAD_T = 10
 const PAD_B = 10
 
-export default function BalanceFlowChart({ cycle, expenses, incomes }: BalanceFlowChartProps) {
+export default function BalanceFlowChart({ cycle, expenses, incomes, compact = false }: BalanceFlowChartProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
@@ -187,7 +189,7 @@ export default function BalanceFlowChart({ cycle, expenses, incomes }: BalanceFl
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
-          className="w-full h-40 overflow-visible text-black dark:text-white"
+          className={`w-full h-40 ${compact ? 'xl:h-28' : ''} overflow-visible text-black dark:text-white`}
           style={{ color: tone }}
           onMouseMove={e => onMove(e.clientX)}
           onMouseLeave={() => setHoverIdx(null)}
@@ -205,6 +207,10 @@ export default function BalanceFlowChart({ cycle, expenses, incomes }: BalanceFl
             <line x1="0" x2={W} y1={geo.zeroY} y2={geo.zeroY} stroke="currentColor" strokeOpacity="0.18" strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
           )}
           <path d={geo.area} fill={`url(#${gid})`} />
+          {/* Remaining days of the cycle: flat dashed guide from today to the end */}
+          {geo.last[0] < W - 1 && (
+            <line x1={geo.last[0]} x2={W} y1={geo.last[1]} y2={geo.last[1]} stroke="currentColor" strokeOpacity="0.22" strokeDasharray="2 6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          )}
           <path d={geo.line} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           {hoverIdx !== null && (
             <line x1={hoverPt[0]} x2={hoverPt[0]} y1="0" y2={H} stroke="currentColor" strokeOpacity="0.2" vectorEffect="non-scaling-stroke" />

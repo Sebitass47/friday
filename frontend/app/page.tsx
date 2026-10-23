@@ -67,17 +67,9 @@ function relDay(dateStr: string) {
 
 // ─── GCard ────────────────────────────────────────────────────────────────────
 
-function GCard({ children, className = '', isDark }: { children: React.ReactNode; className?: string; isDark: boolean }) {
+function GCard({ children, className = '' }: { children: React.ReactNode; className?: string; isDark?: boolean }) {
   return (
-    <div
-      className={`rounded-2xl p-4 sm:p-5 ${className}`}
-      style={{
-        background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}`,
-        backdropFilter: isDark ? 'blur(20px)' : 'none',
-        boxShadow: isDark ? 'none' : '0 1px 6px rgba(0,0,0,0.07)',
-      }}
-    >
+    <div className={`glass rounded-2xl p-4 sm:p-5 ${className}`}>
       {children}
     </div>
   )
@@ -298,6 +290,16 @@ export default function HomePage() {
     return notes.filter(n => new Date(n.created_at) >= cutoff)
   }, [notes])
 
+  // Desktop layout: the second row splits evenly between whichever of Hábitos / Listas / Notas exist
+  const showHabits = loading || habits.length > 0
+  const showLists = !loading && lists.length > 0
+  const showNotes = !loading && recentNotes.length > 0
+  const row2Count = Number(showHabits) + Number(showLists) + Number(showNotes)
+  const row2Span = row2Count === 3 ? 'xl:col-span-4' : row2Count === 2 ? 'xl:col-span-6' : 'xl:col-span-12'
+  // With notes the order is Listas · Hábitos · Notas; otherwise Hábitos · Listas
+  const habitsOrder = showNotes ? 'xl:order-5' : 'xl:order-4'
+  const listsOrder = showNotes ? 'xl:order-4' : 'xl:order-5'
+
   // ── Styles ─────────────────────────────────────────────────────────────────
 
   const txt = (opacity = 1) => isDark ? `rgba(255,255,255,${opacity})` : `rgba(0,0,0,${opacity * 0.87})`
@@ -306,7 +308,7 @@ export default function HomePage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto pb-28 space-y-4 sm:space-y-5">
+      <div className="max-w-4xl xl:max-w-[1600px] mx-auto pb-28 space-y-4 sm:space-y-5">
 
         {/* Header */}
         <div className="pt-1 pb-0.5">
@@ -319,7 +321,10 @@ export default function HomePage() {
           </h1>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 sm:gap-5">
+
         {/* ── Finance card ──────────────────────────────────────────────────── */}
+        <div className="sm:col-span-2 xl:col-span-6 xl:order-2 [&>*]:h-full">
         {loading ? (
           <GCard isDark={isDark}>
             <SectionTitle isDark={isDark} icon={<DollarSign size={14} />} label="Finanzas del mes" />
@@ -342,6 +347,8 @@ export default function HomePage() {
             variableIncomes={countedIncomes.filter(i => i.date >= currentCycle.cycle_start && i.date <= todayISO())}
             onEditIncome={() => router.push('/dashboard')}
             upcomingPayments={upcomingPayments.map(p => ({ id: p.account.id, name: p.account.name, days: p.days }))}
+            splitOnWide
+            glass
           />
         ) : (
           <GCard isDark={isDark}>
@@ -358,12 +365,11 @@ export default function HomePage() {
             </div>
           </GCard>
         )}
+        </div>
 
         {/* ── Tasks + Events ────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-
-          {/* Tasks today */}
-          <GCard isDark={isDark}>
+        {/* Tasks today */}
+          <GCard isDark={isDark} className="xl:col-span-3 xl:order-1">
             <SectionTitle isDark={isDark} icon={<CheckSquare size={14} />} label="Recordatorios de hoy" count={todayTasks.length} />
             {loading ? (
               <div className="space-y-2">{[1,2,3].map(i => <div key={i} className={shimmer} />)}</div>
@@ -403,7 +409,7 @@ export default function HomePage() {
           </GCard>
 
           {/* Upcoming events */}
-          <GCard isDark={isDark}>
+          <GCard isDark={isDark} className="xl:col-span-3 xl:order-3">
             <SectionTitle isDark={isDark} icon={<CalendarDays size={14} />} label="Próximos 7 días" count={upcomingEvents.length} />
             {loading ? (
               <div className="space-y-2">{[1,2,3].map(i => <div key={i} className={shimmer} />)}</div>
@@ -439,17 +445,16 @@ export default function HomePage() {
               Ver todos los eventos <ChevronRight size={10} />
             </button>
           </GCard>
-        </div>
 
         {/* ── Habits ───────────────────────────────────────────────────────── */}
-        {(loading || habits.length > 0) && (() => {
+        {showHabits && (() => {
           const MONTHS_ES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
           const weekDates = Array.from({length:7},(_,i)=>{ const d=new Date(habitWeekStart); d.setDate(d.getDate()+i); return d })
           const today = todayISO()
           const weekLabel = `${weekDates[0].getDate()} ${MONTHS_ES[weekDates[0].getMonth()]} – ${weekDates[6].getDate()} ${MONTHS_ES[weekDates[6].getMonth()]} ${weekDates[6].getFullYear()}`
 
           return (
-            <GCard isDark={isDark} className="overflow-hidden !p-0">
+            <GCard isDark={isDark} className={`overflow-hidden !p-0 sm:col-span-2 ${row2Span} ${habitsOrder}`}>
               <div className="flex items-center justify-between px-4 pt-4 pb-0 sm:px-5 sm:pt-5">
                 <div className="flex items-center gap-2">
                   <SectionTitle isDark={isDark} icon={<Target size={14} />} label="Hábitos" count={habits.length || undefined} />
@@ -488,11 +493,11 @@ export default function HomePage() {
         })()}
 
         {/* ── Recent lists ──────────────────────────────────────────────────── */}
-        {!loading && lists.length > 0 && (
-          <GCard isDark={isDark}>
+        {showLists && (
+          <GCard isDark={isDark} className={`sm:col-span-2 ${row2Span} ${listsOrder}`}>
             <SectionTitle isDark={isDark} icon={<ListChecks size={14} />} label="Listas" count={lists.length} />
             <div className="space-y-1">
-              {lists.slice(0, 5).map(l => {
+              {lists.slice(0, 7).map((l, idx) => {
                 const total = l.items.length
                 const done = l.items.filter(i => i.is_done).length
                 const pending = total - done
@@ -500,7 +505,7 @@ export default function HomePage() {
                   <button
                     key={l.id}
                     onClick={() => router.push(`/listas?open=${l.id}`)}
-                    className="w-full flex items-center gap-3 px-2 py-2 rounded-xl text-left transition-colors"
+                    className={`w-full ${idx >= 5 ? 'hidden xl:flex' : 'flex'} items-center gap-3 px-2 py-2 rounded-xl text-left transition-colors`}
                     style={{ background: 'transparent' }}
                     onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -527,10 +532,10 @@ export default function HomePage() {
         )}
 
         {/* ── Recent notes ──────────────────────────────────────────────────── */}
-        {!loading && recentNotes.length > 0 && (
-          <GCard isDark={isDark}>
+        {showNotes && (
+          <GCard isDark={isDark} className={`sm:col-span-2 ${row2Span} xl:order-6`}>
             <SectionTitle isDark={isDark} icon={<StickyNote size={14} />} label="Notas recientes" count={recentNotes.length} />
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-2.5 sm:gap-3">
               {recentNotes.slice(0, 6).map(n => {
                 const bg = isDark ? (NOTE_BG_DARK[n.color] ?? NOTE_BG_DARK.default) : (NOTE_BG_LIGHT[n.color] ?? NOTE_BG_LIGHT.default)
                 const lc = LABEL_COLORS[n.label ?? '']
@@ -565,6 +570,7 @@ export default function HomePage() {
             )}
           </GCard>
         )}
+        </div>
       </div>
 
       <SpeedDial />

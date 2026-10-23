@@ -31,13 +31,13 @@ const CARD_BG_DARK: Record<string, { bg: string; border: string }> = {
 }
 
 const CARD_BG_LIGHT: Record<string, { bg: string; border: string }> = {
-  default:   { bg: '#F9FAFB', border: '#E5E7EB' },
-  rojo:      { bg: '#FEE2E2', border: '#FECACA' },
-  verde:     { bg: '#CCFBF1', border: '#99F6E4' },
-  amarillo:  { bg: '#FEF9C3', border: '#FDE68A' },
-  morado:    { bg: '#F3E8FF', border: '#E9D5FF' },
-  azul:      { bg: '#DBEAFE', border: '#BFDBFE' },
-  rosa:      { bg: '#FCE7F3', border: '#FBCFE8' },
+  default:   { bg: 'rgba(255,255,255,0.6)',  border: 'rgba(255,255,255,0.85)' },
+  rojo:      { bg: 'rgba(254,226,226,0.65)', border: 'rgba(254,202,202,0.9)' },
+  verde:     { bg: 'rgba(204,251,241,0.65)', border: 'rgba(153,246,228,0.9)' },
+  amarillo:  { bg: 'rgba(254,249,195,0.65)', border: 'rgba(253,230,138,0.9)' },
+  morado:    { bg: 'rgba(243,232,255,0.65)', border: 'rgba(233,213,255,0.9)' },
+  azul:      { bg: 'rgba(219,234,254,0.65)', border: 'rgba(191,219,254,0.9)' },
+  rosa:      { bg: 'rgba(252,231,243,0.65)', border: 'rgba(251,207,232,0.9)' },
 }
 
 const LABEL_STYLE_DARK: Record<string, { bg: string; color: string }> = {
@@ -99,7 +99,7 @@ function NoteCard({ note, isDark, onPin, onDelete, onEdit }: NoteCardProps) {
 
   return (
     <div
-      className="rounded-2xl p-4 flex flex-col gap-2 cursor-pointer transition-all duration-200 shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_14px_rgba(0,0,0,0.4)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.14)] dark:hover:shadow-[0_6px_24px_rgba(0,0,0,0.58)] hover:-translate-y-0.5"
+      className="rounded-2xl p-4 flex flex-col gap-2 cursor-pointer transition-all duration-200 backdrop-blur-xl backdrop-saturate-150 shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:shadow-[0_2px_14px_rgba(0,0,0,0.4)] hover:shadow-[0_6px_22px_rgba(0,0,0,0.14)] dark:hover:shadow-[0_6px_24px_rgba(0,0,0,0.58)] hover:-translate-y-0.5"
       style={{ background: bg, border: `1px solid ${border}` }}
       onClick={() => onEdit(note)}
     >

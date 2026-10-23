@@ -644,7 +644,7 @@ export default function DashboardPage() {
   const totalCreditLimit = creditCards.reduce((s, a) => s + (Number(a.credit_limit) || 0), 0)
   const debtColor = usageTextColor(usagePct(totalUsed, totalCreditLimit))
 
-  const cardCls = 'bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-black/[0.08] dark:border-white/[0.08] hover:border-black/[0.14] dark:hover:border-white/[0.14] transition-all shadow-sm'
+  const cardCls = 'glass rounded-2xl hover:border-black/[0.14] dark:hover:border-white/[0.14] transition-all'
 
   async function runSimulation() {
     if (!simForm.name.trim()) { setSimError('Pon un nombre al producto'); return }

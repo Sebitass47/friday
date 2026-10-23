@@ -38,6 +38,8 @@ Dashboard personal central. Reemplaza el redirect que había a `/dashboard`.
 - **Próximos 7 días** — eventos ordenados por fecha con badge relativo (Hoy / Mañana / Mié…)
 - **Notas recientes** — notas creadas hace menos de 7 días, mini-cards con color de fondo
 
+**Layout escritorio (`xl`):** cuadrícula de 12 columnas, ancho hasta 1600px. Fila 1: Recordatorios (3) · Finanzas (6, partida en gráfica + desglose siempre visible vía `splitOnWide`) · Próximos 7 días (3). Fila 2: Hábitos y Listas 50/50; si hay notas recientes, Listas · Hábitos · Notas (4/4/4). En celular/tablet Finanzas va primero (el orden en `xl` se logra con `xl:order-*`). Listas muestra 7 en `xl` y 5 en el resto.
+
 **FAB speed-dial** (bottom-right, siempre visible):
 - Botón + con gradiente rosa-morado; al abrir rota a X y expande 4 opciones animadas
 - 💸 Gasto → `/dashboard?new=1` (abre QuickTransactionFAB automáticamente)
@@ -336,6 +338,7 @@ frontend/
 - Acento principal (morado): `#6B46E5` (dark: `#AF9BFF`) — en `/dashboard` y sus componentes (`components/ui/*`, gráficas) el acento es escala de grises (negro en light, blanco en dark), igual que en sidebar, `/events`, `/recordatorios` y `/listas` (las etiquetas conservan sus colores); el morado queda en el resto (Notas, Focus…). Los colores semánticos (verde/rojo/ámbar) se mantienen
 - Positivo: `#A8FF3E`, Negativo: `#FF4444` / `#FF6B6B`
 - Soporte dark/light mode con Tailwind `dark:` — el toggle está en el header del dashboard
+- **Liquid glass:** clase `.glass` (`globals.css`, dentro de `@layer components` para que las utilidades de Tailwind puedan sobreescribirla) en todos los cards de Inicio, Finanzas, Recordatorios/Eventos (cada fila), Hábitos, Listas y Notas (pasteles translúcidos + blur). `AmbientGlow` (`components/layout/AmbientGlow.tsx`, montado en `AppLayout`) pinta tres resplandores fijos morado/rosa/azul detrás del contenido para que el vidrio tenga qué refractar. Focus no usa `AppLayout`, así que no lo lleva. **No pongas fondos opacos (`bg-white`, `min-h-screen bg-…`) en el wrapper de una página**: tapan los resplandores
 
 **Fechas:**
 - Formato de display siempre `dd/mm/yyyy` (ej: `07/07/2026`). Nunca mostrar `mm/dd/yyyy` ni ISO crudo `yyyy-mm-dd`.

@@ -137,7 +137,7 @@ export default function HabitosPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-white dark:bg-[#0A0A0A] transition-colors">
+      <div className="min-h-screen transition-colors">
         <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6">
 
           {/* Header */}
@@ -149,13 +149,13 @@ export default function HabitosPage() {
             <div className="flex gap-2 mt-1">
               <button
                 onClick={prevWeek}
-                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+                className="w-9 h-9 rounded-lg glass text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors"
               >
                 <ChevronLeft size={16} />
               </button>
               <button
                 onClick={nextWeek}
-                className="w-9 h-9 rounded-lg border border-gray-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+                className="w-9 h-9 rounded-lg glass text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-white/[0.08] flex items-center justify-center transition-colors"
               >
                 <ChevronRight size={16} />
               </button>
@@ -163,7 +163,7 @@ export default function HabitosPage() {
           </div>
 
           {/* Card */}
-          <div className="bg-white dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.08] rounded-2xl overflow-hidden">
+          <div className="glass rounded-2xl overflow-hidden">
 
             {/* Habits table */}
             <HabitsWeekTable
@@ -185,7 +185,7 @@ export default function HabitosPage() {
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
                 placeholder="Nuevo hábito..."
-                className="flex-1 bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 focus:border-black/40 dark:focus:border-white/40 transition-colors"
+                className="flex-1 bg-white/50 dark:bg-white/[0.04] border border-black/10 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/10 focus:border-black/40 dark:focus:border-white/40 transition-colors"
               />
               <button
                 onClick={handleAdd}
@@ -244,7 +244,7 @@ export default function HabitosPage() {
               ].map(stat => (
                 <div
                   key={stat.label}
-                  className="bg-white dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.08] rounded-xl px-4 py-3"
+                  className="glass rounded-xl px-4 py-3"
                 >
                   <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{stat.label}</p>
                   <p className="text-xl font-semibold text-gray-900 dark:text-white">

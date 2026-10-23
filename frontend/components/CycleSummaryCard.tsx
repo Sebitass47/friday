@@ -16,6 +16,10 @@ interface CycleSummaryCardProps {
   onEditIncome?: () => void
   // Card payments due soon (days until payment day)
   upcomingPayments?: { id: string; name: string; days: number }[]
+  // On wide screens, show the breakdown beside the chart instead of behind a toggle
+  splitOnWide?: boolean
+  // Liquid-glass surface (see .glass in globals.css) instead of the flat tinted one
+  glass?: boolean
 }
 
 const CORAL = '#FF6B6B'
@@ -54,7 +58,7 @@ function Row({ sign, label, hint, value, color, action }: {
 }
 
 export default function CycleSummaryCard({
-  cycle, cycleStartDay, expenses, countedIncomes, variableIncomes, onEditIncome, upcomingPayments = [],
+  cycle, cycleStartDay, expenses, countedIncomes, variableIncomes, onEditIncome, upcomingPayments = [], splitOnWide = false, glass = true,
 }: CycleSummaryCardProps) {
   const [showBreakdown, setShowBreakdown] = useState<boolean>(false)
   const [showVariable, setShowVariable] = useState<boolean>(false)
@@ -67,13 +71,14 @@ export default function CycleSummaryCard({
   const spent = Number(cycle.cash_debit_spent) + Number(cycle.credit_spent)
 
   return (
-    <div className="bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl rounded-2xl border border-black/[0.08] dark:border-white/[0.08] shadow-sm p-5">
+    <div className={`${glass ? 'glass' : 'bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-sm'} rounded-2xl p-5 ${splitOnWide ? 'xl:grid xl:grid-cols-2 xl:gap-x-8' : ''}`}>
+      <div>
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-black dark:text-white">Tu dinero este ciclo</h2>
         <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">{cycle.label} · toca la línea para ver cada día</p>
       </div>
 
-      <BalanceFlowChart cycle={cycle} expenses={expenses} incomes={countedIncomes} />
+      <BalanceFlowChart cycle={cycle} expenses={expenses} incomes={countedIncomes} compact={splitOnWide} />
 
       {upcomingPayments.length > 0 && (
         <div className="mt-4">
@@ -95,18 +100,23 @@ export default function CycleSummaryCard({
           </div>
         </div>
       )}
+      </div>
 
+      <div className={splitOnWide ? 'xl:border-l xl:border-black/[0.06] xl:dark:border-white/[0.06] xl:pl-8' : ''}>
+      {splitOnWide && (
+        <p className="hidden xl:block text-[10px] font-bold uppercase tracking-widest text-black/40 dark:text-white/40 mb-1">Desglose del ciclo</p>
+      )}
       <button
         onClick={() => setShowBreakdown(!showBreakdown)}
-        className="mt-4 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+        className={`${splitOnWide ? 'xl:hidden ' : ''}mt-4 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors`}
       >
         {showBreakdown ? 'Ocultar desglose' : 'Ver desglose'}
         <ChevronDown size={13} className={`transition-transform ${showBreakdown ? 'rotate-180' : ''}`} />
       </button>
 
-      <div className={`grid transition-all duration-300 ease-out ${showBreakdown ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+      <div className={`grid transition-all duration-300 ease-out ${showBreakdown ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'} ${splitOnWide ? 'xl:grid-rows-[1fr] xl:opacity-100' : ''}`}>
         <div className="overflow-hidden">
-          <div className="mt-2 divide-y divide-black/[0.06] dark:divide-white/[0.06] border-t border-black/[0.06] dark:border-white/[0.06]">
+          <div className={`mt-2 divide-y divide-black/[0.06] dark:divide-white/[0.06] border-t border-black/[0.06] dark:border-white/[0.06] ${splitOnWide ? 'xl:border-t-0 xl:mt-0' : ''}`}>
             <Row
               label="Ingreso mensual"
               hint={cycleStartDay ? `Ciclo desde el día ${cycleStartDay}` : undefined}
@@ -146,6 +156,7 @@ export default function CycleSummaryCard({
             <Row sign="−" label="Gastado" hint="Tarjetas, efectivo y débito" value={spent} />
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

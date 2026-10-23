@@ -8,6 +8,7 @@ from app.models.note import Note
 from app.models.task import Task
 from app.models.user import User
 from app.models.user_list import UserList
+from app.services import notify_service
 
 
 class ShareError(Exception):
@@ -103,6 +104,8 @@ def share(db: Session, owner: User, resource_type: str, resource_id: UUID, email
     if not db.query(Contact).filter(Contact.owner_id == owner.id, Contact.contact_user_id == target.id).first():
         db.add(Contact(owner_id=owner.id, contact_user_id=target.id))
     db.commit()
+    if not exists:
+        notify_service.notify_shared(db, owner, resource_type, resource_id, target.id)
     return shared_with(db, resource_type, resource_id)
 
 

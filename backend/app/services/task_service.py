@@ -7,7 +7,8 @@ from sqlalchemy import and_, or_, func
 from app.models.task import Task, Subtask
 from app.schemas.task import TaskCreate, TaskUpdate, SubtaskCreate, SubtaskUpdate
 from app.models.share import RESOURCE_TASK
-from app.services import share_service
+from app.models.activity_log import TASK_DONE
+from app.services import share_service, activity_service, notify_service
 
 
 def _access(db: Session, user_id: UUID):
@@ -70,8 +71,14 @@ def update_task(db: Session, task_id: UUID, data: TaskUpdate, user_id: UUID) -> 
     task = db.query(Task).filter(Task.id == task_id, _access(db, user_id)).first()
     if not task:
         return None
+    was_completed = task.is_completed
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(task, field, value)
+    if not task.is_event and task.is_completed != was_completed:
+        if task.is_completed:
+            activity_service.log(db, user_id, TASK_DONE, task.id, task.due_date)
+        else:
+            activity_service.unlog(db, TASK_DONE, task.id)
     # Reset notification flags when reminder changes
     if data.reminder_at is not None:
         task.reminded_main = False
@@ -82,6 +89,7 @@ def update_task(db: Session, task_id: UUID, data: TaskUpdate, user_id: UUID) -> 
         task.reminded_1h = False
     db.commit()
     db.refresh(task)
+    notify_service.record_change(db, user_id, RESOURCE_TASK, task.id)
     return get_task(db, task_id, user_id)
 
 
@@ -103,14 +111,21 @@ def complete_task(db: Session, task_id: UUID, user_id: UUID) -> Optional[Task]:
 
     if not task.is_completed and task.recurrence and task.recurrence != 'none' and task.due_date:
         # Recurring task: advance to next occurrence instead of marking permanently complete
+        activity_service.log(db, user_id, TASK_DONE, task.id, task.due_date)
         _advance_recurring_task(task)
         for sub in task.subtasks:
             sub.is_completed = False
     else:
         task.is_completed = not task.is_completed
+        if not task.is_event:
+            if task.is_completed:
+                activity_service.log(db, user_id, TASK_DONE, task.id, task.due_date)
+            else:
+                activity_service.unlog(db, TASK_DONE, task.id)
 
     db.commit()
     db.refresh(task)
+    notify_service.record_change(db, user_id, RESOURCE_TASK, task.id)
     return get_task(db, task_id, user_id)
 
 
@@ -124,6 +139,7 @@ def create_subtask(db: Session, task_id: UUID, data: SubtaskCreate, user_id: UUI
     db.add(sub)
     db.commit()
     db.refresh(sub)
+    notify_service.record_change(db, user_id, RESOURCE_TASK, task_id)
     return sub
 
 
@@ -138,6 +154,7 @@ def update_subtask(db: Session, task_id: UUID, subtask_id: UUID, data: SubtaskUp
         setattr(sub, field, value)
     db.commit()
     db.refresh(sub)
+    notify_service.record_change(db, user_id, RESOURCE_TASK, task_id)
     return sub
 
 
@@ -150,6 +167,7 @@ def delete_subtask(db: Session, task_id: UUID, subtask_id: UUID, user_id: UUID) 
         return False
     db.delete(sub)
     db.commit()
+    notify_service.record_change(db, user_id, RESOURCE_TASK, task_id)
     return True
 
 

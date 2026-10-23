@@ -6,7 +6,7 @@ from sqlalchemy import or_
 from app.models.note import Note
 from app.models.share import RESOURCE_NOTE
 from app.schemas.note import NoteCreate, NoteUpdate
-from app.services import share_service
+from app.services import share_service, notify_service
 
 
 def _access(db: Session, user_id: UUID):
@@ -57,6 +57,7 @@ def update_note(db: Session, note_id: UUID, data: NoteUpdate, user_id: UUID) -> 
         setattr(note, field, value)
     db.commit()
     db.refresh(note)
+    notify_service.record_change(db, user_id, RESOURCE_NOTE, note.id)
     return _annotated(db, note, user_id)
 
 

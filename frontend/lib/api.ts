@@ -452,3 +452,21 @@ export async function createCategory(name: string): Promise<CustomCategory> {
 export async function deleteCategory(id: string): Promise<void> {
   return req(`/categories/${id}`, { method: 'DELETE' })
 }
+
+// ── Statistics & weekly summary ──────────────────────────────────────────────
+
+export async function getStats(): Promise<import('./types').Stats> {
+  return req('/stats/')
+}
+
+export async function getDigestSettings(): Promise<import('./types').DigestSettings> {
+  return req('/digest/settings')
+}
+
+export async function updateDigestSettings(data: import('./types').DigestSettings): Promise<import('./types').DigestSettings> {
+  return req('/digest/settings', { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function sendDigestTest(kind: 'sunday' | 'friday'): Promise<{ title: string; body: string; sent: number }> {
+  return req(`/digest/test?kind=${kind}`, { method: 'POST' })
+}

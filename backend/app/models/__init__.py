@@ -15,3 +15,5 @@ from app.models.habit import Habit, HabitLog
 from app.models.category import UserCategory
 from app.models.user_list import UserList, ListItem
 from app.models.share import Share, Contact
+from app.models.activity_log import ActivityLog
+from app.models.digest_settings import DigestSettings

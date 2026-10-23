@@ -5,17 +5,18 @@ import { useRouter } from 'next/navigation'
 import AppLayout from '@/components/layout/AppLayout'
 import {
   getProjection, getAccounts, getTasks, getNotes, getHabits, toggleHabitLog, getMe,
-  getExpenses, getIncomes, getMonthlyIncome, getLists,
+  getExpenses, getIncomes, getMonthlyIncome, getLists, getStats,
 } from '@/lib/api'
 import type {
-  MonthProjection, Account, Task, Note, Habit, User, Expense, Income, UserList,
+  MonthProjection, Account, Task, Note, Habit, User, Expense, Income, UserList, Stats,
 } from '@/lib/types'
 import {
   DollarSign, CheckSquare, CalendarDays, StickyNote,
-  Plus, X, CreditCard, Clock, ChevronRight, Target, ChevronLeft, ListChecks,
+  Plus, X, CreditCard, Clock, ChevronRight, Target, ChevronLeft, ListChecks, BarChart3,
 } from 'lucide-react'
 import HabitsWeekTable from '@/components/HabitsWeekTable'
 import CycleSummaryCard from '@/components/CycleSummaryCard'
+import DigestSettings from '@/components/DigestSettings'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -164,6 +165,44 @@ function SpeedDial() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// ─── Progress strip (links to /estadisticas) ──────────────────────────────────
+
+function ProgressStrip({ stats, isDark, onOpen }: { stats: Stats; isDark: boolean; onOpen: () => void }) {
+  const { habits, reminders, lists, finance } = stats
+  const delta = finance?.spent_vs_prev_pct ?? null
+  const items: { label: string; value: string; sub: string; color?: string }[] = []
+  if (habits) {
+    items.push({ label: 'Racha', value: `🔥 ${habits.streak_days}`, sub: habits.streak_days === 1 ? 'día seguido' : 'días seguidos' })
+    items.push({ label: 'Hábitos · 30 días', value: `${habits.month_pct}%`, sub: `${habits.week_pct}% esta semana` })
+  }
+  const rTotal = reminders.week.done + reminders.week.missed
+  items.push({ label: 'Recordatorios · semana', value: `${reminders.week.done}/${rTotal}`, sub: rTotal === 0 ? 'nada vencido' : `${reminders.week.pct}% cumplido`, color: reminders.week.done > 0 ? '#34d399' : undefined })
+  items.push({ label: 'Tachado en listas · semana', value: `${lists.checked_week}`, sub: `${lists.pending_items} pendientes` })
+  if (finance && delta !== null) {
+    items.push({ label: 'Gasto vs ciclo pasado', value: `${delta > 0 ? '+' : ''}${delta}%`, sub: delta <= 0 ? 'vas mejor' : 'vas más alto', color: delta > 0 ? '#FF6B6B' : '#34d399' })
+  }
+
+  return (
+    <GCard isDark={isDark} className="sm:col-span-2 xl:col-span-12 xl:order-[99]">
+      <div className="flex items-center justify-between mb-3">
+        <SectionTitle isDark={isDark} icon={<BarChart3 size={14} />} label="Tu progreso" />
+        <button onClick={onOpen} className="text-xs flex items-center gap-1 hover:opacity-70 transition-colors" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#6b7280' }}>
+          Ver estadísticas <ChevronRight size={10} />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-flow-col lg:auto-cols-fr gap-4 sm:gap-6">
+        {items.map(it => (
+          <button key={it.label} onClick={onOpen} className="text-left">
+            <p className="text-[11px]" style={{ color: isDark ? 'rgba(255,255,255,0.45)' : '#6b7280' }}>{it.label}</p>
+            <p className="text-2xl font-semibold tabular-nums mt-0.5" style={{ color: it.color ?? (isDark ? '#fff' : '#111') }}>{it.value}</p>
+            <p className="text-[11px]" style={{ color: isDark ? 'rgba(255,255,255,0.35)' : '#9ca3af' }}>{it.sub}</p>
+          </button>
+        ))}
+      </div>
+    </GCard>
+  )
+}
+
 export default function HomePage() {
   const isDark = useIsDark()
   const router = useRouter()
@@ -183,6 +222,7 @@ export default function HomePage() {
     const d = new Date(); const day = d.getDay(); const diff = day === 0 ? -6 : 1 - day
     const mon = new Date(d); mon.setDate(d.getDate() + diff); mon.setHours(0,0,0,0); return mon
   })
+  const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [hasIncome, setHasIncome] = useState(true)
 
@@ -201,7 +241,8 @@ export default function HomePage() {
       getIncomes(),
       getMonthlyIncome(),
       getLists(),
-    ]).then(([proj, acc, tsk, evt, nts, hab, exp, inc, mi, lst]) => {
+      getStats(),
+    ]).then(([proj, acc, tsk, evt, nts, hab, exp, inc, mi, lst, sts]) => {
       if (proj.status === 'fulfilled') {
         setCurrentCycle(proj.value.months[0] ?? null)
       } else {
@@ -216,6 +257,7 @@ export default function HomePage() {
       if (inc.status === 'fulfilled') setIncomes(inc.value)
       if (mi.status === 'fulfilled') setCycleStartDay(mi.value.cycle_start_day)
       if (lst.status === 'fulfilled') setLists(lst.value)
+      if (sts.status === 'fulfilled') setStats(sts.value)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -311,14 +353,17 @@ export default function HomePage() {
       <div className="max-w-4xl xl:max-w-[1600px] mx-auto pb-28 space-y-4 sm:space-y-5">
 
         {/* Header */}
-        <div className="pt-1 pb-0.5">
-          <p className="text-sm capitalize" style={{ color: txtMuted }}>{longDate()}</p>
-          <h1 className="text-2xl sm:text-3xl font-bold mt-0.5" style={{ color: txt(1) }}>
-            {greeting()},{' '}
-            <span style={{ background: 'linear-gradient(135deg,#FF6B9D,#6B46E5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              {me?.full_name?.split(' ')[0] ?? ''}
-            </span>{' '}👋
-          </h1>
+        <div className="pt-1 pb-0.5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm capitalize" style={{ color: txtMuted }}>{longDate()}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mt-0.5" style={{ color: txt(1) }}>
+              {greeting()},{' '}
+              <span style={{ background: 'linear-gradient(135deg,#FF6B9D,#6B46E5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                {me?.full_name?.split(' ')[0] ?? ''}
+              </span>{' '}👋
+            </h1>
+          </div>
+          <DigestSettings />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-4 sm:gap-5">
@@ -570,6 +615,9 @@ export default function HomePage() {
             )}
           </GCard>
         )}
+
+        {/* ── Progress strip ───────────────────────────────────────────────── */}
+        {stats && <ProgressStrip stats={stats} isDark={isDark} onOpen={() => router.push('/estadisticas')} />}
         </div>
       </div>
 

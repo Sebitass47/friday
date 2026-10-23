@@ -126,3 +126,18 @@ def check_and_notify_upcoming_payments(db: Session) -> None:
             if not alive:
                 db.delete(sub)
     db.commit()
+
+
+def send_push_to_users(db: Session, user_ids, title: str, body: str, url: str = "/", tag: str = "friday") -> int:
+    """Push to every subscription of the given users, dropping dead ones. Returns how many were sent."""
+    from app.models.push_subscription import PushSubscription
+
+    subs = db.query(PushSubscription).filter(PushSubscription.user_id.in_(list(user_ids))).all()
+    sent = 0
+    for sub in subs:
+        if send_push(sub, title, body, url=url, tag=tag):
+            sent += 1
+        else:
+            db.delete(sub)
+    db.commit()
+    return sent

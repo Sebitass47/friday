@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.user_list import UserList, ListItem
 from app.schemas.user_list import ListCreate, ListUpdate, ListItemCreate, ListItemUpdate
 from app.models.share import RESOURCE_LIST
-from app.services import share_service
+from app.models.activity_log import LIST_ITEM_DONE
+from app.services import share_service, activity_service, notify_service
 
 
 def _access(db: Session, user_id: UUID):
@@ -32,6 +33,7 @@ def _touch(db: Session, lst: UserList, user_id: UUID) -> None:
     db.commit()
     db.refresh(lst)
     share_service.annotate(db, RESOURCE_LIST, [lst], user_id)
+    notify_service.record_change(db, user_id, RESOURCE_LIST, lst.id)
 
 
 def get_lists(db: Session, user_id: UUID) -> List[UserList]:
@@ -96,9 +98,15 @@ def update_item(
     item = next((i for i in lst.items if i.id == item_id), None)
     if not item:
         return None
+    was_done = item.is_done
     for field, value in data.model_dump(exclude_unset=True).items():
         if value is not None:
             setattr(item, field, value.strip() if field == "text" else value)
+    if item.is_done != was_done:
+        if item.is_done:
+            activity_service.log(db, user_id, LIST_ITEM_DONE, item.id)
+        else:
+            activity_service.unlog(db, LIST_ITEM_DONE, item.id)
     _touch(db, lst, user_id)
     return lst
 

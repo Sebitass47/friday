@@ -16,6 +16,8 @@ from .endpoints.habits import router as habits_router
 from .endpoints.categories import router as categories_router
 from .endpoints.lists import router as lists_router
 from .endpoints.shares import router as shares_router
+from .endpoints.stats import router as stats_router
+from .endpoints.digest import router as digest_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -35,3 +37,5 @@ router.include_router(habits_router)
 router.include_router(categories_router)
 router.include_router(lists_router)
 router.include_router(shares_router)
+router.include_router(stats_router)
+router.include_router(digest_router)

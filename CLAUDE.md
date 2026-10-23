@@ -40,6 +40,8 @@ Dashboard personal central. Reemplaza el redirect que había a `/dashboard`.
 
 **Layout escritorio (`xl`):** cuadrícula de 12 columnas, ancho hasta 1600px. Fila 1: Recordatorios (3) · Finanzas (6, partida en gráfica + desglose siempre visible vía `splitOnWide`) · Próximos 7 días (3). Fila 2: Hábitos y Listas 50/50; si hay notas recientes, Listas · Hábitos · Notas (4/4/4). En celular/tablet Finanzas va primero (el orden en `xl` se logra con `xl:order-*`). Listas muestra 7 en `xl` y 5 en el resto.
 
+**Tu progreso** (franja al final, 100% de ancho en `xl`): racha de hábitos, % de hábitos a 30 días, recordatorios cumplidos de la semana, elementos tachados en listas y gasto vs ciclo pasado. Todo clicable → `/estadisticas`. **Campana** en el header (`components/DigestSettings.tsx`): activa/desactiva y configura hora del resumen semanal, con botón "Enviarme uno ahora" y vista previa.
+
 **FAB speed-dial** (bottom-right, siempre visible):
 - Botón + con gradiente rosa-morado; al abrir rota a X y expande 4 opciones animadas
 - 💸 Gasto → `/dashboard?new=1` (abre QuickTransactionFAB automáticamente)
@@ -203,6 +205,26 @@ Cada elemento **le pertenece a quien lo crea** y puede compartirse **por element
 - **Notificaciones push:** los avisos de recordatorios y eventos compartidos le llegan al dueño y a todos los invitados (`_task_subscriptions` en `tasks.py`).
 - Backend: tablas `shares` (polimórfica: `resource_type` `task`|`list` + `resource_id`) y `contacts`; `share_service.py` (acceso, anotado de `is_owner/owner_name/shared_with`, share/unshare, contactos); las consultas de tareas y listas incluyen lo compartido contigo vía `_access()`.
 
+### Estadísticas (`/estadisticas`)
+
+Tres pestañas, todo se calcula en el backend (`stats_service.py`, `GET /stats/`) y las gráficas son SVG/divs puros:
+- **Hábitos:** racha actual y mejor (días con ≥1 hábito hecho), % semana y 30 días, días perfectos, mapa de calor de 12 semanas (verde), cumplimiento por semana (8), mejor/peor día de la semana y detalle por hábito (racha, récord, %). Respeta `days_of_week` y no cuenta días anteriores a la creación del hábito.
+- **Recordatorios y listas:** recordatorios cumplidos / no cumplidos (semana y 30 días), % de cumplimiento, vencidos ahora; elementos tachados (semana y 30 días), pendientes y listas completas. **Solo números**, sin gráficas.
+- **Finanzas:** últimos 6 ciclos (ingreso vs gastado vs lo que sobró), gastado vs el ciclo anterior *hasta el mismo día*, gasto diario promedio y categorías (barra gris = ciclo pasado). Excluye categorías `Transferencia` y `Deuda`; el gasto cuenta por fecha del gasto (crédito incluido), no por statement.
+
+**Historial (`activity_log`):** el estado actual no dice *cuándo* se completó algo, así que `activity_service.log/unlog` guarda un registro append-only: `task_done` (también recurrentes), `task_missed` (lo registra la tarea de medianoche al saltar una ocurrencia recurrente sin completar; los pendientes vencidos no recurrentes se cuentan en vivo) y `list_item_done` (sobrevive a "Limpiar completados"). Se llena en `complete_task`/`update_task`/`update_item`; la migración 0026 rellena lo ya completado con `updated_at` como mejor aproximación.
+
+### Resumen semanal (push)
+
+Domingo = "tu semana" (eventos, recordatorios por hacer, pagos de tarjeta, cierre de ciclo y cuánto te queda); viernes = "es viernes" (hoy y fin de semana, hábitos de la semana, lo cumplido/tachado y cuánto te queda). Son plantillas sobre datos propios (`digest_service.py`), **sin IA**. Celery Beat corre `send_weekly_digests` cada hora en punto y cada usuario recibe el suyo cuando coincide día y hora con su `digest_settings` (defaults: domingo 19:00, viernes 8:00, activado para quien tenga push; `last_sent_key` evita duplicados). Endpoints: `GET/PUT /digest/settings`, `POST /digest/test?kind=sunday|friday&send=true|false`.
+
+### Notificaciones de compartir y cambios
+
+- Al **compartir** algo contigo (recordatorio, evento, lista o nota) te llega un push inmediato "👥 X compartió contigo…".
+- Cuando alguien **modifica** algo compartido (cualquier edición, completar, subtareas, elementos de lista) los demás reciben "✏️ X actualizó la lista…". **Se agrupan 60 s** (`notify_service.record_change`): las ediciones del mismo elemento se juntan en un set de Redis y un solo task las envía; nunca se notifica a quien editó.
+- **Cola:** las rutas solo *encolan* en Celery (`send_notification`, `flush_resource_changes`), así que un push lento nunca bloquea una petición. No hay cola/worker aparte: usa el worker existente.
+- **Al hacer clic** una notificación abre la página de su `url` (`/recordatorios`, `/events`, `/listas?open=<id>`, `/notas`, `/` para el resumen). `sw.js` espera `client.navigate()` y, si falla (PWA instalada), pide a la página que navegue por `postMessage` (`SWRegister.tsx`).
+
 ### Eventos (`/events`)
 
 Lista de eventos tipo calendario. Mismo diseño que `/recordatorios` pero para cosas con fecha fija (citas, reuniones, etc.). **No tiene endpoint propio en el backend** — reutiliza la API de tareas (`/tasks/`) filtrando por `is_event=true`.
@@ -233,6 +255,8 @@ push.py              GET /push/vapid-public-key, POST /push/subscribe, DELETE /p
 tasks.py             CRUD /tasks/ + POST /{id}/complete + subtasks CRUD
 notes.py             CRUD /notes/ + POST /{id}/toggle-pin
 lists.py             GET/POST /lists/, PUT/DELETE /lists/{id}, POST /lists/{id}/items, PUT/DELETE /lists/{id}/items/{item_id}, POST /lists/{id}/clear-completed
+stats.py             GET /stats/ (hábitos, recordatorios, listas y finanzas en una sola respuesta)
+digest.py            GET/PUT /digest/settings, POST /digest/test?kind=&send=
 shares.py            POST /shares/lookup, POST /shares/ {resource_type, resource_id, email}, DELETE /shares/{type}/{id}/{user_id}, GET /contacts/, DELETE /contacts/{user_id}
 habits.py            GET /habits/?week_start=YYYY-MM-DD, POST /habits/, PUT /habits/{id}?week_start=, DELETE /habits/{id}, POST /habits/{id}/toggle
 ```
@@ -261,9 +285,11 @@ Todos requieren `Authorization: Bearer <token>` excepto `/auth/register` y `/aut
 | `contacts` | personas con las que el usuario ya compartió (`owner_id`, `contact_user_id`) |
 | `lists` | name, emoji, FK a users; `updated_at` se actualiza al cambiar sus elementos |
 | `list_items` | FK a lists, text, is_done, position |
+| `activity_log` | historial append-only para estadísticas: `kind` (`task_done`/`task_missed`/`list_item_done`), `resource_id` (sin FK, sobrevive a borrados), `due_date`, `occurred_at` |
+| `digest_settings` | un registro por usuario: `enabled`, `sunday_on/hour`, `friday_on/hour`, `last_sent_key` |
 | `habit_logs` | FK a habits, date (Date); constraint unique (habit_id, date) — un log por hábito por día |
 
-Migraciones numeradas `0001`–`0025` en `backend/alembic/versions/`.
+Migraciones numeradas `0001`–`0026` en `backend/alembic/versions/`.
 
 **Zona horaria:** los contenedores corren en UTC. Nunca uses `date.today()` en el backend; usa `today_local()` de `app/core/clock.py` (America/Mexico_City). Si no, después de las 18:00 hora MX el backend ya cree que es el día siguiente (y puede saltar de ciclo).
 
@@ -288,6 +314,7 @@ frontend/
 │   ├── focus/page.tsx              # Espacio Focus (Three.js, Pomodoro, sonidos)
 │   ├── notas/page.tsx              # Notas con colores
 │   ├── habitos/page.tsx            # Tracker semanal de hábitos
+│   ├── estadisticas/page.tsx       # Estadísticas (Hábitos · Recordatorios y listas · Finanzas)
 │   ├── listas/page.tsx             # Listas con emoji y elementos marcables
 │   ├── layout.tsx                  # Root layout con ThemeProvider
 │   └── globals.css
@@ -303,6 +330,7 @@ frontend/
 │   │   ├── custom-select.tsx       # Dropdown custom (reemplaza <select> nativo)
 │   │   ├── glass-card.tsx          # Card con efecto glassmorphism
 │   │   └── ...                     # button, card, dialog, input, label
+│   ├── DigestSettings.tsx          # Campana del Inicio: ajustes del resumen semanal
 │   ├── ShareSection.tsx            # Selector para compartir (personas, sugeridos, correo)
 │   ├── CycleSummaryCard.tsx        # Resumen del ciclo (disponible + desglose de ingresos/compromisos/gastos)
 │   ├── QuickTransactionFAB.tsx     # Botón flotante para registrar transacción rápida

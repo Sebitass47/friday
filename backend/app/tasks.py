@@ -50,6 +50,49 @@ def check_habit_reminders(hour: int):
         db.close()
 
 
+@celery.task(name="app.tasks.send_notification")
+def send_notification(user_ids, title, body, url="/", tag="friday"):
+    """Queue entry point for 'someone added you to…' pushes (enqueued by the API)."""
+    from app.services.push_service import send_push_to_users
+    db = SessionLocal()
+    try:
+        send_push_to_users(db, user_ids, title, body, url=url, tag=tag)
+    except Exception as e:
+        logger.error("Error in send_notification: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
+@celery.task(name="app.tasks.flush_resource_changes")
+def flush_resource_changes(resource_type, resource_id):
+    """Runs ~1 min after the first edit of a shared item and sends one summary push per person."""
+    from app.services.notify_service import flush_changes
+    db = SessionLocal()
+    try:
+        flush_changes(db, resource_type, resource_id)
+    except Exception as e:
+        logger.error("Error in flush_resource_changes: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
+@celery.task(name="app.tasks.send_weekly_digests")
+def send_weekly_digests():
+    """Hourly: send the Sunday / Friday summary to users whose configured hour is now."""
+    from app.services.digest_service import send_due_digests
+    db = SessionLocal()
+    try:
+        sent = send_due_digests(db)
+        logger.info("send_weekly_digests: sent %d digests", sent)
+    except Exception as e:
+        logger.error("Error in send_weekly_digests: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
 def _task_subscriptions(db, task):
     """Push subscriptions of the owner AND everyone the task is shared with."""
     from app.models.push_subscription import PushSubscription
@@ -146,6 +189,8 @@ def check_task_reminders():
 def auto_complete_overdue_recurring_tasks():
     """Midnight cron: advance recurring todos whose due_date passed and were never completed."""
     from app.services.task_service import _advance_recurring_task
+    from app.services import activity_service
+    from app.models.activity_log import TASK_MISSED
     from app.models.task import Task
 
     db = SessionLocal()
@@ -164,6 +209,7 @@ def auto_complete_overdue_recurring_tasks():
         )
         for task in tasks:
             prev_date = task.due_date
+            activity_service.log(db, task.user_id, TASK_MISSED, task.id, prev_date)
             _advance_recurring_task(task)
             logger.info("Auto-advanced recurring task '%s' from %s to %s", task.title, prev_date, task.due_date)
         db.commit()

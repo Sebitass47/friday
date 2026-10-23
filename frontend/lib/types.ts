@@ -244,3 +244,90 @@ export interface Habit {
   completed_dates: string[]
   week_percentage: number
 }
+
+// ── Statistics ───────────────────────────────────────────────────────────────
+
+export interface PerHabitStat {
+  id: string
+  name: string
+  color: string
+  week_pct: number
+  month_pct: number
+  streak: number
+  best_streak: number
+}
+
+export interface HeatCell {
+  date: string
+  done: number
+  scheduled: number
+}
+
+export interface HabitStats {
+  week_pct: number
+  month_pct: number
+  streak_days: number
+  best_streak_days: number
+  perfect_days_30: number
+  // 0 = Monday
+  best_weekday: number | null
+  worst_weekday: number | null
+  per_habit: PerHabitStat[]
+  heatmap: HeatCell[]
+  weekly: { week_start: string; pct: number }[]
+}
+
+export interface ReminderWindow {
+  done: number
+  missed: number
+  pct: number
+}
+
+export interface ReminderStats {
+  week: ReminderWindow
+  month: ReminderWindow
+  overdue_now: number
+}
+
+export interface ListStats {
+  checked_week: number
+  checked_month: number
+  pending_items: number
+  total_items: number
+  lists: number
+  lists_complete: number
+}
+
+export interface CycleStat {
+  label: string
+  start: string
+  end: string
+  income: number
+  spent: number
+  net: number
+  is_current: boolean
+}
+
+export interface FinanceStats {
+  cycles: CycleStat[]
+  spent_current: number
+  spent_prev_same_point: number
+  spent_vs_prev_pct: number | null
+  avg_daily_spend: number
+  categories: { category: string; amount: number; prev_amount: number }[]
+}
+
+export interface Stats {
+  habits: HabitStats | null
+  reminders: ReminderStats
+  lists: ListStats
+  finance: FinanceStats | null
+}
+
+export interface DigestSettings {
+  enabled: boolean
+  sunday_on: boolean
+  sunday_hour: number
+  friday_on: boolean
+  friday_hour: number
+}

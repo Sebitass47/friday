@@ -30,6 +30,10 @@ celery.conf.beat_schedule = {
         "schedule": crontab(hour=21, minute=0),
         "kwargs": {"hour": 21},
     },
+    "send-weekly-digests": {
+        "task": "app.tasks.send_weekly_digests",
+        "schedule": crontab(minute=0),  # every hour on the hour; each user's own hour decides
+    },
     "charge-recurring-expenses": {
         "task": "app.tasks.charge_recurring_expenses",
         "schedule": crontab(hour=7, minute=0),

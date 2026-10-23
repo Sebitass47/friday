@@ -83,12 +83,18 @@ def update_installment_purchase(
 
     update_data = purchase.model_dump(exclude_unset=True)
     update_data.pop('shares', None)
+    schedule_changed = any(
+        k in update_data and update_data[k] != getattr(db_purchase, k)
+        for k in ('start_date', 'total_installments', 'remaining_installments', 'account_id')
+    )
     for key, value in update_data.items():
         setattr(db_purchase, key, value)
 
     db.flush()
     if purchase.shares is not None:
         debt_service.set_installment_shares(db, user_id, db_purchase, purchase.shares)
+    elif schedule_changed:
+        debt_service.rebuild_installment_debts(db, user_id, db_purchase)
     else:
         debt_service.ensure_installment_debts(db, user_id, db_purchase)
 

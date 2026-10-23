@@ -136,6 +136,14 @@ def ensure_installment_debts(db: Session, user_id: UUID, purchase: InstallmentPu
     db.flush()
 
 
+def rebuild_installment_debts(db: Session, user_id: UUID, purchase: InstallmentPurchase) -> None:
+    """The schedule changed (start date, number of payments, card): redo the untouched debts so their
+    dates and statements follow it. Debts already (partly) collected are history and stay as they are."""
+    db.query(PersonDebt).filter(PersonDebt.installment_id == purchase.id, PersonDebt.settled_amount == 0).delete()
+    db.flush()
+    ensure_installment_debts(db, user_id, purchase)
+
+
 def set_installment_shares(db: Session, user_id: UUID, purchase: InstallmentPurchase, shares: List[InstallmentShareIn]) -> None:
     _check_people(db, user_id, (s.person_id for s in shares))
     db.query(InstallmentShare).filter(InstallmentShare.installment_id == purchase.id).delete()

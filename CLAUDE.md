@@ -409,6 +409,7 @@ frontend/
 - Cambios de código TypeScript/Python: `docker cp` al contenedor para probar rápido, luego `docker compose build` para persistir
 - Cambios de dependencias (`requirements.txt` o `package.json`): siempre `docker compose build`
 - Nunca hay volume mounts de código fuente en docker-compose
+- **pip/certifi con hash (incidente eMudhra, oct 2026):** pip < 26.2.2 y certifi viejo siguen confiando en intermedias comprometidas (riesgo de MITM contra PyPI). `backend/Dockerfile` instala primero `requirements-bootstrap.txt` con `--require-hashes` (pip 26.2.2 + certifi 2026.10.19) y luego `requirements.txt`; el deploy hace `build --pull` para traer la imagen base nueva. Al subir esas versiones, actualiza los hashes desde `https://pypi.org/pypi/<paquete>/<versión>/json`. Pendiente: `--require-hashes` también para `requirements.txt`
 
 **Agregar una nueva página:**
 1. Crear `frontend/app/<nombre>/page.tsx`

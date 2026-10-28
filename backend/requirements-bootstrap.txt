@@ -1,0 +1,8 @@
+# Se instala primero, con verificación de hash, para no depender del TLS.
+# Motivo: pip < 26.2.2 y certifi viejo siguen confiando en las intermedias
+# comprometidas de eMudhra/emSign (octubre 2026). Con --require-hashes un
+# paquete alterado en tránsito se rechaza aunque el certificado sea falso.
+pip==26.2.2 \
+    --hash=sha256:fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70
+certifi==2026.10.19 \
+    --hash=sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b

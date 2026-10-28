@@ -2,9 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY requirements-bootstrap.txt requirements.txt ./
 
-RUN pip install --no-cache-dir -r requirements.txt
+# pip y certifi nuevos, verificados por hash (ver requirements-bootstrap.txt)
+RUN pip install --no-cache-dir --require-hashes -r requirements-bootstrap.txt \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 COPY entrypoint.sh .

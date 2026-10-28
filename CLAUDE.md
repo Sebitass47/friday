@@ -409,6 +409,7 @@ frontend/
 - Cambios de código TypeScript/Python: `docker cp` al contenedor para probar rápido, luego `docker compose build` para persistir
 - Cambios de dependencias (`requirements.txt` o `package.json`): siempre `docker compose build`
 - Nunca hay volume mounts de código fuente en docker-compose
+- **Python 3.13** (`python:3.13-slim`, soporte hasta 2029-10) con dependencias actualizadas el 28/10/2026. Se mantuvo SQLAlchemy en 2.0.x, redis en 5.x y `bcrypt==4.0.1` (passlib 1.7.4 no tolera bcrypt ≥ 4.1/5). Los schemas aún usan `class Config` de Pydantic v1 (avisos de deprecación; se romperá en Pydantic 3, migrar a `ConfigDict`)
 - **pip/certifi con hash (incidente eMudhra, oct 2026):** pip < 26.2.2 y certifi viejo siguen confiando en intermedias comprometidas (riesgo de MITM contra PyPI). `backend/Dockerfile` instala primero `requirements-bootstrap.txt` con `--require-hashes` (pip 26.2.2 + certifi 2026.10.19) y luego `requirements.txt`. Al subir esas versiones, actualiza los hashes desde `https://pypi.org/pypi/<paquete>/<versión>/json`. Pendiente: `--require-hashes` también para `requirements.txt`
 
 **Agregar una nueva página:**

@@ -512,3 +512,18 @@ export async function getClosing(month?: number, year?: number): Promise<Closing
 export async function setStatementCheck(data: { account_id: string; month: number; year: number; real_total: number | null }): Promise<void> {
   return req('/closing/check', { method: 'PUT', body: JSON.stringify(data) })
 }
+
+// ── Assistant ───────────────────────────────────────────────────────────────
+
+export interface AssistantAction { type: string; args: Record<string, unknown>; title: string; lines: string[] }
+export interface AssistantReply { reply: string; actions: AssistantAction[]; notes: string[] }
+
+export async function assistantMessage(text: string, history: { role: 'user' | 'assistant'; text: string }[]): Promise<AssistantReply> {
+  return req('/assistant/message', { method: 'POST', body: JSON.stringify({ text, history }) })
+}
+export async function assistantConfirm(actions: AssistantAction[]): Promise<{ done: string[]; failed: string[] }> {
+  return req('/assistant/confirm', { method: 'POST', body: JSON.stringify({ actions }) })
+}
+export async function assistantUsage(): Promise<{ spent_usd: number; limit_usd: number; calls: number; available: boolean }> {
+  return req('/assistant/usage')
+}

@@ -99,6 +99,16 @@ Para cuando prestas la tarjeta, divides una cuenta o compras un MSI con alguien.
 - **Editar/borrar gasto:** `expense_service._apply_charge` revierte el cargo en la cuenta/método viejos y lo aplica en los nuevos (cambiar de cuenta o a crédito recalcula el statement y mueve saldos); borrar un gasto sin cuenta (efectivo) ya no truena.
 - Reparto bloqueado si el gasto ya tiene cobros aplicados (400). **Movimientos** (recientes y "Todos"): columna "de quién" (`ownerOf`): *Tú*, *Tú + Armando* o solo la persona; si es 100% de otro se muestra el total del cargo (no "$0") en azul (`OTHER_COLOR`, ni verde ni rojo). **Editar un gasto** (modal "Editar gasto") también trae el selector: el campo Monto muestra lo que cobró el banco y el reparto se reconstruye desde `shares`; el front solo manda `shares` si cambiaron (así editar nombre/monto de un gasto con cobros aplicados no falla). Pendiente: exportar el cierre a Excel.
 
+### Asistente ✨ (botón flotante, en todas las páginas con `AppLayout`)
+
+Lenguaje natural → acciones: registrar gasto (con reparto), recordatorio, evento, crear lista y agregar elementos a una lista existente. Botón ✨ abajo a la izquierda (`components/AssistantSheet.tsx`, hoja desde abajo; se dicta con el micrófono del teclado, no hay transcripción propia). Backend: `services/assistant_service.py`, `endpoints/assistant.py` (`POST /assistant/message`, `POST /assistant/confirm`, `GET /assistant/usage`), tabla `ai_usage` (migración 0029).
+
+- **Claude Haiku 5.5 vía API directa** (`urllib`, sin SDK), `ANTHROPIC_API_KEY` en el entorno del backend. Variables opcionales: `AI_MODEL`, `AI_MONTHLY_LIMIT_USD` (default 2.0 por usuario), `AI_PER_MINUTE` (8), `AI_PRICE_IN/OUT`. Sin key responde 503 "no está configurado". Un comando cuesta ~$0.0004 USD.
+- **El modelo solo PROPONE**: `/message` devuelve tarjetas de confirmación y no escribe nada; `/confirm` **vuelve a validar** cada acción (nunca confía en el payload del cliente) y la ejecuta con los servicios normales, siempre con `user_id` del token. Las cuentas/listas/personas del contexto son solo las del usuario.
+- **Las cuentas las hace el backend** (`_split`): el modelo manda `my_parts`/`parts`/`amount` tal como los dijo el usuario; montos exactos salen primero y el resto se reparte por partes.
+- **Guardarraíles:** prompt que rechaza todo lo que no sea una de las 5 acciones, mensaje ≤600 caracteres, 8 mensajes/min (Redis, falla abierto), tope mensual en USD por usuario (`ai_usage`), errores del proveedor nunca se reenvían al cliente.
+- Pendiente: responder preguntas sobre tus datos, entrada por WhatsApp (Sebastian: primero la app).
+
 ### Recordatorios (`/recordatorios`)
 
 Lista de recordatorios/tareas personales. Diseño minimalista dark con panel lateral derecho para crear/editar.

@@ -19,6 +19,7 @@ from .endpoints.shares import router as shares_router
 from .endpoints.stats import router as stats_router
 from .endpoints.digest import router as digest_router
 from .endpoints.people import router as people_router
+from .endpoints.assistant import router as assistant_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -41,3 +42,4 @@ router.include_router(shares_router)
 router.include_router(stats_router)
 router.include_router(digest_router)
 router.include_router(people_router)
+router.include_router(assistant_router)

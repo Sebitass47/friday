@@ -144,7 +144,7 @@ export default function QuickTransactionFAB() {
       {/* FAB Button */}
       <button
         onClick={() => setOpen(true)}
-        className="group fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-black/[0.05] dark:bg-white/[0.05] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-lg transition-all hover:border-black/20 dark:hover:border-white/20 hover:shadow-xl hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30"
+        className="group fixed bottom-24 right-4 sm:bottom-24 sm:right-6 z-40 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-black/[0.05] dark:bg-white/[0.05] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-lg transition-all hover:border-black/20 dark:hover:border-white/20 hover:shadow-xl hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-black/30 dark:focus:ring-white/30"
         aria-label="Agregar transacción"
       >
         <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-black dark:text-white transition-transform group-hover:rotate-90" />
@@ -160,7 +160,7 @@ export default function QuickTransactionFAB() {
           />
 
           {/* Bubble */}
-          <div className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-96 max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-white/95 dark:bg-[#141414]/95 backdrop-blur-xl shadow-2xl">
+          <div className="fixed bottom-40 right-4 sm:bottom-40 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-96 max-w-md rounded-2xl border border-black/10 dark:border-white/10 bg-white/95 dark:bg-[#141414]/95 backdrop-blur-xl shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-black/10 dark:border-[#2A2A2A] px-4 py-3">
               <h3 className="text-sm font-medium text-black dark:text-white">

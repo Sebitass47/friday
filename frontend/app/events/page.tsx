@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { getTasks, createTask, updateTask, deleteTask, getMe, shareResource } from '@/lib/api'
 import type { Task, User, SharedUser } from '@/lib/types'
@@ -376,6 +376,15 @@ export default function EventsPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // ?open=<id> (from the assistant): open that item's panel once the list has loaded
+  const openedRef = useRef(false)
+  useEffect(() => {
+    if (openedRef.current || allEvents.length === 0) return
+    const id = new URLSearchParams(window.location.search).get('open')
+    const item = id ? allEvents.find(t => t.id === id) : undefined
+    if (item) { openedRef.current = true; openEdit(item) }
+  }, [allEvents])
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('new') === '1') {

@@ -17,7 +17,6 @@ import {
 import HabitsWeekTable from '@/components/HabitsWeekTable'
 import CycleSummaryCard from '@/components/CycleSummaryCard'
 import DigestControls from '@/components/DigestControls'
-import AssistantFab from '@/components/AssistantSheet'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -584,7 +583,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      <AssistantFab />
     </AppLayout>
   )
 }

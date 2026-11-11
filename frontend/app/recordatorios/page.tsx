@@ -576,6 +576,15 @@ export default function ToDoPage() {
 
   useEffect(() => { load() }, [load])
 
+  // ?open=<id> (from the assistant): open that item's panel once the list has loaded
+  const openedRef = useRef(false)
+  useEffect(() => {
+    if (openedRef.current || tasks.length === 0) return
+    const id = new URLSearchParams(window.location.search).get('open')
+    const item = id ? tasks.find(t => t.id === id) : undefined
+    if (item) { openedRef.current = true; openEdit(item) }
+  }, [tasks])
+
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('new') === '1') {
       setPanelTask(null); setCreating(true); setPanelOpen(true)

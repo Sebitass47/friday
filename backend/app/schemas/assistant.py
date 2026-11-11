@@ -31,8 +31,13 @@ class ConfirmRequest(BaseModel):
     actions: List[AssistantAction] = Field(..., min_length=1, max_length=10)
 
 
+class DoneItem(BaseModel):
+    text: str
+    href: Optional[str] = None
+
+
 class ConfirmResult(BaseModel):
-    done: List[str]
+    done: List[DoneItem]
     failed: List[str]
 
 

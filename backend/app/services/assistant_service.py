@@ -424,8 +424,8 @@ def normalize(db: Session, user_id: UUID, kind: str, args: Dict[str, Any]) -> Di
     raise ValueError("Acción no permitida")
 
 
-def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> str:
-    """Run one validated action through the regular services. Returns a short 'done' line."""
+def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> Dict[str, Any]:
+    """Run one validated action through the regular services. Returns {text, href} (href = where to see it)."""
     kind, a = action["type"], action["args"]
 
     if kind == "add_expense":
@@ -439,7 +439,7 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> str:
             payment_method=PaymentMethod(a["payment_method"]), category=a["category"], shares=shares,
         ), user_id)
         extra = f" · {_fmt(total)} (tu parte {_fmt(mine)})" if shares else f" · {_fmt(total)}"
-        return f"Gasto «{a['name']}» registrado{extra}"
+        return {"text": f"Gasto «{a['name']}» registrado{extra}", "href": "/dashboard"}
 
     if kind in ("add_reminder", "add_event"):
         is_event = kind == "add_event"
@@ -450,20 +450,24 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> str:
             due_date=due, due_time=tm, location=a.get("location") if is_event else None,
             reminder_at=datetime.combine(due, tm) if (not is_event and due and tm) else None,
         )
-        task_service.create_task(db, data, user_id)
-        return f"{'Evento' if is_event else 'Recordatorio'} «{a['title']}» creado"
+        task = task_service.create_task(db, data, user_id)
+        return {"text": f"{'Evento' if is_event else 'Recordatorio'} «{a['title']}» creado",
+                "href": f"/{'events' if is_event else 'recordatorios'}?open={task.id}"}
 
     if kind == "create_list":
         lst = user_list_service.create_list(db, ListCreate(name=a["name"], emoji=a["emoji"]), user_id)
         for text in a["items"]:
             user_list_service.add_item(db, lst.id, ListItemCreate(text=text), user_id)
-        return f"Lista «{a['name']}» creada"
+        return {"text": f"Lista «{a['name']}» creada", "href": f"/listas?open={lst.id}"}
 
     if kind == "add_list_items":
         lid = UUID(a["list_id"])
         for text in a["items"]:
             user_list_service.add_item(db, lid, ListItemCreate(text=text), user_id)
-        return f"{len(a['items'])} elemento(s) agregados"
+        lst = next((l for l in user_list_service.get_lists(db, user_id) if l.id == lid), None)
+        where = f" a {lst.emoji} {lst.name}" if lst else ""
+        n = len(a["items"])
+        return {"text": f"{n} elemento{'s' if n != 1 else ''} agregado{'s' if n != 1 else ''}{where}", "href": f"/listas?open={lid}"}
 
     raise ValueError("Acción no permitida")
 
@@ -532,8 +536,8 @@ def handle_message(db: Session, user_id: UUID, text: str, history: List[Dict[str
     return {"reply": reply, "actions": actions, "notes": notes}
 
 
-def confirm(db: Session, user_id: UUID, actions: List[Dict[str, Any]]) -> Dict[str, List[str]]:
-    done: List[str] = []
+def confirm(db: Session, user_id: UUID, actions: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
+    done: List[Dict[str, Any]] = []
     failed: List[str] = []
     for raw in actions:
         try:

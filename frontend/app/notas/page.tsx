@@ -480,6 +480,12 @@ export default function NotasPage() {
             <p className={`text-sm mt-0.5 ${isDark ? 'text-white/45' : 'text-gray-500'}`}>
               {notes.length} {notes.length === 1 ? 'nota activa' : 'notas activas'}
             </p>
+            <button
+              onClick={() => { setShowForm(true); setEditingNote(null) }}
+              className={`mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium border transition-all ${isDark ? 'bg-white/[0.04] border-white/10 text-white/70 hover:bg-white/[0.08] hover:text-white' : 'bg-black/[0.03] border-black/10 text-gray-600 hover:bg-black/[0.06] hover:text-gray-900'}`}
+            >
+              <Plus size={18} /> Nueva nota
+            </button>
           </div>
 
           {/* Search */}
@@ -611,23 +617,13 @@ export default function NotasPage() {
             {filtered.length === 0 && !showForm && (
               <div className={`text-center py-20 ${isDark ? 'text-white/30' : 'text-gray-400'}`}>
                 <p className="text-lg font-medium mb-1">Sin notas</p>
-                <p className="text-sm">Toca + para crear una</p>
+                <p className="text-sm">Toca «Nueva nota» para crear una</p>
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* FAB */}
-      {!showForm && !editingNote && (
-        <button
-          onClick={() => { setShowForm(true); setEditingNote(null) }}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all duration-200 hover:scale-110 active:scale-95 z-30"
-          style={{ background: 'linear-gradient(135deg, #FF6B9D, #6B46E5)' }}
-        >
-          <Plus size={24} />
-        </button>
-      )}
     </AppLayout>
   )
 }

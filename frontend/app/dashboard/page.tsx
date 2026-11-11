@@ -16,7 +16,7 @@ import {
   createInstallmentPurchase, updateInstallmentPurchase, deleteInstallmentPurchase, liquidateMsi,
   createSavingsGoal, updateSavingsGoal, deleteSavingsGoal, contributeGoal,
   createExpense, updateExpense, createIncome, getAccounts, setMonthlyIncome, getMonthlyIncome,
-  createAccount, updateAccount, deleteAccount, payCardMonth, liquidateCard, transferBetweenAccounts,
+  createAccount, updateAccount, deleteAccount, transferBetweenAccounts,
   getExpenses, deleteExpense, getIncomes, updateIncome, deleteIncome,
   simulateProjection, getPeople, createPerson,
 } from '@/lib/api'
@@ -27,7 +27,7 @@ import type {
 import {
   TrendingUp, TrendingDown, Minus, CreditCard, Target,
   RefreshCw, Plus, X, Pencil, Trash2, CheckCircle2, CalendarDays,
-  Wallet, PiggyBank, Banknote, Zap, Sparkles, AlertTriangle, ArrowLeftRight, ClipboardCheck,
+  Wallet, PiggyBank, Sparkles, AlertTriangle, ArrowLeftRight, ClipboardCheck,
 } from 'lucide-react'
 import { CustomSelect } from '@/components/ui/custom-select'
 import { DateInput } from '@/components/ui/date-input'
@@ -135,37 +135,6 @@ function FormActions({ onCancel, onSave, saving, saveLabel = 'Guardar', error }:
   )
 }
 
-function usagePct(used: number, limit: number) {
-  return limit > 0 ? used / limit : 0
-}
-function usageTextColor(pct: number) {
-  if (pct >= 0.66) return 'text-red-400'
-  if (pct >= 0.33) return 'text-amber-400'
-  return 'text-black/80 dark:text-white/85'
-}
-function usageBgColor(pct: number) {
-  if (pct >= 0.66) return 'bg-red-400'
-  if (pct >= 0.33) return 'bg-amber-400'
-  return 'bg-black/60 dark:bg-white/65'
-}
-
-function CreditUsageBar({ used, limit }: { used: number; limit: number }) {
-  const pct = usagePct(used, limit)
-  const p = Math.min(100, Math.round(pct * 100))
-  const color = usageBgColor(pct)
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-[10px] text-black/40 dark:text-white/40">
-        <span>{fmt(used)} usado · {fmt(limit - used)} disp.</span>
-        <span>{p}%</span>
-      </div>
-      <div className="h-1.5 w-full rounded-full bg-black/10 dark:bg-white/[0.08]">
-        <div className={`h-1.5 rounded-full transition-all ${color}`} style={{ width: `${p}%` }} />
-      </div>
-    </div>
-  )
-}
-
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [projection, setProjection] = useState<ProjectionResponse | null>(null)
@@ -213,11 +182,6 @@ export default function DashboardPage() {
   const [accountSaving, setAccountSaving] = useState(false)
   const [accountError, setAccountError] = useState('')
 
-  // Pay card modal
-  interface PayCardState { card: Account; amountToPay: number; newBalanceUsed: number }
-  const [payCardState, setPayCardState] = useState<PayCardState | null>(null)
-  const [payCardSaving, setPayCardSaving] = useState(false)
-  const [payCardError, setPayCardError] = useState('')
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferFrom, setTransferFrom] = useState('')
   const [transferTo, setTransferTo] = useState('')
@@ -308,6 +272,14 @@ export default function DashboardPage() {
       openRegister()
     }
   }, [loading])
+
+  // Auto-open the account editor when coming from a card in Cierre (?editAccount=<id>)
+  useEffect(() => {
+    if (loading) return
+    const id = new URLSearchParams(window.location.search).get('editAccount')
+    const acc = id ? accounts.find(a => a.id === id) : undefined
+    if (acc) { openEditAccount(acc); window.history.replaceState(null, '', '/dashboard') }
+  }, [loading, accounts])
 
   function openRegister() {
     setRegAmount(''); setRegDesc(''); setRegDate(today()); setRegMethod('cash'); setRegAccountId(''); setRegIncomeAccountId(''); setRegCategory('')
@@ -605,55 +577,6 @@ export default function DashboardPage() {
     await deleteAccount(id)
     setAccounts(prev => prev.filter(a => a.id !== id))
   }
-  function openPayCardModal(card: Account) {
-    const linkedMsis = msi.filter(m => m.account_id === card.id && m.remaining_installments > 0)
-    const msiAmount = linkedMsis.reduce((sum, m) => sum + Number(m.monthly_amount), 0)
-
-    // Determine which statement is currently due based on closing_day
-    const now = new Date()
-    let dueMonth = now.getMonth() + 1
-    let dueYear = now.getFullYear()
-    if (card.closing_day && now.getDate() <= card.closing_day) {
-      // Still before closing: previous statement is due
-      if (dueMonth === 1) { dueMonth = 12; dueYear-- } else { dueMonth-- }
-    }
-
-    // Sum all non-MSI credit expenses for the due statement
-    const statementExpenses = expenses
-      .filter(e =>
-        e.payment_method === 'credit' &&
-        e.account_id === card.id &&
-        e.credit_statement_month === dueMonth &&
-        e.credit_statement_year === dueYear
-      )
-      .reduce((sum, e) => sum + Number(e.amount), 0)
-
-    const computedPayment = msiAmount + statementExpenses
-    const currentUsed = Number(card.current_balance_used) || 0
-    const newBalance = Math.max(0, currentUsed - computedPayment)
-    setPayCardState({ card, amountToPay: computedPayment, newBalanceUsed: newBalance })
-    setPayCardError('')
-  }
-  async function handleConfirmPayCard() {
-    if (!payCardState) return
-    setPayCardSaving(true); setPayCardError('')
-    try {
-      const updated = await payCardMonth(payCardState.card.id, { new_balance_used: payCardState.newBalanceUsed })
-      setAccounts(prev => prev.map(a => a.id === payCardState.card.id ? updated : a))
-      setMsi(await getInstallmentPurchases())
-      setPayCardState(null)
-    } catch (e: unknown) { setPayCardError(e instanceof Error ? e.message : 'Error') }
-    finally { setPayCardSaving(false) }
-  }
-  async function handleLiquidateCard(id: string, name: string) {
-    if (!confirm(`¿Liquidar la tarjeta "${name}"? Se saldarán todos los MSI vinculados y el saldo quedará en $0.`)) return
-    try {
-      const updated = await liquidateCard(id)
-      setAccounts(prev => prev.map(a => a.id === id ? updated : a))
-      setMsi(await getInstallmentPurchases())
-    } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error') }
-  }
-
   function openTransferModal() {
     const nonCredit = accounts.filter(a => a.account_type !== 'credit_card')
     setTransferFrom(nonCredit[0]?.id || '')
@@ -718,10 +641,6 @@ export default function DashboardPage() {
 
   const creditCards = accounts.filter(a => a.account_type === 'credit_card')
   const otherAccounts = accounts.filter(a => a.account_type !== 'credit_card')
-  const totalUsed = creditCards.reduce((s, a) => s + (Number(a.current_balance_used) || 0), 0)
-  const totalCreditAvail = creditCards.reduce((s, a) => s + (Number(a.available_credit) || 0), 0)
-  const totalCreditLimit = creditCards.reduce((s, a) => s + (Number(a.credit_limit) || 0), 0)
-  const debtColor = usageTextColor(usagePct(totalUsed, totalCreditLimit))
 
   const cardCls = 'glass rounded-2xl hover:border-black/[0.14] dark:hover:border-white/[0.14] transition-all'
 
@@ -835,7 +754,7 @@ export default function DashboardPage() {
         {accounts.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Cuentas y tarjetas</h2>
+              <h2 className="text-xs font-semibold text-black/40 dark:text-white/40 uppercase tracking-widest">Cuentas</h2>
               <div className="flex items-center gap-2">
                 {otherAccounts.length > 0 && (
                   <button onClick={openTransferModal} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-400/10 text-emerald-500 dark:text-emerald-400 transition-opacity hover:opacity-80">
@@ -847,24 +766,6 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-
-            {/* Summary row */}
-            {creditCards.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
-                <div className={`${cardCls} p-4`}>
-                  <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Total activos</p>
-                  <p className="text-base font-semibold text-black dark:text-white tabular-nums">{fmt(otherAccounts.reduce((s, a) => s + Number(a.balance), 0))}</p>
-                </div>
-                <div className={`${cardCls} p-4`}>
-                  <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Deuda tarjetas</p>
-                  <p className={`text-base font-semibold tabular-nums ${debtColor}`}>{fmt(totalUsed)}</p>
-                </div>
-                <div className={`${cardCls} p-4`}>
-                  <p className="text-[10px] text-black/40 dark:text-white/40 mb-1">Crédito disp.</p>
-                  <p className="text-base font-semibold text-emerald-400 tabular-nums">{fmt(totalCreditAvail)}</p>
-                </div>
-              </div>
-            )}
 
             {/* Other accounts */}
             {otherAccounts.length > 0 && (
@@ -892,72 +793,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Credit cards */}
-            {creditCards.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {creditCards.map(a => {
-                  const used = Number(a.current_balance_used) || 0
-                  const limit = Number(a.credit_limit) || 0
-                  const cardUsedColor = usageTextColor(usagePct(used, limit))
-                  return (
-                    <div key={a.id} className={`${cardCls} p-5 space-y-3 hover:border-amber-400/30`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="rounded-xl bg-amber-400/10 p-2">
-                            <CreditCard size={16} className="text-amber-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-black dark:text-white">{a.name}</p>
-                            <p className="text-[11px] text-black/40 dark:text-white/40">Tarjeta de crédito</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => openEditAccount(a)} className="p-2.5 rounded-xl text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={20} /></button>
-                          <button onClick={() => removeAccount(a.id)} className="p-2.5 rounded-xl text-black/50 dark:text-white/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={20} /></button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-black/[0.03] dark:bg-white/[0.03] rounded-xl p-2.5">
-                          <p className="text-[9px] text-black/40 dark:text-white/40 mb-0.5">Usado</p>
-                          <p className={`text-xs font-semibold tabular-nums ${cardUsedColor}`}>{fmt(used)}</p>
-                        </div>
-                        <div className="bg-black/[0.03] dark:bg-white/[0.03] rounded-xl p-2.5">
-                          <p className="text-[9px] text-black/40 dark:text-white/40 mb-0.5">Disponible</p>
-                          <p className="text-xs font-semibold text-emerald-400 tabular-nums">{limit > 0 ? fmt(limit - used) : '—'}</p>
-                        </div>
-                        <div className="bg-black/[0.03] dark:bg-white/[0.03] rounded-xl p-2.5">
-                          <p className="text-[9px] text-black/40 dark:text-white/40 mb-0.5">Límite</p>
-                          <p className="text-xs font-semibold text-black dark:text-white tabular-nums">{limit > 0 ? fmt(limit) : '—'}</p>
-                        </div>
-                      </div>
-                      {limit > 0 && <CreditUsageBar used={used} limit={limit} />}
-                      {(a.closing_day || a.payment_day) && (
-                        <div className="flex items-center gap-3 pt-1 border-t border-black/[0.05] dark:border-white/[0.05] text-[11px]">
-                          {a.closing_day && <span className="text-black/40 dark:text-white/40">Corte: <span className="font-medium text-black dark:text-white">día {a.closing_day}</span></span>}
-                          {a.closing_day && a.payment_day && <span className="text-black/20 dark:text-white/20">·</span>}
-                          {a.payment_day && <span className="text-black/40 dark:text-white/40">Pago: <span className="font-medium text-black/80 dark:text-white/85">día {a.payment_day}</span></span>}
-                        </div>
-                      )}
-                      {/* Card actions */}
-                      <div className="flex gap-2 pt-1 border-t border-black/[0.05] dark:border-white/[0.05]">
-                        <button
-                          onClick={() => openPayCardModal(a)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-black/[0.07] dark:bg-white/10 text-black/80 dark:text-white/85 text-xs font-medium hover:opacity-80 transition-opacity"
-                        >
-                          <Banknote size={13} /> Pagar este mes
-                        </button>
-                        <button
-                          onClick={() => handleLiquidateCard(a.id, a.name)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-400/10 text-amber-500 dark:text-amber-400 text-xs font-medium hover:opacity-80 transition-opacity"
-                        >
-                          <Zap size={13} /> Liquidar tarjeta
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
 
           </div>
         )}
@@ -1695,6 +1530,13 @@ export default function DashboardPage() {
             />
           </FormField>
 
+          {accountForm.account_type === 'credit_card' && (
+            <p className="text-xs text-black/60 dark:text-white/50 bg-black/[0.04] dark:bg-white/[0.05] rounded-xl px-3 py-2.5 flex items-start gap-2">
+              <CreditCard size={14} className="shrink-0 mt-0.5" />
+              <span>El detalle de tus tarjetas (uso, corte, pagos y saldos) lo encuentras en el botón <strong>Cierre</strong> de esta página.</span>
+            </p>
+          )}
+
           {accountForm.account_type !== 'credit_card' ? (
             <FormField label="Saldo actual">
               <input type="number" value={accountForm.balance === 0 ? '' : accountForm.balance} onChange={e => setAccountForm({ ...accountForm, balance: Number(e.target.value) || 0 })} placeholder="0.00" className={inputCls()} />
@@ -1721,6 +1563,14 @@ export default function DashboardPage() {
           )}
 
           <FormActions onCancel={() => setActiveModal(null)} onSave={saveAccount} saving={accountSaving} error={accountError} />
+          {accountForm.id && (
+            <button
+              onClick={async () => { const id = accountForm.id; if (!id) return; await removeAccount(id); setActiveModal(null) }}
+              className="w-full flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium text-red-400 bg-red-400/10 hover:bg-red-400/15 transition-colors"
+            >
+              <Trash2 size={16} /> Eliminar cuenta
+            </button>
+          )}
         </Modal>
       )}
 
@@ -1752,67 +1602,6 @@ export default function DashboardPage() {
           />
         </Modal>
       )}
-
-      {/* Pay Card Month Modal */}
-      {payCardState && (() => {
-        const card = payCardState.card
-        const now = new Date()
-        let dueMonth = now.getMonth() + 1
-        let dueYear = now.getFullYear()
-        if (card.closing_day && now.getDate() <= card.closing_day) {
-          if (dueMonth === 1) { dueMonth = 12; dueYear-- } else { dueMonth-- }
-        }
-        const linkedMsis = msi.filter(m => m.account_id === card.id && m.remaining_installments > 0)
-        const msiAmt = linkedMsis.reduce((sum, m) => sum + Number(m.monthly_amount), 0)
-        const stmtAmt = expenses.filter(e =>
-          e.payment_method === 'credit' && e.account_id === card.id &&
-          e.credit_statement_month === dueMonth && e.credit_statement_year === dueYear
-        ).reduce((sum, e) => sum + Number(e.amount), 0)
-        return (
-        <Modal title={`Pagar tarjeta · ${card.name}`} onClose={() => setPayCardState(null)}>
-          <div className="text-xs text-black/50 dark:text-white/40 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl px-3 py-2 space-y-1">
-            {stmtAmt > 0 && <p>Gastos del estado {String(dueMonth).padStart(2,'0')}/{dueYear}: <span className="font-semibold text-black/70 dark:text-white/60">{fmt(stmtAmt)}</span></p>}
-            {msiAmt > 0 && <p>Cuotas MSI ({linkedMsis.length}): <span className="font-semibold text-black/70 dark:text-white/60">{fmt(msiAmt)}</span></p>}
-            {stmtAmt === 0 && msiAmt === 0 && <p>Sin gastos registrados en la app para este estado. Ajusta el monto manualmente.</p>}
-            <p className="text-black/30 dark:text-white/30">Los MSI vinculados avanzarán 1 cuota automáticamente.</p>
-          </div>
-          <FormField label="Pago a realizar">
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={payCardState.amountToPay}
-              onChange={e => {
-                const val = Number(e.target.value)
-                const currentUsed = Number(payCardState.card.current_balance_used) || 0
-                setPayCardState({ ...payCardState, amountToPay: val, newBalanceUsed: Math.max(0, currentUsed - val) })
-              }}
-              className={inputCls()}
-            />
-          </FormField>
-          <FormField label="Crédito usado después de pagar">
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={payCardState.newBalanceUsed}
-              onChange={e => setPayCardState({ ...payCardState, newBalanceUsed: Number(e.target.value) })}
-              className={inputCls()}
-            />
-            <p className="text-[10px] text-black/30 dark:text-white/30 mt-1">
-              Actual: {fmt(Number(payCardState.card.current_balance_used) || 0)} · Límite: {fmt(Number(payCardState.card.credit_limit) || 0)}
-            </p>
-          </FormField>
-          <FormActions
-            onCancel={() => setPayCardState(null)}
-            onSave={handleConfirmPayCard}
-            saving={payCardSaving}
-            saveLabel="Confirmar pago"
-            error={payCardError}
-          />
-        </Modal>
-        )
-      })()}
 
       {transferOpen && (
         <Modal title="Transferir entre cuentas" onClose={() => setTransferOpen(false)}>

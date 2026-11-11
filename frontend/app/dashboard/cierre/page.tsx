@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Check, X } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Check, X, Pencil, Banknote, Zap } from 'lucide-react'
 import AppLayout from '@/components/layout/AppLayout'
 import CobroForm from '@/components/CobroForm'
-import { getClosing, getAccounts, getPeople, setStatementCheck } from '@/lib/api'
+import { getClosing, getAccounts, getPeople, setStatementCheck, payCardMonth, liquidateCard } from '@/lib/api'
 import type { Account, Closing, ClosingCard, ClosingCharge, ClosingPerson } from '@/lib/types'
 
 const money = (n: number) =>
@@ -20,6 +20,26 @@ function Kpi({ label, value, sub, color }: { label: string; value: string; sub?:
       <p className="text-xs text-black/50 dark:text-white/50">{label}</p>
       <p className="text-xl sm:text-2xl font-semibold tabular-nums mt-1 text-black dark:text-white" style={color ? { color } : undefined}>{value}</p>
       {sub && <p className="text-[11px] text-black/40 dark:text-white/40 mt-0.5">{sub}</p>}
+    </div>
+  )
+}
+
+function UsageBar({ used, limit }: { used: number; limit: number }) {
+  const pct = limit > 0 ? used / limit : 0
+  const p = Math.min(100, Math.round(pct * 100))
+  const color = pct >= 0.66 ? 'bg-red-400' : pct >= 0.33 ? 'bg-amber-400' : 'bg-black/60 dark:bg-white/65'
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-[11px] text-black/45 dark:text-white/45">
+        <span>{money(used)} usado · {money(limit - used)} disp.</span>
+        <span>{p}%</span>
+      </div>
+      <div className="text-[11px] text-black/45 dark:text-white/45">
+        Crédito total: <span className="font-medium text-black dark:text-white">{money(limit)}</span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-black/10 dark:bg-white/[0.08]">
+        <div className={`h-2 rounded-full transition-all ${color}`} style={{ width: `${p}%` }} />
+      </div>
     </div>
   )
 }
@@ -61,8 +81,9 @@ function PersonRow({ p, onCollect, open, onToggle, children }: {
   )
 }
 
-function CardPanel({ card, month, year, onCollect, onChanged }: {
-  card: ClosingCard; month: number; year: number; onCollect: (personId: string) => void; onChanged: () => void
+function CardPanel({ card, account, month, year, onCollect, onChanged, onPay, onLiquidate }: {
+  card: ClosingCard; account?: Account; month: number; year: number; onCollect: (personId: string) => void; onChanged: () => void
+  onPay: (a: Account) => void; onLiquidate: (a: Account) => void
 }) {
   const [open, setOpen] = useState<boolean>(false)
   const [openPerson, setOpenPerson] = useState<string | null>(null)
@@ -86,7 +107,14 @@ function CardPanel({ card, month, year, onCollect, onChanged }: {
     <section className="glass rounded-2xl p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold text-black dark:text-white truncate">{card.name}</h2>
+          <div className="flex items-center gap-1">
+            <h2 className="text-base font-semibold text-black dark:text-white truncate">{card.name}</h2>
+            {account && (
+              <Link href={`/dashboard?editAccount=${account.id}`} aria-label={`Editar ${card.name}`} className="shrink-0 p-2 -my-1 rounded-xl text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                <Pencil size={18} />
+              </Link>
+            )}
+          </div>
           <p className="text-[11px] text-black/40 dark:text-white/40 mt-0.5">
             Corte {fmtDate(card.period_start)} – {fmtDate(card.period_end)}{card.payment_day ? ` · paga el día ${card.payment_day}` : ''}
           </p>
@@ -110,6 +138,24 @@ function CardPanel({ card, month, year, onCollect, onChanged }: {
           </div>
         ))}
       </div>
+
+      {account && Number(account.credit_limit) > 0 && (
+        <div className="mt-4 space-y-3">
+          <UsageBar used={Number(account.current_balance_used) || 0} limit={Number(account.credit_limit)} />
+          <div className="flex items-center gap-3 text-xs border-t border-black/[0.06] dark:border-white/[0.08] pt-3">
+            <span className="text-black/45 dark:text-white/45">Corte: <span className="font-medium text-black dark:text-white">día {card.closing_day}</span></span>
+            {card.payment_day && <><span className="text-black/20 dark:text-white/20">·</span><span className="text-black/45 dark:text-white/45">Pago: <span className="font-medium text-black dark:text-white">día {card.payment_day}</span></span></>}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => onPay(account)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-black/[0.07] dark:bg-white/10 text-black/80 dark:text-white/85 text-sm font-medium hover:opacity-80 transition-opacity">
+              <Banknote size={16} /> Pagar este mes
+            </button>
+            <button onClick={() => onLiquidate(account)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-400/10 text-amber-500 dark:text-amber-400 text-sm font-medium hover:opacity-80 transition-opacity">
+              <Zap size={16} /> Liquidar tarjeta
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Statement tie-out: type what the bank says and see what's missing */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -256,6 +302,36 @@ export default function CierrePage() {
   const [collect, setCollect] = useState<{ personId?: string } | null>(null)
   const [openPerson, setOpenPerson] = useState<string | null>(null)
   const [overall, setOverall] = useState<Record<string, number>>({})
+  const [pay, setPay] = useState<{ card: Account; amount: number; newUsed: number } | null>(null)
+  const [paySaving, setPaySaving] = useState<boolean>(false)
+  const [payError, setPayError] = useState<string>('')
+
+  function openPay(a: Account) {
+    const row = data?.cards.find(c => c.account_id === a.id)
+    const amount = row ? Math.max(row.total - row.paid, 0) : 0
+    const used = Number(a.current_balance_used) || 0
+    setPay({ card: a, amount, newUsed: Math.max(0, used - amount) })
+    setPayError('')
+  }
+  async function confirmPay() {
+    if (!pay) return
+    setPaySaving(true); setPayError('')
+    try {
+      await payCardMonth(pay.card.id, { new_balance_used: pay.newUsed })
+      setPay(null)
+      getAccounts().then(setAccounts).catch(() => {})
+      if (data) load(data.month, data.year)
+    } catch (e: unknown) { setPayError(e instanceof Error ? e.message : 'Error') }
+    finally { setPaySaving(false) }
+  }
+  async function liquidate(a: Account) {
+    if (!confirm(`¿Liquidar la tarjeta "${a.name}"? Se saldarán todos los MSI vinculados y el saldo quedará en $0.`)) return
+    try {
+      await liquidateCard(a.id)
+      getAccounts().then(setAccounts).catch(() => {})
+      if (data) load(data.month, data.year)
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : 'Error') }
+  }
 
   const load = useCallback((month?: number, year?: number) => {
     setError(false)
@@ -337,13 +413,45 @@ export default function CierrePage() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5 items-start">
               {data.cards.map(c => (
-                <CardPanel key={c.account_id} card={c} month={data.month} year={data.year}
-                  onCollect={id => setCollect({ personId: id })} onChanged={() => load(data.month, data.year)} />
+                <CardPanel key={c.account_id} card={c} account={accounts.find(a => a.id === c.account_id)} month={data.month} year={data.year}
+                  onCollect={id => setCollect({ personId: id })} onChanged={() => load(data.month, data.year)}
+                  onPay={openPay} onLiquidate={liquidate} />
               ))}
             </div>
           </>
         )}
       </div>
+
+      {pay && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setPay(null)}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 bg-white dark:bg-[#141414] border border-black/10 dark:border-white/10 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-black dark:text-white">Pagar tarjeta · {pay.card.name}</h2>
+              <button onClick={() => setPay(null)} className="p-1 rounded-lg text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white"><X size={16} /></button>
+            </div>
+            <p className="text-xs text-black/50 dark:text-white/40 bg-black/[0.03] dark:bg-white/[0.03] rounded-xl px-3 py-2">
+              El monto sale de lo que debes pagar al banco en este estado de cuenta. Los MSI vinculados avanzarán 1 cuota automáticamente.
+            </p>
+            <label className="block text-xs text-black/50 dark:text-white/50">Pago a realizar
+              <input type="number" min={0} step={0.01} value={pay.amount}
+                onChange={e => { const v = Number(e.target.value); setPay({ ...pay, amount: v, newUsed: Math.max(0, (Number(pay.card.current_balance_used) || 0) - v) }) }}
+                className="mt-1 w-full bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-black dark:text-white outline-none" />
+            </label>
+            <label className="block text-xs text-black/50 dark:text-white/50">Crédito usado después de pagar
+              <input type="number" min={0} step={0.01} value={pay.newUsed}
+                onChange={e => setPay({ ...pay, newUsed: Number(e.target.value) })}
+                className="mt-1 w-full bg-black/[0.03] dark:bg-white/[0.03] border border-black/10 dark:border-white/10 rounded-xl px-3 py-2 text-sm text-black dark:text-white outline-none" />
+              <span className="block text-[10px] text-black/35 dark:text-white/35 mt-1">Actual: {money(Number(pay.card.current_balance_used) || 0)} · Límite: {money(Number(pay.card.credit_limit) || 0)}</span>
+            </label>
+            {payError && <p className="text-xs text-[#FF6B6B] bg-[#FF6B6B]/10 rounded-xl px-3 py-2">{payError}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => setPay(null)} className="flex-1 rounded-xl border border-black/10 dark:border-white/10 px-4 py-2.5 text-sm text-black/60 dark:text-white/60">Cancelar</button>
+              <button onClick={confirmPay} disabled={paySaving} className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold bg-black text-white dark:bg-white dark:text-black disabled:opacity-50">{paySaving ? 'Guardando…' : 'Confirmar pago'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {collect && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setCollect(null)}>

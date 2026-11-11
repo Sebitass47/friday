@@ -397,6 +397,8 @@ frontend/
 - Soporte dark/light mode con Tailwind `dark:` — el toggle está en el header del dashboard
 - **Liquid glass:** clase `.glass` (`globals.css`, dentro de `@layer components` para que las utilidades de Tailwind puedan sobreescribirla) en todos los cards de Inicio, Finanzas, Recordatorios/Eventos (cada fila), Hábitos, Listas y Notas (pasteles translúcidos + blur). `AmbientGlow` (`components/layout/AmbientGlow.tsx`, montado en `AppLayout`) pinta tres resplandores fijos morado/rosa/azul detrás del contenido para que el vidrio tenga qué refractar. **Se quedan quietos a propósito**: se probó moverlos como líquido y Sebastian prefirió que no; no lo vuelvas a proponer (además cada card de vidrio re-desenfoca el fondo en cada cuadro, así que animarlo es caro en celulares de gama baja). Focus no usa `AppLayout`, así que no lo lleva. **No pongas fondos opacos (`bg-white`, `min-h-screen bg-…`) en el wrapper de una página**: tapan los resplandores
 
+**Tarjetas de crédito viven en el Cierre** (`/dashboard/cierre`): barra de uso, crédito total, corte/pago, "Pagar este mes", "Liquidar tarjeta" y lápiz (abre `/dashboard?editAccount=<id>`, que también tiene "Eliminar cuenta"). La sección "Cuentas" de `/dashboard` solo lista efectivo/débito/ahorro; "Nueva" sigue creando tarjetas y avisa que su detalle está en Cierre. `AppLayout` deja `pt-16` mientras el sidebar está cerrado para no chocar con el botón de menú.
+
 **Botones táctiles:** los íconos de editar/borrar (cuentas, MSI, metas, recurrentes) miden ≥36px y el botón de regreso del Cierre es un cuadro de 48px junto al título; Sebastian los quería más grandes en celular, no los vuelvas a achicar.
 
 **Fechas:**

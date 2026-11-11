@@ -158,6 +158,8 @@ export default function DashboardPage() {
 
   // MSI form
   const [msiForm, setMsiForm] = useState<typeof MSI_EMPTY & { id?: string }>(MSI_EMPTY)
+  // Monthly payment and remaining installments follow total/installments until the user types in them
+  const [msiManual, setMsiManual] = useState<{ monthly: boolean; remaining: boolean }>({ monthly: false, remaining: false })
   const [msiSaving, setMsiSaving] = useState(false)
   const [msiError, setMsiError] = useState('')
 
@@ -430,7 +432,7 @@ export default function DashboardPage() {
   }
 
   // MSI CRUD
-  function openNewMsi() { setMsiForm({ ...MSI_EMPTY, start_date: today() }); setMsiSplit(emptySplit()); setMsiError(''); setActiveModal('msi') }
+  function openNewMsi() { setMsiManual({ monthly: false, remaining: false }); setMsiForm({ ...MSI_EMPTY, start_date: today() }); setMsiSplit(emptySplit()); setMsiError(''); setActiveModal('msi') }
   function openEditMsi(item: InstallmentPurchase) {
     // For a shared MSI the form works with what the card charges (your part + theirs); the split is rebuilt from the saved shares
     const mine = Number(item.monthly_amount)
@@ -438,6 +440,7 @@ export default function DashboardPage() {
     // If it's 100% someone else's, `mine` (and the saved total) is 0: rebuild the total from the monthly charge
     const fullTotal = mine > 0 ? Number(item.total_amount) * (full / mine) : full * item.total_installments
     setMsiForm({ name: item.name, total_amount: Math.round(fullTotal * 100) / 100, monthly_amount: full, total_installments: item.total_installments, remaining_installments: item.remaining_installments, start_date: item.start_date, account_id: item.account_id, is_new_charge: false, id: item.id })
+    setMsiManual({ monthly: true, remaining: true })
     setMsiSplit(splitFromShares((item.shares ?? []).map(sh => ({ person_id: sh.person_id, amount: Number(sh.monthly_amount) }))))
     setMsiError(''); setActiveModal('msi')
   }
@@ -1330,16 +1333,33 @@ export default function DashboardPage() {
           </FormField>
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Monto total">
-              <input type="number" value={msiForm.total_amount === 0 ? '' : msiForm.total_amount} onChange={e => setMsiForm(f => ({ ...f, total_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
-            </FormField>
-            <FormField label="Pago mensual (lo que cobra el banco)">
-              <input type="number" value={msiForm.monthly_amount === 0 ? '' : msiForm.monthly_amount} onChange={e => setMsiForm(f => ({ ...f, monthly_amount: Number(e.target.value) || 0 }))} placeholder="0.00" className={inputCls()} />
+              <input type="number" value={msiForm.total_amount === 0 ? '' : msiForm.total_amount}
+                onChange={e => {
+                  const total = Number(e.target.value) || 0
+                  setMsiForm(f => ({ ...f, total_amount: total,
+                    monthly_amount: !msiManual.monthly && f.total_installments > 0 ? Math.round((total / f.total_installments) * 100) / 100 : f.monthly_amount }))
+                }}
+                placeholder="0.00" className={inputCls()} />
             </FormField>
             <FormField label="Total cuotas">
-              <input type="number" min={1} value={msiForm.total_installments === 0 ? '' : msiForm.total_installments} onChange={e => setMsiForm(f => ({ ...f, total_installments: Number(e.target.value) || 0 }))} placeholder="12" className={inputCls()} />
+              <input type="number" min={1} value={msiForm.total_installments === 0 ? '' : msiForm.total_installments}
+                onChange={e => {
+                  const n = Number(e.target.value) || 0
+                  setMsiForm(f => ({ ...f, total_installments: n,
+                    monthly_amount: !msiManual.monthly && n > 0 ? Math.round((f.total_amount / n) * 100) / 100 : f.monthly_amount,
+                    remaining_installments: !msiManual.remaining ? n : f.remaining_installments }))
+                }}
+                placeholder="12" className={inputCls()} />
+            </FormField>
+            <FormField label="Pago mensual (lo que cobra el banco)">
+              <input type="number" value={msiForm.monthly_amount === 0 ? '' : msiForm.monthly_amount}
+                onChange={e => { setMsiManual(m => ({ ...m, monthly: true })); setMsiForm(f => ({ ...f, monthly_amount: Number(e.target.value) || 0 })) }}
+                placeholder="0.00" className={inputCls()} />
             </FormField>
             <FormField label="Cuotas restantes">
-              <input type="number" min={0} value={msiForm.remaining_installments === 0 ? '' : msiForm.remaining_installments} onChange={e => setMsiForm(f => ({ ...f, remaining_installments: Number(e.target.value) || 0 }))} placeholder="12" className={inputCls()} />
+              <input type="number" min={0} value={msiForm.remaining_installments === 0 ? '' : msiForm.remaining_installments}
+                onChange={e => { setMsiManual(m => ({ ...m, remaining: true })); setMsiForm(f => ({ ...f, remaining_installments: Number(e.target.value) || 0 })) }}
+                placeholder="12" className={inputCls()} />
             </FormField>
           </div>
           <FormField label="Fecha de inicio">

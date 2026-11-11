@@ -12,11 +12,12 @@ import type {
 } from '@/lib/types'
 import {
   DollarSign, CheckSquare, CalendarDays, StickyNote,
-  Plus, X, CreditCard, Clock, ChevronRight, Target, ChevronLeft, ListChecks, BarChart3,
+  CreditCard, Clock, ChevronRight, Target, ChevronLeft, ListChecks, BarChart3,
 } from 'lucide-react'
 import HabitsWeekTable from '@/components/HabitsWeekTable'
 import CycleSummaryCard from '@/components/CycleSummaryCard'
 import DigestControls from '@/components/DigestControls'
+import AssistantFab from '@/components/AssistantSheet'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -110,57 +111,6 @@ const LABEL_COLORS: Record<string, { dark: string; light: string }> = {
   Hogar:    { dark: '#4ADE80', light: '#16a34a' },
   Finanzas: { dark: '#FBBF24', light: '#b45309' },
   Ideas:    { dark: '#FB7185', light: '#e11d48' },
-}
-
-// ─── FAB speed-dial ───────────────────────────────────────────────────────────
-
-const FAB_ACTIONS = [
-  { key: 'nota',   label: 'Nota',   icon: <StickyNote size={16} />,   color: '#14B8A6', href: '/notas?new=1' },
-  { key: 'evento', label: 'Evento', icon: <CalendarDays size={16} />, color: '#3B82F6', href: '/events?new=1' },
-  { key: 'tarea',  label: 'Recordatorio',  icon: <CheckSquare size={16} />,  color: '#6B46E5', href: '/recordatorios?new=1' },
-  { key: 'gasto',  label: 'Gasto',  icon: <DollarSign size={16} />,   color: '#A8FF3E', href: '/dashboard?new=1' },
-]
-
-function SpeedDial() {
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="fixed bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end gap-3" style={{ pointerEvents: 'none' }}>
-      {FAB_ACTIONS.map((a, i) => (
-        <div
-          key={a.key}
-          className="flex items-center gap-3 transition-all duration-300"
-          style={{
-            opacity: open ? 1 : 0,
-            transform: open ? 'translateY(0) scale(1)' : `translateY(${(i + 1) * 12}px) scale(0.85)`,
-            transitionDelay: open ? `${i * 50}ms` : `${(FAB_ACTIONS.length - 1 - i) * 30}ms`,
-            pointerEvents: open ? 'auto' : 'none',
-          }}
-        >
-          <span className="text-sm font-medium text-white/80 bg-black/60 backdrop-blur px-3 py-1 rounded-full border border-white/10 whitespace-nowrap">
-            {a.label}
-          </span>
-          <button
-            onClick={() => { setOpen(false); router.push(a.href) }}
-            className="w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-150 hover:scale-110 active:scale-95"
-            style={{ background: a.color, color: a.key === 'gasto' ? '#0A0A0A' : '#fff' }}
-          >
-            {a.icon}
-          </button>
-        </div>
-      ))}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-14 h-14 rounded-full flex items-center justify-center shadow-2xl text-white transition-all duration-300 hover:scale-110 active:scale-95"
-        style={{ background: 'linear-gradient(135deg, #FF6B9D, #6B46E5)', pointerEvents: 'auto' }}
-      >
-        <span className={`transition-transform duration-300 ${open ? 'rotate-45' : 'rotate-0'} flex`}>
-          {open ? <X size={22} /> : <Plus size={22} />}
-        </span>
-      </button>
-      {open && <div className="fixed inset-0 -z-10" style={{ pointerEvents: 'auto' }} onClick={() => setOpen(false)} />}
-    </div>
-  )
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -634,7 +584,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <SpeedDial />
+      <AssistantFab />
     </AppLayout>
   )
 }

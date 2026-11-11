@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import { useSidebar } from './SidebarContext'
 import AmbientGlow from './AmbientGlow'
-import AssistantSheet from '../AssistantSheet'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -36,7 +35,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className={`flex-1 min-w-0 p-4 sm:p-6 lg:p-8 pt-16 sm:pt-16 ${open ? 'lg:pt-8' : 'lg:pt-16'} transition-all duration-300 ${open ? 'lg:ml-60' : 'lg:ml-0'}`}>
         {children}
       </main>
-      <AssistantSheet shiftRight={open} />
     </div>
   )
 }

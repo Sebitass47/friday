@@ -138,6 +138,8 @@ cuenta; efectivo => "cash" sin account_id. Si dice una tarjeta por nombre, busca
 - Reparto: "others" lista a los demás con "parts" (partes proporcionales) o "amount" (monto exacto en pesos). "my_parts" \
 son las partes del usuario. Ejemplo: "gasté 4000 entre 8, yo pago lo de 2 y Alejandra el resto" => total_amount 4000, \
 my_parts 2, others [{person_name:"Alejandra", parts:6}].
+- Lo que registres se guarda AL INSTANTE, sin que el usuario lo revise. Si hay una duda razonable (dos tarjetas \
+posibles, no está claro cuánto es suyo, la lista no existe), pregunta en vez de adivinar.
 - Después de usar herramientas, tu texto debe ser una sola frase corta, o nada."""
 
 
@@ -436,7 +438,8 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> str:
             name=a["name"], amount=mine, date=date.fromisoformat(a["date"]),
             payment_method=PaymentMethod(a["payment_method"]), category=a["category"], shares=shares,
         ), user_id)
-        return f"Gasto «{a['name']}» registrado"
+        extra = f" · {_fmt(total)} (tu parte {_fmt(mine)})" if shares else f" · {_fmt(total)}"
+        return f"Gasto «{a['name']}» registrado{extra}"
 
     if kind in ("add_reminder", "add_event"):
         is_event = kind == "add_event"

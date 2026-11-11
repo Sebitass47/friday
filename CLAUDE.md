@@ -42,14 +42,9 @@ Dashboard personal central. Reemplaza el redirect que había a `/dashboard`.
 
 **Tu progreso** (franja al final, 100% de ancho en `xl`): racha de hábitos, % de hábitos a 30 días, recordatorios cumplidos de la semana, elementos tachados en listas y gasto vs ciclo pasado. Todo clicable → `/estadisticas`. **Campana** en el header (`components/DigestControls.tsx` + `DigestSettings.tsx`): activa/desactiva y configura hora del resumen semanal, con botón "Enviarme uno ahora" y vista previa.
 
-**FAB speed-dial** (bottom-right, siempre visible):
-- Botón + con gradiente rosa-morado; al abrir rota a X y expande 4 opciones animadas
-- 💸 Gasto → `/dashboard?new=1` (abre QuickTransactionFAB automáticamente)
-- ✅ Recordatorio → `/recordatorios?new=1` (abre panel de crear recordatorio)
-- 📅 Evento → `/events?new=1` (abre panel de crear evento)
-- 📝 Nota → `/notas?new=1` (abre formulario de nueva nota)
+**Botón ✨ del asistente** (bottom-right, circular, siempre visible): reemplazó al speed-dial de Gasto/Recordatorio/Evento/Nota. Ver sección *Asistente*.
 
-**Auto-open `?new=1`:** implementado en QuickTransactionFAB, recordatorios, events y notas — al llegar con ese param el formulario se abre solo.
+**Auto-open `?new=1`** (ya no lo usa el Inicio, pero sigue funcionando por URL): implementado en QuickTransactionFAB, recordatorios, events y notas — al llegar con ese param el formulario se abre solo.
 
 ### Finanzas (`/dashboard`)
 
@@ -99,12 +94,12 @@ Para cuando prestas la tarjeta, divides una cuenta o compras un MSI con alguien.
 - **Editar/borrar gasto:** `expense_service._apply_charge` revierte el cargo en la cuenta/método viejos y lo aplica en los nuevos (cambiar de cuenta o a crédito recalcula el statement y mueve saldos); borrar un gasto sin cuenta (efectivo) ya no truena.
 - Reparto bloqueado si el gasto ya tiene cobros aplicados (400). **Movimientos** (recientes y "Todos"): columna "de quién" (`ownerOf`): *Tú*, *Tú + Armando* o solo la persona; si es 100% de otro se muestra el total del cargo (no "$0") en azul (`OTHER_COLOR`, ni verde ni rojo). **Editar un gasto** (modal "Editar gasto") también trae el selector: el campo Monto muestra lo que cobró el banco y el reparto se reconstruye desde `shares`; el front solo manda `shares` si cambiaron (así editar nombre/monto de un gasto con cobros aplicados no falla). Pendiente: exportar el cierre a Excel.
 
-### Asistente ✨ (botón flotante, en todas las páginas con `AppLayout`)
+### Asistente ✨ (botón circular del Inicio)
 
-Lenguaje natural → acciones: registrar gasto (con reparto), recordatorio, evento, crear lista y agregar elementos a una lista existente. Botón ✨ abajo a la izquierda (`components/AssistantSheet.tsx`, hoja desde abajo; se dicta con el micrófono del teclado, no hay transcripción propia). Backend: `services/assistant_service.py`, `endpoints/assistant.py` (`POST /assistant/message`, `POST /assistant/confirm`, `GET /assistant/usage`), tabla `ai_usage` (migración 0029).
+Lenguaje natural → acciones: registrar gasto (con reparto), recordatorio, evento, crear lista y agregar elementos a una lista existente. **Reemplazó al speed-dial del Inicio** (Sebastian lo pidió): un solo botón circular ✨ abajo a la derecha (`components/AssistantSheet.tsx`, exporta `AssistantFab`). Se envía → la hoja se cierra → se guarda **sin tarjeta de confirmación** → la página se recarga y un aviso (toast, sobrevive al reload vía `sessionStorage`) dice qué se hizo ("Gasto «Bar» registrado · $4,000 (tu parte $1,000)", etc.). Si el modelo pregunta algo o rechaza, la hoja se reabre con su respuesta. Se dicta con el micrófono del teclado (no hay transcripción propia). No existe "deshacer" todavía. Backend: `services/assistant_service.py`, `endpoints/assistant.py` (`POST /assistant/message`, `POST /assistant/confirm`, `GET /assistant/usage`), tabla `ai_usage` (migración 0029).
 
 - **Claude Haiku 5.5 vía API directa** (`urllib`, sin SDK), `ANTHROPIC_API_KEY` en el entorno del backend. Variables opcionales: `AI_MODEL`, `AI_MONTHLY_LIMIT_USD` (default 2.0 por usuario), `AI_PER_MINUTE` (8), `AI_PRICE_IN/OUT`. Sin key responde 503 "no está configurado". Un comando cuesta ~$0.0004 USD.
-- **El modelo solo PROPONE**: `/message` devuelve tarjetas de confirmación y no escribe nada; `/confirm` **vuelve a validar** cada acción (nunca confía en el payload del cliente) y la ejecuta con los servicios normales, siempre con `user_id` del token. Las cuentas/listas/personas del contexto son solo las del usuario.
+- **Dos pasos en la API**: `/message` solo propone (no escribe nada); el front llama a `/confirm` enseguida, y `/confirm` **vuelve a validar** cada acción (nunca confía en el payload del cliente) y la ejecuta con los servicios normales, siempre con `user_id` del token. Las cuentas/listas/personas del contexto son solo las del usuario.
 - **Las cuentas las hace el backend** (`_split`): el modelo manda `my_parts`/`parts`/`amount` tal como los dijo el usuario; montos exactos salen primero y el resto se reparte por partes.
 - **Guardarraíles:** prompt que rechaza todo lo que no sea una de las 5 acciones, mensaje ≤600 caracteres, 8 mensajes/min (Redis, falla abierto), tope mensual en USD por usuario (`ai_usage`), errores del proveedor nunca se reenvían al cliente.
 - Pendiente: responder preguntas sobre tus datos, entrada por WhatsApp (Sebastian: primero la app).

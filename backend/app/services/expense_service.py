@@ -122,15 +122,26 @@ def get_expense(db: Session, expense_id: UUID, user_id: UUID) -> Optional[Expens
     return row
 
 
+def _apply_charge(account: Optional[Account], method: PaymentMethod, total: Decimal, sign: int) -> None:
+    """Move an account by `total` (sign=+1 applies the charge, -1 reverts it)."""
+    if not account:
+        return
+    if method == PaymentMethod.CREDIT:
+        account.current_balance_used = (account.current_balance_used or 0) + sign * total
+        if account.credit_limit:
+            account.available_credit = account.credit_limit - account.current_balance_used
+    elif method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
+        account.balance = (account.balance or 0) - sign * total
+
+
 def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate, user_id: UUID) -> Optional[Expense]:
-    """Update an expense."""
+    """Update an expense, moving balances from the old account/method to the new ones."""
     db_expense = get_expense(db, expense_id, user_id)
     if not db_expense:
         return None
 
-    # Get account for potential balance updates
-    account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first()
-
+    old_account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first() if db_expense.account_id else None
+    old_method = db_expense.payment_method
     old_total = debt_service.expense_total(db, db_expense)
 
     update_data = expense_update.dict(exclude_unset=True)
@@ -139,15 +150,26 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
     # 'expense_date' is the Pydantic field name for the 'date' column
     if 'expense_date' in update_data:
         update_data['date'] = update_data.pop('expense_date')
+
+    new_account = old_account
+    if update_data.get('account_id') and update_data['account_id'] != db_expense.account_id:
+        new_account = db.query(Account).filter(Account.id == update_data['account_id'], Account.user_id == user_id).first()
+        if not new_account:
+            raise ValueError("Cuenta no encontrada")
+
     for key, value in update_data.items():
         setattr(db_expense, key, value)
 
-    # Recalculate credit statement month whenever date or account changes on a credit expense
-    if db_expense.payment_method == PaymentMethod.CREDIT and account and account.closing_day:
-        new_date = db_expense.date
-        stmt_month, stmt_year = _calculate_credit_statement_month(new_date, account.closing_day)
-        db_expense.credit_statement_month = stmt_month
-        db_expense.credit_statement_year = stmt_year
+    # Recalculate the statement whenever date, account or method changes on a credit expense
+    if db_expense.payment_method == PaymentMethod.CREDIT:
+        if not new_account or not new_account.closing_day:
+            raise ValueError("La tarjeta no tiene día de cierre configurado")
+        db_expense.credit_statement_month, db_expense.credit_statement_year = _calculate_credit_statement_month(
+            db_expense.date, new_account.closing_day
+        )
+    else:
+        db_expense.credit_statement_month = None
+        db_expense.credit_statement_year = None
 
     db.flush()
     if new_shares is not None:
@@ -155,15 +177,9 @@ def update_expense(db: Session, expense_id: UUID, expense_update: ExpenseUpdate,
     else:
         debt_service.sync_expense_debts(db, db_expense)
 
-    # Card / account follow the real charge (your part + others'), not just your part
-    diff = debt_service.expense_total(db, db_expense) - old_total
-    if diff and account:
-        if db_expense.payment_method == PaymentMethod.CREDIT:
-            account.current_balance_used = (account.current_balance_used or 0) + diff
-            if account.credit_limit:
-                account.available_credit = account.credit_limit - account.current_balance_used
-        elif db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
-            account.balance = (account.balance or 0) - diff
+    # Revert the old charge on the old account, apply the new one on the new account
+    _apply_charge(old_account, old_method, old_total, -1)
+    _apply_charge(new_account, db_expense.payment_method, debt_service.expense_total(db, db_expense), +1)
 
     db.commit()
     db.refresh(db_expense)
@@ -177,16 +193,10 @@ def delete_expense(db: Session, expense_id: UUID, user_id: UUID) -> bool:
     if not db_expense:
         return False
 
-    account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first()
+    account = db.query(Account).filter(Account.id == db_expense.account_id, Account.user_id == user_id).first() if db_expense.account_id else None
 
     # Refund what was really charged (your part + others'); the debts go away with the expense (FK cascade)
-    total = debt_service.expense_total(db, db_expense)
-    if db_expense.payment_method == PaymentMethod.CREDIT:
-        account.current_balance_used = (account.current_balance_used or 0) - total
-        if account.credit_limit:
-            account.available_credit = account.credit_limit - account.current_balance_used
-    elif db_expense.payment_method in (PaymentMethod.DEBIT, PaymentMethod.CASH, PaymentMethod.SAVINGS):
-        account.balance = (account.balance or 0) + total
+    _apply_charge(account, db_expense.payment_method, debt_service.expense_total(db, db_expense), -1)
 
     db.delete(db_expense)
     db.commit()

@@ -386,9 +386,15 @@ export default function DashboardPage() {
 
   async function handleDeleteExpense(id: string) {
     if (!confirm('¿Eliminar este gasto?')) return
-    await deleteExpense(id)
-    setExpenses(await getExpenses())
-    setEditingExpense(null)
+    try {
+      await deleteExpense(id)
+      setExpenses(await getExpenses())
+      const a = await getAccounts()
+      setAccounts(a)
+      setEditingExpense(null)
+    } catch (e: unknown) {
+      setEditExpError(e instanceof Error ? e.message : 'No se pudo eliminar el gasto')
+    }
   }
 
 

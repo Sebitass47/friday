@@ -397,6 +397,8 @@ frontend/
 - Soporte dark/light mode con Tailwind `dark:` — el toggle está en el header del dashboard
 - **Liquid glass:** clase `.glass` (`globals.css`, dentro de `@layer components` para que las utilidades de Tailwind puedan sobreescribirla) en todos los cards de Inicio, Finanzas, Recordatorios/Eventos (cada fila), Hábitos, Listas y Notas (pasteles translúcidos + blur). `AmbientGlow` (`components/layout/AmbientGlow.tsx`, montado en `AppLayout`) pinta tres resplandores fijos morado/rosa/azul detrás del contenido para que el vidrio tenga qué refractar. **Se quedan quietos a propósito**: se probó moverlos como líquido y Sebastian prefirió que no; no lo vuelvas a proponer (además cada card de vidrio re-desenfoca el fondo en cada cuadro, así que animarlo es caro en celulares de gama baja). Focus no usa `AppLayout`, así que no lo lleva. **No pongas fondos opacos (`bg-white`, `min-h-screen bg-…`) en el wrapper de una página**: tapan los resplandores
 
+**Botones táctiles:** los íconos de editar/borrar (cuentas, MSI, metas, recurrentes) miden ≥36px y el botón de regreso del Cierre es un cuadro de 48px junto al título; Sebastian los quería más grandes en celular, no los vuelvas a achicar.
+
 **Fechas:**
 - Formato de display siempre `dd/mm/yyyy` (ej: `07/07/2026`). Nunca mostrar `mm/dd/yyyy` ni ISO crudo `yyyy-mm-dd`.
 - Para inputs de fecha usar el componente `<DateInput>` de `@/components/ui/date-input` — muestra `dd/mm/aaaa`, acepta escritura directa con auto-formato, tiene botón de calendario, y retorna/recibe `yyyy-mm-dd` internamente.

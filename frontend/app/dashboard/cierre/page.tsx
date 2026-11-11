@@ -278,15 +278,17 @@ export default function CierrePage() {
     <AppLayout>
       <div className="max-w-5xl xl:max-w-[1400px] mx-auto pb-24 space-y-5">
         <div className="pt-1">
-          <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-xs text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-colors">
-            <ArrowLeft size={13} /> Finanzas
-          </Link>
-          <div className="flex items-end justify-between gap-3 mt-1">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-black dark:text-white">Cierre</h1>
-              <p className="text-sm text-black/50 dark:text-white/50 mt-0.5">Qué pagar de cada tarjeta y qué te tienen que depositar</p>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Link href="/dashboard" aria-label="Volver a Finanzas" className="glass shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center text-black dark:text-white active:scale-95 transition-transform">
+                <ArrowLeft size={24} />
+              </Link>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-black dark:text-white">Cierre</h1>
+                <p className="text-sm text-black/50 dark:text-white/50 mt-0.5">Qué pagar de cada tarjeta y qué te tienen que depositar</p>
+              </div>
             </div>
-            <div className="glass rounded-xl flex items-center">
+            <div className="glass rounded-xl flex items-center self-stretch sm:self-auto justify-between">
               <button onClick={() => move(-1)} className="p-2.5 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white" aria-label="Estado anterior"><ChevronLeft size={16} /></button>
               <span className="px-2 text-sm font-semibold text-black dark:text-white min-w-[96px] text-center">{data?.label ?? '…'}</span>
               <button onClick={() => move(1)} className="p-2.5 text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white" aria-label="Estado siguiente"><ChevronRight size={16} /></button>

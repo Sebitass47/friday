@@ -883,8 +883,8 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-4">
                       <span className={`text-sm font-semibold tabular-nums ${a.account_type === 'savings' ? 'text-emerald-400' : 'text-black dark:text-white'}`}>{fmt(Number(a.balance))}</span>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => openEditAccount(a)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={12} /></button>
-                        <button onClick={() => removeAccount(a.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={12} /></button>
+                        <button onClick={() => openEditAccount(a)} className="p-2.5 rounded-xl text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={20} /></button>
+                        <button onClick={() => removeAccount(a.id)} className="p-2.5 rounded-xl text-black/50 dark:text-white/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={20} /></button>
                       </div>
                     </div>
                   </div>
@@ -912,8 +912,8 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => openEditAccount(a)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={12} /></button>
-                          <button onClick={() => removeAccount(a.id)} className="p-1.5 rounded-lg text-black/30 dark:text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={12} /></button>
+                          <button onClick={() => openEditAccount(a)} className="p-2.5 rounded-xl text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"><Pencil size={20} /></button>
+                          <button onClick={() => removeAccount(a.id)} className="p-2.5 rounded-xl text-black/50 dark:text-white/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 size={20} /></button>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
@@ -1002,8 +1002,8 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-1 shrink-0 ml-2">
                           <span className="text-xs text-black/40 dark:text-white/40 tabular-nums">{fmt(Number(item.monthly_amount))}/mes</span>
-                          <button onClick={() => openEditMsi(item)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
-                          <button onClick={() => deleteMsi(item.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                          <button onClick={() => openEditMsi(item)} className="p-2 rounded-lg text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-4 h-4" /></button>
+                          <button onClick={() => deleteMsi(item.id)} className="p-2 rounded-lg text-black/50 dark:text-white/50 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </div>
                       <div className="h-1 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
@@ -1060,8 +1060,8 @@ export default function DashboardPage() {
                         <span className="text-xs font-medium text-black dark:text-white truncate max-w-[50%]">{g.name}</span>
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-semibold text-black/60 dark:text-white/60 tabular-nums">{progress}%</span>
-                          <button onClick={() => openEditGoal(g)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
-                          <button onClick={() => deleteGoal(g.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                          <button onClick={() => openEditGoal(g)} className="p-2 rounded-lg text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-4 h-4" /></button>
+                          <button onClick={() => deleteGoal(g.id)} className="p-2 rounded-lg text-black/50 dark:text-white/50 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </div>
                       <div className="h-1 w-full rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
@@ -1140,8 +1140,8 @@ export default function DashboardPage() {
                             <span title={`De ${fmt(Number(e.total_amount))} · con ${e.shares.map(sh => sh.person_name).join(', ')}`} className="text-[10px] cursor-help">👥</span>
                           )}
                           <span className="text-xs font-semibold text-black/70 dark:text-white/70 tabular-nums">{fmt(Number(e.amount))}</span>
-                          <button onClick={() => openEditRec(e)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
-                          <button onClick={() => deleteRec(e.id)} className="p-0.5 rounded text-black/30 dark:text-white/30 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-3 h-3 sm:w-2.5 sm:h-2.5" /></button>
+                          <button onClick={() => openEditRec(e)} className="p-2 rounded-lg text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white transition-all"><Pencil className="w-4 h-4" /></button>
+                          <button onClick={() => deleteRec(e.id)} className="p-2 rounded-lg text-black/50 dark:text-white/50 hover:text-[#FF6B6B] transition-all"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </div>
                     )

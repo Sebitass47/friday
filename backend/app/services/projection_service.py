@@ -96,6 +96,24 @@ def _recurring_cost_for_cycle(expenses, cycle_start: date, cycle_end: date) -> D
     return total
 
 
+def _first_payment_cycle(purchase, cycle_start_day: int) -> int:
+    """Ordinal (year*12 + month of its start) of the cycle that pays the MSI's first installment.
+
+    With a card, the purchase date lands on a statement (same cut-off rule as card expenses) and a cycle
+    collects the statements that close in the month it ends, exactly like `_credit_expenses_by_statement_month`.
+    So buying on the 13th with the cut-off on the 10th puts the first payment a cycle later than the purchase.
+    Without a card there is no statement: the first payment is in the cycle that contains the date.
+    """
+    card = purchase.account
+    if card is not None and card.closing_day:
+        from app.services.expense_service import _calculate_credit_statement_month
+        month, year = _calculate_credit_statement_month(purchase.start_date, card.closing_day)
+        # a cycle that starts after the 1st ends in the following calendar month
+        return year * 12 + month - (1 if cycle_start_day > 1 else 0)
+    cycle = _current_cycle_start(purchase.start_date, cycle_start_day)
+    return cycle.year * 12 + cycle.month
+
+
 def _installment_cost_for_cycle(
     purchases, cycle_start: date, cycle_start_day: int, today: date
 ) -> Decimal:
@@ -115,12 +133,8 @@ def _installment_cost_for_cycle(
         (current_end.month, current_end.year),
     }
     for p in purchases:
-        purchase_cycle = _current_cycle_start(p.start_date, cycle_start_day)
-        # Cycles elapsed = month difference between purchase cycle and target cycle
-        cycles_elapsed = (
-            (cycle_start.year - purchase_cycle.year) * 12
-            + (cycle_start.month - purchase_cycle.month)
-        )
+        # Cycles elapsed = months between the cycle of the first payment and the target cycle
+        cycles_elapsed = (cycle_start.year * 12 + cycle_start.month) - _first_payment_cycle(p, cycle_start_day)
         if 0 <= cycles_elapsed < p.total_installments:
             installment_number = cycles_elapsed + 1
             paid_installments = p.total_installments - p.remaining_installments

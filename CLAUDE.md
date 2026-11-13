@@ -324,6 +324,8 @@ Migraciones numeradas `0001`–`0028` en `backend/alembic/versions/`.
 
 **MSI pagado:** "Pagado este mes" es solo visual para el disponible: la cuota sigue contando como compromiso del ciclo actual (pagarla no registra gasto). `_installment_cost_for_cycle` deshace el decremento de `remaining_installments` hecho en el ciclo actual al atribuir cuotas a ciclos.
 
+**MSI y ciclos:** `InstallmentPurchase.start_date` es la **fecha de compra**. `projection_service._first_payment_cycle` ubica la 1ª mensualidad en el ciclo que cobra el estado de cuenta que le toca (corte de la tarjeta, misma regla y mismo `cycle_end.month` que `_credit_expenses_by_statement_month`), así que comprar el 13 con corte el 10 empieza un ciclo después de la compra. Sin tarjeta cuenta en el ciclo que contiene la fecha. El simulador (`/projection/simulate/`) no tiene tarjeta y sigue con la regla de la fecha. Pendiente conocido: `account_service.pay_month` baja una cuota a TODOS los MSI de la tarjeta, aunque su 1er estado de cuenta aún no llegue.
+
 **Lógica de ciclo financiero:** Toda la proyección y cálculos se basan en ciclos definidos por `cycle_start_day`, no por meses calendario. El ciclo actual corre desde `cycle_start_day` del mes anterior/actual hasta el día antes del siguiente `cycle_start_day`. `MonthProjection` incluye `cycle_start`, `cycle_end` y `cash_debit_spent`. La home page usa `GET /projection/?months=1` en lugar de calcular localmente.
 
 ---

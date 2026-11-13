@@ -1308,6 +1308,11 @@ export default function DashboardPage() {
                   <span className="w-3 h-3 rounded-full bg-white" />
                 </span>
               </button>
+              {regIsMonthly && monthlyIncomeData && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-400/10 rounded-xl px-3 py-2">
+                  Ya tienes un ingreso mensual de {Number(monthlyIncomeData.amount).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} (ciclo desde el día {monthlyIncomeData.cycle_start_day}). Solo puede haber uno: si guardas este, <strong>reemplaza</strong> al anterior. Para otro ingreso extra, apaga este interruptor.
+                </p>
+              )}
               {regIsMonthly && (
                 <FormField label="Día de inicio de tu ciclo financiero (1–31)">
                   <input

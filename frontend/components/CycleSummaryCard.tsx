@@ -30,6 +30,16 @@ const fmt = (n: number) =>
 
 const fmtDate = (iso: string) => iso.split('-').reverse().join('/')
 
+/** The day the next cycle (and your monthly income) starts, and how many days away it is. */
+function nextCycle(cycleEnd: string): { date: string; days: number } {
+  const [y, m, d] = cycleEnd.split('-').map(Number)
+  const next = new Date(y, m - 1, d + 1)
+  const now = new Date()
+  const days = Math.round((next.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 86400000)
+  const iso = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
+  return { date: iso, days }
+}
+
 function Row({ sign, label, hint, value, color, action }: {
   sign?: '+' | '−' | '='
   label: string
@@ -69,6 +79,8 @@ export default function CycleSummaryCard({
   const commitments =
     Number(cycle.recurring_expenses) + Number(cycle.installments) + Number(cycle.savings_contributions)
   const spent = Number(cycle.cash_debit_spent) + Number(cycle.credit_spent)
+  const next = nextCycle(cycle.cycle_end)
+  const nextIn = next.days <= 0 ? 'hoy' : next.days === 1 ? 'mañana' : `en ${next.days} días`
 
   return (
     <div className={`${glass ? 'glass' : 'bg-black/[0.03] dark:bg-white/[0.03] backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.08] shadow-sm'} rounded-2xl p-5 ${splitOnWide ? 'xl:grid xl:grid-cols-2 xl:gap-x-8' : ''}`}>
@@ -76,6 +88,9 @@ export default function CycleSummaryCard({
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-black dark:text-white">Tu dinero este ciclo</h2>
         <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">{cycle.label} · toca la línea para ver cada día</p>
+        <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">
+          {fmtDate(cycle.cycle_start)} al {fmtDate(cycle.cycle_end)}{cycleStartDay ? ` · tu ingreso cae el día ${cycleStartDay}` : ''}
+        </p>
       </div>
 
       <BalanceFlowChart cycle={cycle} expenses={expenses} incomes={countedIncomes} compact={splitOnWide} />
@@ -119,7 +134,7 @@ export default function CycleSummaryCard({
           <div className={`mt-2 divide-y divide-black/[0.06] dark:divide-white/[0.06] border-t border-black/[0.06] dark:border-white/[0.06] ${splitOnWide ? 'xl:border-t-0 xl:mt-0' : ''}`}>
             <Row
               label="Ingreso mensual"
-              hint={cycleStartDay ? `Ciclo desde el día ${cycleStartDay}` : undefined}
+              hint={cycleStartDay ? `Te cae el día ${cycleStartDay} de cada mes · el siguiente: ${fmtDate(next.date)} (${nextIn})` : undefined}
               value={monthly}
               action={onEditIncome ? (
                 <button onClick={onEditIncome} className="p-1 rounded-lg text-black/30 dark:text-white/30 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors">

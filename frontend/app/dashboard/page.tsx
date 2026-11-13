@@ -447,6 +447,7 @@ export default function DashboardPage() {
   async function saveMsi() {
     if (!msiForm.name.trim()) { setMsiError('El nombre es requerido'); return }
     if (msiForm.monthly_amount <= 0) { setMsiError('El pago mensual debe ser mayor a 0'); return }
+    if (!msiForm.account_id && (!msiForm.id || msi.find(i => i.id === msiForm.id)?.account_id)) { setMsiError('Elige la tarjeta de crédito'); return }
     const split = computeSplit(msiForm.monthly_amount, msiSplit)
     if (split.error) { setMsiError(split.error); return }
     setMsiSaving(true); setMsiError('')
@@ -643,6 +644,16 @@ export default function DashboardPage() {
   const totalRecurring = recurring.reduce((s, e) => s + Number(e.amount), 0)
 
   const creditCards = accounts.filter(a => a.account_type === 'credit_card')
+  // Month of the statement where the first MSI payment lands (same rule as card expenses)
+  const msiFirstPayment = (() => {
+    const card = creditCards.find(c => c.id === msiForm.account_id)
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(msiForm.start_date)
+    if (!card || !card.closing_day || !m) return ''
+    let year = Number(m[1]); let month = Number(m[2])
+    if (Number(m[3]) > card.closing_day) { month += 1; if (month > 12) { month = 1; year += 1 } }
+    const name = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][month - 1]
+    return `${name} ${year}`
+  })()
   const otherAccounts = accounts.filter(a => a.account_type !== 'credit_card')
 
   const cardCls = 'glass rounded-2xl hover:border-black/[0.14] dark:hover:border-white/[0.14] transition-all'
@@ -1362,26 +1373,33 @@ export default function DashboardPage() {
                 placeholder="12" className={inputCls()} />
             </FormField>
           </div>
-          <FormField label="Fecha de inicio">
+          <FormField label="Tarjeta de crédito">
+            {creditCards.length > 0 ? (
+              <CustomSelect
+                value={msiForm.account_id ?? ''}
+                onChange={v => setMsiForm(f => ({ ...f, account_id: v || null }))}
+                options={[
+                  { value: '', label: 'Elige una tarjeta' },
+                  ...creditCards.map(c => ({ value: c.id, label: c.name }))
+                ]}
+              />
+            ) : (
+              <p className="text-xs text-black/50 dark:text-white/50">Primero crea una tarjeta de crédito en Cuentas.</p>
+            )}
+          </FormField>
+
+          <FormField label="Fecha de compra">
             <DateInput
               value={msiForm.start_date}
               onChange={v => setMsiForm(f => ({ ...f, start_date: v }))}
               inputClassName="bg-black/[0.03] dark:bg-white/[0.03] border-black/10 dark:border-white/10 rounded-xl py-2 text-sm text-black dark:text-white focus:border-black/40 dark:focus:border-white/40"
             />
+            {msiFirstPayment && (
+              <p className="text-[11px] text-black/50 dark:text-white/50 mt-1.5">
+                Primer pago: estado de cuenta de <strong>{msiFirstPayment}</strong>
+              </p>
+            )}
           </FormField>
-
-          {creditCards.length > 0 && (
-            <FormField label="Tarjeta de crédito (opcional)">
-              <CustomSelect
-                value={msiForm.account_id ?? ''}
-                onChange={v => setMsiForm(f => ({ ...f, account_id: v || null }))}
-                options={[
-                  { value: '', label: 'Sin tarjeta vinculada' },
-                  ...creditCards.map(c => ({ value: c.id, label: c.name }))
-                ]}
-              />
-            </FormField>
-          )}
 
           <FormField label="¿Quién paga este MSI?">
             <SplitPicker total={msiForm.monthly_amount} value={msiSplit} onChange={setMsiSplit} people={people} onCreatePerson={addPerson} subject="cada pago" />

@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.assistant import (
-    AssistantMessage, AssistantReply, ConfirmRequest, ConfirmResult, UsageOut,
+    AssistantMessage, AssistantReply, ConfirmRequest, ConfirmResult, UndoRequest, UndoResult, UsageOut,
 )
 from app.services import assistant_service as svc
 
@@ -24,6 +24,15 @@ def message(body: AssistantMessage, db: Session = Depends(get_db), current_user:
 @router.post("/confirm", response_model=ConfirmResult)
 def confirm(body: ConfirmRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return svc.confirm(db, current_user.id, [a.model_dump() for a in body.actions])
+
+
+@router.post("/undo", response_model=UndoResult)
+def undo(body: UndoRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Reverse something the assistant just did."""
+    try:
+        return UndoResult(text=svc.undo(db, current_user.id, body.undo))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/usage", response_model=UsageOut)

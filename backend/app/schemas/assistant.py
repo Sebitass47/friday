@@ -34,6 +34,16 @@ class ConfirmRequest(BaseModel):
 class DoneItem(BaseModel):
     text: str
     href: Optional[str] = None
+    # opaque description of how to reverse this; sent back to POST /assistant/undo
+    undo: Optional[Dict[str, Any]] = None
+
+
+class UndoRequest(BaseModel):
+    undo: Dict[str, Any]
+
+
+class UndoResult(BaseModel):
+    text: str
 
 
 class ConfirmResult(BaseModel):

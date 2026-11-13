@@ -521,8 +521,11 @@ export interface AssistantReply { reply: string; actions: AssistantAction[]; not
 export async function assistantMessage(text: string, history: { role: 'user' | 'assistant'; text: string }[]): Promise<AssistantReply> {
   return req('/assistant/message', { method: 'POST', body: JSON.stringify({ text, history }) })
 }
-export async function assistantConfirm(actions: AssistantAction[]): Promise<{ done: { text: string; href: string | null }[]; failed: string[] }> {
+export async function assistantConfirm(actions: AssistantAction[]): Promise<{ done: { text: string; href: string | null; undo?: Record<string, unknown> | null }[]; failed: string[] }> {
   return req('/assistant/confirm', { method: 'POST', body: JSON.stringify({ actions }) })
+}
+export async function assistantUndo(undo: Record<string, unknown>): Promise<{ text: string }> {
+  return req('/assistant/undo', { method: 'POST', body: JSON.stringify({ undo }) })
 }
 export async function assistantUsage(): Promise<{ spent_usd: number; limit_usd: number; calls: number; available: boolean }> {
   return req('/assistant/usage')

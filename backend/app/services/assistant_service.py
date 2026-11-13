@@ -25,6 +25,8 @@ from app.models.account import Account, AccountType
 from app.models.ai_usage import AiUsage
 from app.models.enums import PaymentMethod
 from app.schemas.expense import ExpenseCreate
+from app.models.people import RecurringCharge
+from app.schemas.income import IncomeCreate
 from app.schemas.people import ShareIn, InstallmentShareIn, PaymentCreate
 from app.schemas.installment_purchase import InstallmentPurchaseCreate
 from app.schemas.recurring_expense import RecurringExpenseCreate
@@ -32,7 +34,7 @@ from app.models.recurring_expense import ExpenseFrequency
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.schemas.user_list import ListCreate, ListItemCreate, ListItemUpdate
 from app.services import (
-    category_service, expense_service, installment_purchase_service, people_service,
+    category_service, debt_service, expense_service, income_service, installment_purchase_service, people_service,
     recurring_expense_service, task_service, user_list_service,
 )
 
@@ -162,7 +164,7 @@ Hablas en español, breve y directo.
 
 SOLO puedes hacer estas cosas, llamando a las herramientas: registrar un gasto, registrar una compra a meses sin intereses (MSI), \
 registrar un gasto recurrente (suscripción, renta, servicio), crear un recordatorio, crear un evento, crear una lista y agregar \
-elementos a una lista existente, tachar elementos de una lista, registrar un cobro (alguien te pagó lo que te debía) y editar un \
+elementos a una lista existente, tachar elementos de una lista, registrar un cobro (alguien te pagó lo que te debía), registrar un ingreso puntual, marcar un recordatorio como hecho y editar un \
 recordatorio o evento que ya existe. Puedes llamar varias herramientas en un mismo mensaje.
 
 Reglas estrictas:
@@ -192,6 +194,10 @@ my_parts 2, others [{person_name:"Alejandra", parts:6}].
 items [{debt_id: <id de "deudas" que mejor coincide>}, {debt_id: <id>, amount: 1000}]. Sin "amount" en un item = esa deuda completa. \
 Si solo dice cuánto pagó sin decir de qué ("Ale me dio 500"), manda solo "amount"; si dice que pagó todo, no mandes ni items ni amount. \
 Usa solo ids de "deudas". Si dice en qué cuenta le depositaron, manda su account_id (no tarjetas de crédito).
+- Ingreso (add_income): dinero nuevo que entra ("me pagaron 2000 de un freelance", "me depositaron mi bono a la Nu", "vendí mi bici en 800"). \
+NO confundir con un cobro: cobro es cuando una persona te paga algo que te debía de un gasto compartido (aparece en "deudas"). \
+"description" corta, "amount", "account_id" solo si dice en qué cuenta (débito o ahorro; si no, omítelo) y "category" opcional (Freelance, Bono, Regalo…).
+- Completar (complete_reminder): "ya pagué la luz", "listo lo del dentista" => id del recordatorio que coincide en "recordatorios". Si no hay uno claro, pregunta.
 - Tachar (check_list_items): manda el list_id y los textos tal como los dijo el usuario; el sistema los busca entre los "pendientes" de esa lista.
 - Editar (edit_task): usa el id de "recordatorios" o "eventos" que coincide con lo que describe el usuario ("mi cita del dentista") y manda SOLO \
 los campos que cambian. Si hay dos candidatos parecidos o ninguno, pregunta. "Del viernes al miércoles a las 2" => date = ese miércoles \
@@ -354,6 +360,30 @@ def _tools() -> List[Dict[str, Any]]:
                     "note": {"type": "string"},
                 },
                 "required": ["person_name"],
+            },
+        },
+        {
+            "name": "add_income",
+            "description": "Registrar un ingreso puntual (dinero nuevo que entra), opcionalmente a una cuenta.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string", "description": "Ej. 'Freelance', 'Bono'"},
+                    "amount": {"type": "number"},
+                    "account_id": {"type": "string", "description": "Cuenta de débito o ahorro donde cayó, opcional"},
+                    "category": {"type": "string"},
+                    "date": {"type": "string", "description": "YYYY-MM-DD, por defecto hoy"},
+                },
+                "required": ["description", "amount"],
+            },
+        },
+        {
+            "name": "complete_reminder",
+            "description": "Marcar como hecho un recordatorio existente.",
+            "input_schema": {
+                "type": "object",
+                "properties": {"task_id": {"type": "string", "description": "ID de 'recordatorios' del contexto"}},
+                "required": ["task_id"],
             },
         },
         {
@@ -653,6 +683,35 @@ def normalize(db: Session, user_id: UUID, kind: str, args: Dict[str, Any]) -> Di
     if kind == "add_payment":
         return _normalize_payment(db, user_id, args)
 
+    if kind == "add_income":
+        amount = _money(args.get("amount"))
+        if amount <= 0:
+            raise ValueError("El monto debe ser mayor a 0")
+        desc = _clean(args.get("description"), 120)
+        if not desc:
+            raise ValueError("Falta la descripción del ingreso")
+        account_id = None
+        where = ""
+        if args.get("account_id") not in (None, ""):
+            acc = _expense_account(db, user_id, "debit", args.get("account_id"))
+            account_id, where = str(acc.id), f" a {acc.name}"
+        return {"type": kind, "args": {"description": desc, "amount": str(amount), "account_id": account_id,
+                                       "category": _clean(args.get("category"), 60) or None,
+                                       "date": _date(args.get("date"), today_local()).isoformat()},
+                "title": f"Ingreso · {desc}", "lines": [f"{_fmt(amount)}{where}"]}
+
+    if kind == "complete_reminder":
+        try:
+            tid = UUID(str(args.get("task_id")))
+        except ValueError:
+            raise ValueError("No encontré ese recordatorio")
+        task = task_service.get_task(db, tid, user_id)
+        if not task or task.is_event:
+            raise ValueError("No encontré ese recordatorio")
+        if task.is_completed:
+            raise ValueError(f"«{task.title}» ya estaba completado")
+        return {"type": kind, "args": {"task_id": str(tid)}, "title": f"Completar · {task.title}", "lines": []}
+
     if kind == "check_list_items":
         try:
             lid = UUID(str(args.get("list_id")))
@@ -789,13 +848,13 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> Dict[str, Any
         shares_in = [(o["person_name"], Decimal(o["amount"])) for o in a["others"]]
         mine = total - sum((x for _, x in shares_in), Decimal(0))
         shares = [ShareIn(person_id=people_service.create_person(db, user_id, n).id, amount=x) for n, x in shares_in]
-        expense_service.create_expense(db, ExpenseCreate(
+        exp = expense_service.create_expense(db, ExpenseCreate(
             account_id=UUID(a["account_id"]) if a["account_id"] else None,
             name=a["name"], amount=mine, date=date.fromisoformat(a["date"]),
             payment_method=PaymentMethod(a["payment_method"]), category=a["category"], shares=shares,
         ), user_id)
         extra = f" · {_fmt(total)} (tu parte {_fmt(mine)})" if shares else f" · {_fmt(total)}"
-        return {"text": f"Gasto «{a['name']}» registrado{extra}", "href": "/dashboard"}
+        return {"text": f"Gasto «{a['name']}» registrado{extra}", "href": "/dashboard", "undo": {"kind": "expense", "id": str(exp.id)}}
 
     if kind == "add_installment":
         total, n = Decimal(a["total_amount"]), int(a["installments"])
@@ -803,24 +862,26 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> Dict[str, Any
         shares_in = [(o["person_name"], Decimal(o["amount"])) for o in a["others"]]
         mine_m = monthly - sum((x for _, x in shares_in), Decimal(0))
         shares = [InstallmentShareIn(person_id=people_service.create_person(db, user_id, nm).id, monthly_amount=x) for nm, x in shares_in]
-        installment_purchase_service.create_installment_purchase(db, InstallmentPurchaseCreate(
+        purchase = installment_purchase_service.create_installment_purchase(db, InstallmentPurchaseCreate(
             name=a["name"], total_amount=mine_m * n, monthly_amount=mine_m, total_installments=n,
             remaining_installments=n, start_date=date.fromisoformat(a["start_date"]),
             account_id=UUID(a["account_id"]) if a["account_id"] else None, is_new_charge=True, shares=shares,
         ), user_id)
         extra = f" (tu parte {_fmt(mine_m)}/mes)" if shares else ""
-        return {"text": f"MSI «{a['name']}» registrado · {n} pagos de {_fmt(monthly)}{extra}", "href": "/dashboard"}
+        return {"text": f"MSI «{a['name']}» registrado · {n} pagos de {_fmt(monthly)}{extra}", "href": "/dashboard",
+                "undo": {"kind": "installment", "id": str(purchase.id)}}
 
     if kind == "add_recurring":
         amount = Decimal(a["amount"])
         shares_in = [(o["person_name"], Decimal(o["amount"])) for o in a["others"]]
         mine = amount - sum((x for _, x in shares_in), Decimal(0))
         shares = [ShareIn(person_id=people_service.create_person(db, user_id, nm).id, amount=x) for nm, x in shares_in]
-        recurring_expense_service.create_recurring_expense(db, RecurringExpenseCreate(
+        rec = recurring_expense_service.create_recurring_expense(db, RecurringExpenseCreate(
             name=a["name"], amount=mine, frequency=ExpenseFrequency(a["frequency"]), interval_days=a.get("interval_days"),
             account_id=UUID(a["account_id"]) if a["account_id"] else None, shares=shares,
         ), user_id)
-        return {"text": f"Recurrente «{a['name']}» registrado · {_fmt(amount)}", "href": "/dashboard"}
+        return {"text": f"Recurrente «{a['name']}» registrado · {_fmt(amount)}", "href": "/dashboard",
+                "undo": {"kind": "recurring", "id": str(rec.id)}}
 
     if kind in ("add_reminder", "add_event"):
         is_event = kind == "add_event"
@@ -833,26 +894,30 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> Dict[str, Any
         )
         task = task_service.create_task(db, data, user_id)
         return {"text": f"{'Evento' if is_event else 'Recordatorio'} «{a['title']}» creado",
-                "href": f"/{'events' if is_event else 'recordatorios'}?open={task.id}"}
+                "href": f"/{'events' if is_event else 'recordatorios'}?open={task.id}", "undo": {"kind": "task", "id": str(task.id)}}
 
     if kind == "create_list":
         lst = user_list_service.create_list(db, ListCreate(name=a["name"], emoji=a["emoji"]), user_id)
         for text in a["items"]:
             user_list_service.add_item(db, lst.id, ListItemCreate(text=text), user_id)
-        return {"text": f"Lista «{a['name']}» creada", "href": f"/listas?open={lst.id}"}
+        return {"text": f"Lista «{a['name']}» creada", "href": f"/listas?open={lst.id}", "undo": {"kind": "list", "id": str(lst.id)}}
 
     if kind == "add_list_items":
         lid = UUID(a["list_id"])
+        before = {i.id for l in user_list_service.get_lists(db, user_id) if l.id == lid for i in l.items}
         for text in a["items"]:
             user_list_service.add_item(db, lid, ListItemCreate(text=text), user_id)
         lst = next((l for l in user_list_service.get_lists(db, user_id) if l.id == lid), None)
+        new_ids = [str(i.id) for i in (lst.items if lst else []) if i.id not in before]
         where = f" a {lst.emoji} {lst.name}" if lst else ""
         n = len(a["items"])
-        return {"text": f"{n} elemento{'s' if n != 1 else ''} agregado{'s' if n != 1 else ''}{where}", "href": f"/listas?open={lid}"}
+        return {"text": f"{n} elemento{'s' if n != 1 else ''} agregado{'s' if n != 1 else ''}{where}", "href": f"/listas?open={lid}",
+                "undo": {"kind": "list_items", "list_id": str(lid), "item_ids": new_ids}}
 
     if kind == "add_payment":
         person = next(p for p in people_service.list_people(db, user_id) if _norm(p["name"]) == _norm(a["person_name"]))
         when, acct, note = date.fromisoformat(a["date"]), UUID(a["account_id"]) if a["account_id"] else None, a.get("note")
+        payment_ids: List[str] = []
         if a["items"]:
             pending = {str(d["id"]): Decimal(str(d["pending"])) for d in people_service.pending_debts(db, user_id, person["id"])}
             fulls = [i for i in a["items"] if Decimal(i["amount"]) >= pending[i["debt_id"]]]
@@ -864,32 +929,39 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> Dict[str, Any
             for g in [g for g in groups if g]:
                 amount = sum((Decimal(i["amount"]) for i in g), Decimal(0))
                 total += amount
-                people_service.create_payment(db, user_id, person["id"], PaymentCreate(
+                made = people_service.create_payment(db, user_id, person["id"], PaymentCreate(
                     amount=amount, date=when, account_id=acct, note=note, debt_ids=[UUID(i["debt_id"]) for i in g]))
+                payment_ids.append(str(made["id"]))
         else:
             total = Decimal(a["amount"])
-            people_service.create_payment(db, user_id, person["id"], PaymentCreate(amount=total, date=when, account_id=acct, note=note))
+            made = people_service.create_payment(db, user_id, person["id"], PaymentCreate(amount=total, date=when, account_id=acct, note=note))
+            payment_ids.append(str(made["id"]))
         left = sum((Decimal(str(d["pending"])) for d in people_service.pending_debts(db, user_id, person["id"])), Decimal(0))
         tail = f" · aún te debe {_fmt(left)}" if left > 0 else " · ya no te debe nada"
-        return {"text": f"Cobro de {_fmt(total)} a {person['name']} registrado{tail}", "href": "/dashboard/cierre"}
+        return {"text": f"Cobro de {_fmt(total)} a {person['name']} registrado{tail}", "href": "/dashboard/cierre",
+                "undo": {"kind": "payments", "ids": payment_ids}}
 
     if kind == "check_list_items":
         lid = UUID(a["list_id"])
         lst = next((l for l in user_list_service.get_lists(db, user_id) if l.id == lid), None)
         pending = [i for i in (lst.items if lst else []) if not i.is_done]
         done_texts: List[str] = []
+        done_ids: List[str] = []
         for text in a["items"]:
             item = _match_item(text, [i for i in pending if i.text not in done_texts])
             if item:
                 user_list_service.update_item(db, lid, item.id, ListItemUpdate(is_done=True), user_id)
                 done_texts.append(item.text)
+                done_ids.append(str(item.id))
         where = f" en {lst.emoji} {lst.name}" if lst else ""
-        return {"text": f"Taché {', '.join(done_texts)}{where}", "href": f"/listas?open={lid}"}
+        return {"text": f"Taché {', '.join(done_texts)}{where}", "href": f"/listas?open={lid}",
+                "undo": {"kind": "uncheck_items", "list_id": str(lid), "item_ids": done_ids}}
 
     if kind == "edit_task":
         task = task_service.get_task(db, UUID(a["task_id"]), user_id)
         if not task:
             raise ValueError("No encontré ese recordatorio o evento")
+        old = _task_snapshot(task, [k for k in ("title", "location", "label", "notes", "date", "time") if a.get(k)])
         fields: Dict[str, Any] = {}
         for src, dst in (("title", "title"), ("location", "location"), ("label", "label"), ("notes", "notes")):
             if a.get(src):
@@ -902,6 +974,7 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> Dict[str, Any
             fields["due_time"] = new_time
         if not task.is_event and (a.get("date") or a.get("time")) and new_date and new_time:
             fields["reminder_at"] = datetime.combine(new_date, new_time)
+            old["reminder_at"] = task.reminder_at.isoformat() if task.reminder_at else None
         task_service.update_task(db, task.id, TaskUpdate(**fields), user_id)
         bits = []
         if a.get("date"):
@@ -910,9 +983,104 @@ def execute(db: Session, user_id: UUID, action: Dict[str, Any]) -> Dict[str, Any
             bits.append(new_time.strftime("%H:%M"))
         extra = f" · ahora {' '.join(bits)}" if bits else ""
         return {"text": f"{'Evento' if task.is_event else 'Recordatorio'} «{a.get('title') or task.title}» actualizado{extra}",
-                "href": f"/{'events' if task.is_event else 'recordatorios'}?open={task.id}"}
+                "href": f"/{'events' if task.is_event else 'recordatorios'}?open={task.id}",
+                "undo": {"kind": "restore_task", "id": str(task.id), "fields": old}}
+
+    if kind == "add_income":
+        inc = income_service.create_income(db, user_id, IncomeCreate(
+            description=a["description"], amount=Decimal(a["amount"]), date=date.fromisoformat(a["date"]),
+            category=a.get("category"), account_id=UUID(a["account_id"]) if a.get("account_id") else None))
+        acc = db.query(Account).filter(Account.id == inc.account_id).first() if inc.account_id else None
+        where = f" en {acc.name}" if acc else ""
+        saving = acc is not None and (acc.account_type.value if hasattr(acc.account_type, "value") else str(acc.account_type)) == "savings"
+        note = " (ahorro: no suma a tu disponible)" if saving else ""
+        return {"text": f"Ingreso «{a['description']}» registrado · {_fmt(Decimal(a['amount']))}{where}{note}", "href": "/dashboard",
+                "undo": {"kind": "income", "id": str(inc.id)}}
+
+    if kind == "complete_reminder":
+        task = task_service.get_task(db, UUID(a["task_id"]), user_id)
+        if not task:
+            raise ValueError("No encontré ese recordatorio")
+        recurring = bool(task.recurrence and task.recurrence != "none" and task.due_date)
+        old = {"due_date": task.due_date.isoformat(), "reminder_at": task.reminder_at.isoformat() if task.reminder_at else None} if recurring else {"is_completed": False}
+        task = task_service.complete_task(db, task.id, user_id)
+        nxt = f" · se repite, el siguiente es {task.due_date.strftime('%d/%m/%Y')}" if recurring and task.due_date else ""
+        return {"text": f"Recordatorio «{task.title}» completado{nxt}", "href": f"/recordatorios?open={task.id}",
+                "undo": {"kind": "restore_task", "id": str(task.id), "fields": old}}
 
     raise ValueError("Acción no permitida")
+
+
+def _task_snapshot(task: Any, keys: List[str]) -> Dict[str, Any]:
+    """Current values of the fields about to change, in the shape TaskUpdate accepts (to restore them on undo)."""
+    cur = {"title": task.title, "location": task.location, "label": task.label, "notes": task.notes,
+           "due_date": task.due_date.isoformat() if task.due_date else None,
+           "due_time": task.due_time.strftime("%H:%M:%S") if task.due_time else None}
+    names = {"date": "due_date", "time": "due_time"}
+    return {names.get(k, k): cur[names.get(k, k)] for k in keys}
+
+
+# ── Undo ─────────────────────────────────────────────────────────────────────
+
+def undo(db: Session, user_id: UUID, payload: Dict[str, Any]) -> str:
+    """Reverse one thing the assistant did. Only touches the user's own rows (every service is scoped by user_id)."""
+    kind = payload.get("kind")
+    try:
+        if kind == "expense":
+            ok = expense_service.delete_expense(db, UUID(payload["id"]), user_id)
+        elif kind == "income":
+            ok = income_service.delete_income(db, user_id, UUID(payload["id"]))
+        elif kind == "task":
+            ok = task_service.delete_task(db, UUID(payload["id"]), user_id)
+        elif kind == "list":
+            ok = user_list_service.delete_list(db, UUID(payload["id"]), user_id)
+        elif kind == "list_items":
+            lid = UUID(payload["list_id"])
+            for iid in payload.get("item_ids") or []:
+                user_list_service.delete_item(db, lid, UUID(iid), user_id)
+            ok = True
+        elif kind == "uncheck_items":
+            lid = UUID(payload["list_id"])
+            for iid in payload.get("item_ids") or []:
+                user_list_service.update_item(db, lid, UUID(iid), ListItemUpdate(is_done=False), user_id)
+            ok = True
+        elif kind == "payments":
+            for pid in payload.get("ids") or []:
+                people_service.delete_payment(db, user_id, UUID(pid))
+            ok = True
+        elif kind == "installment":
+            purchase = installment_purchase_service.get_installment_purchase(db, UUID(payload["id"]), user_id)
+            ok = purchase is not None
+            if purchase:
+                # the service's delete does not give the card its credit back; the assistant always charged it
+                card = db.query(Account).filter(Account.id == purchase.account_id, Account.user_id == user_id).first() if purchase.account_id else None
+                if card and purchase.remaining_installments > 0:
+                    installment_purchase_service._adjust_card_balance(
+                        card, -debt_service.total_monthly(db, purchase) * purchase.remaining_installments)
+                installment_purchase_service.delete_installment_purchase(db, purchase.id, user_id)
+        elif kind == "recurring":
+            rec = recurring_expense_service.get_recurring_expense(db, UUID(payload["id"]), user_id)
+            ok = rec is not None
+            if rec:
+                card = recurring_expense_service._load_credit_account(db, rec.account_id, user_id) if rec.account_id else None
+                if card:
+                    recurring_expense_service._adjust_card_balance(card, -debt_service.recurring_total(db, rec))
+                # the charge rows (and the debts hanging from them) would otherwise outlive the recurring
+                db.query(RecurringCharge).filter(RecurringCharge.recurring_id == rec.id, RecurringCharge.user_id == user_id).delete()
+                recurring_expense_service.delete_recurring_expense(db, rec.id, user_id)
+        elif kind == "restore_task":
+            ok = task_service.update_task(db, UUID(payload["id"]), TaskUpdate(**(payload.get("fields") or {})), user_id) is not None
+        else:
+            raise ValueError("No se puede deshacer eso")
+    except ValueError:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise ValueError("No se pudo deshacer (puede que ya lo hayas cambiado o borrado)")
+    if not ok:
+        raise ValueError("Ya no existe, no hay nada que deshacer")
+    return "Deshecho"
 
 
 # ── Model call ───────────────────────────────────────────────────────────────

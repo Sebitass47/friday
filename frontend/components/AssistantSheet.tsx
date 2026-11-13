@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Sparkles, X, Send, Check, Loader2, ArrowRight } from 'lucide-react'
-import { assistantMessage, assistantConfirm } from '@/lib/api'
+import { Sparkles, X, Send, Check, Loader2, ArrowRight, Undo2 } from 'lucide-react'
+import { assistantMessage, assistantConfirm, assistantUndo } from '@/lib/api'
 
-interface Done { text: string; href: string | null }
+interface Done { text: string; href: string | null; undo?: Record<string, unknown> | null; state?: 'undoing' | 'undone' }
 interface Turn {
   role: 'user' | 'assistant'
   text: string
@@ -67,6 +67,19 @@ export default function AssistantFab() {
     } finally { setSending(false) }
   }
 
+  async function undoDone(turnIdx: number, doneIdx: number) {
+    const item = turns[turnIdx]?.done?.[doneIdx]
+    if (!item?.undo || item.state) return
+    const mark = (state: Done['state'], problem?: string) => setTurns(ts => ts.map((t, i) => i !== turnIdx ? t : {
+      ...t,
+      done: t.done?.map((d, k) => k === doneIdx ? { ...d, state } : d),
+      problems: problem ? [...(t.problems ?? []), problem] : t.problems,
+    }))
+    mark('undoing')
+    try { await assistantUndo(item.undo); mark('undone'); savedRef.current = true }
+    catch (e: unknown) { mark(undefined, e instanceof Error ? e.message : 'No se pudo deshacer') }
+  }
+
   function go(href: string) {
     savedRef.current = false
     // full navigation so the page loads fresh data and opens the item (?open=)
@@ -118,10 +131,16 @@ export default function AssistantFab() {
                 <div key={i} className="space-y-2">
                   {t.text && <p className="max-w-[92%] rounded-2xl rounded-bl-md text-sm px-3.5 py-2.5 whitespace-pre-wrap bg-black/[0.05] dark:bg-white/[0.07] text-black dark:text-white">{t.text}</p>}
                   {t.done?.map((d, k) => (
-                    <div key={k} className="flex items-center gap-3 rounded-2xl bg-emerald-500/10 px-3.5 py-2.5">
-                      <Check size={16} strokeWidth={3} className="shrink-0 text-emerald-500" />
-                      <p className="flex-1 min-w-0 text-sm text-emerald-700 dark:text-emerald-300">{d.text}</p>
-                      {d.href && (
+                    <div key={k} className={`flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ${d.state === 'undone' ? 'bg-black/[0.05] dark:bg-white/[0.06]' : 'bg-emerald-500/10'}`}>
+                      <Check size={16} strokeWidth={3} className={`shrink-0 ${d.state === 'undone' ? 'text-black/30 dark:text-white/30' : 'text-emerald-500'}`} />
+                      <p className={`flex-1 min-w-0 text-sm ${d.state === 'undone' ? 'line-through text-black/40 dark:text-white/40' : 'text-emerald-700 dark:text-emerald-300'}`}>{d.text}</p>
+                      {d.state === 'undone' && <span className="shrink-0 text-xs font-medium text-black/45 dark:text-white/45">Deshecho</span>}
+                      {d.undo && d.state !== 'undone' && (
+                        <button onClick={() => undoDone(i, k)} disabled={d.state === 'undoing'} aria-label="Deshacer" className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-black/10 dark:bg-white/10 text-black dark:text-white disabled:opacity-50">
+                          {d.state === 'undoing' ? <Loader2 size={13} className="animate-spin" /> : <Undo2 size={13} />} Deshacer
+                        </button>
+                      )}
+                      {d.href && d.state !== 'undone' && (
                         <button onClick={() => go(d.href as string)} className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-black text-white dark:bg-white dark:text-black">
                           Ver <ArrowRight size={13} />
                         </button>

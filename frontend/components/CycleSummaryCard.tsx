@@ -89,7 +89,7 @@ export default function CycleSummaryCard({
         <h2 className="text-sm font-semibold text-black dark:text-white">Tu dinero este ciclo</h2>
         <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">{cycle.label} · toca la línea para ver cada día</p>
         <p className="text-xs text-black/40 dark:text-white/40 mt-0.5">
-          {fmtDate(cycle.cycle_start)} al {fmtDate(cycle.cycle_end)}{cycleStartDay ? ` · tu ingreso cae el día ${cycleStartDay}` : ''}
+          {monthly > 0 && cycleStartDay ? `Te caen ${fmt(monthly)} el día ${cycleStartDay} · siguiente ${fmtDate(next.date)} (${nextIn})` : `Siguiente ciclo: ${fmtDate(next.date)} (${nextIn})`}
         </p>
       </div>
 

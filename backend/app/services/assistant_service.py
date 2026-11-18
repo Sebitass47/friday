@@ -45,7 +45,7 @@ MODEL = os.getenv("AI_MODEL", "claude-haiku-5-5")
 PRICE_IN = Decimal(os.getenv("AI_PRICE_IN", "0.10"))
 PRICE_OUT = Decimal(os.getenv("AI_PRICE_OUT", "0.50"))
 MONTHLY_LIMIT = Decimal(os.getenv("AI_MONTHLY_LIMIT_USD", "2.0"))
-MAX_OUTPUT = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "400"))
+MAX_OUTPUT = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "1200"))
 PER_MINUTE = int(os.getenv("AI_PER_MINUTE", "8"))
 CENT = Decimal("0.01")
 LABELS = ["Trabajo", "Personal", "Pareja", "Familia", "Social", "Hogar", "Salud", "Finanzas", "Ocio"]
@@ -180,7 +180,7 @@ herramienta: haz UNA pregunta corta.
 "El martes" de un gasto es el más reciente ya pasado; de un recordatorio o evento, el próximo. Si en un gasto NO se menciona fecha, \
 OMITE "date" (se usa hoy). Horas en HH:MM de 24 horas.
 - Para un gasto: tarjeta de crédito => payment_method "credit" con account_id de esa tarjeta; débito => "debit" con su \
-cuenta; efectivo => "cash" sin account_id. Si dice una tarjeta por nombre, busca la más parecida en el contexto.
+cuenta; cuenta de ahorro (tipo "ahorro" en el contexto) => "savings" con su account_id; efectivo => "cash" sin account_id. Si dice una tarjeta por nombre, busca la más parecida en el contexto.
 - "total_amount" es lo que se pagó EN TOTAL (lo que cobra el banco), aunque se reparta entre varias personas.
 - MSI: "total_amount" es el precio total de la compra e "installments" el número de meses; el sistema calcula la mensualidad. \
 Tarjeta de crédito en "account_id". El reparto ("my_parts"/"others") aplica a cada mensualidad igual que en un gasto. Si dice "mi novia", \
@@ -204,7 +204,8 @@ los campos que cambian. Si hay dos candidatos parecidos o ninguno, pregunta. "De
 próximo y time "14:00". Si solo cambia el día, no mandes time (se conserva la hora).
 - Lo que registres se guarda AL INSTANTE, sin que el usuario lo revise. Si hay una duda razonable (dos tarjetas \
 posibles, no está claro cuánto es suyo, la lista no existe), pregunta en vez de adivinar.
-- Al usar herramientas NO escribas texto, solo llama las herramientas. Si respondes con texto, que sea una sola frase corta."""
+- Varios gastos/acciones en un mismo mensaje: llama la herramienta UNA VEZ por cada uno, todas en la misma respuesta, completas (con su account_id y reparto).
+- Al usar herramientas NO escribas texto antes ni después, solo llama las herramientas. Si respondes con texto, que sea una sola frase corta."""
 
 
 _OTHERS = {
@@ -227,7 +228,7 @@ def _tools() -> List[Dict[str, Any]]:
                 "properties": {
                     "name": {"type": "string", "description": "Descripción corta, ej. 'Bar', 'Tacos'"},
                     "total_amount": {"type": "number", "description": "Total pagado, mayor a 0"},
-                    "payment_method": {"type": "string", "enum": ["cash", "debit", "credit"]},
+                    "payment_method": {"type": "string", "enum": ["cash", "debit", "credit", "savings"]},
                     "account_id": {"type": "string", "description": "ID de la cuenta/tarjeta del contexto (no en efectivo)"},
                     "category": {"type": "string", "description": "Una de las categorías del contexto"},
                     "date": {"type": "string", "description": "YYYY-MM-DD, por defecto hoy"},
@@ -524,6 +525,8 @@ def _expense_account(db: Session, user_id: UUID, method: str, account_id: Any) -
         raise ValueError(f"{acc.name} no es una tarjeta de crédito")
     if method == "debit" and atype == AccountType.CREDIT_CARD.value:
         raise ValueError(f"{acc.name} es de crédito, no de débito")
+    if method == "savings" and atype != AccountType.SAVINGS.value:
+        raise ValueError(f"{acc.name} no es una cuenta de ahorro")
     return acc
 
 
@@ -534,7 +537,7 @@ def normalize(db: Session, user_id: UUID, kind: str, args: Dict[str, Any]) -> Di
         if total <= 0:
             raise ValueError("El monto debe ser mayor a 0")
         method = str(args.get("payment_method") or "")
-        if method not in ("cash", "debit", "credit"):
+        if method not in ("cash", "debit", "credit", "savings"):
             raise ValueError("Método de pago inválido")
         acc = _expense_account(db, user_id, method, args.get("account_id"))
         cats = category_service.DEFAULT_CATEGORIES + [c.name for c in category_service.get_custom_categories(db, user_id)]
@@ -553,7 +556,7 @@ def normalize(db: Session, user_id: UUID, kind: str, args: Dict[str, Any]) -> Di
             "others": [{"person_name": n, "amount": str(a)} for n, a in shares],
         }
         lines = [
-            f"{_fmt(total)} · {category} · {({'cash': 'Efectivo', 'debit': 'Débito', 'credit': 'Crédito'})[method]}"
+            f"{_fmt(total)} · {category} · {({'cash': 'Efectivo', 'debit': 'Débito', 'credit': 'Crédito', 'savings': 'Ahorro'})[method]}"
             + (f" · {acc.name}" if acc else ""),
             f"Fecha {when.strftime('%d/%m/%Y')}",
         ]
@@ -1137,7 +1140,14 @@ def handle_message(db: Session, user_id: UUID, text: str, history: List[Dict[str
     reply_parts: List[str] = []
     actions: List[Dict[str, Any]] = []
     notes: List[str] = []
-    for block in resp.get("content", []):
+    blocks = list(resp.get("content", []))
+    if resp.get("stop_reason") == "max_tokens":
+        # the last tool call was cut off mid-way: never run a half-written action
+        while blocks and blocks[-1].get("type") == "tool_use":
+            blocks.pop()
+            break
+        notes.append("Tu mensaje era muy largo y no pude registrar todo; revisa qué se guardó y manda lo que falte.")
+    for block in blocks:
         if block.get("type") == "text" and block.get("text", "").strip():
             reply_parts.append(block["text"].strip())
         elif block.get("type") == "tool_use":

@@ -102,7 +102,8 @@ Lenguaje natural → acciones: **cobros** (`add_payment`: "Ale me pagó el uber 
 - **Dos pasos en la API**: `/message` solo propone (no escribe nada); el front llama a `/confirm` enseguida, y `/confirm` **vuelve a validar** cada acción (nunca confía en el payload del cliente) y la ejecuta con los servicios normales, siempre con `user_id` del token. Las cuentas/listas/personas del contexto son solo las del usuario.
 - **Las cuentas las hace el backend** (`_split`): el modelo manda `my_parts`/`parts`/`amount` tal como los dijo el usuario; montos exactos salen primero y el resto se reparte por partes.
 - **Guardarraíles:** prompt que rechaza todo lo que no sea una de las 5 acciones, mensaje ≤600 caracteres, 8 mensajes/min (Redis, falla abierto), tope mensual en USD por usuario (`ai_usage`), errores del proveedor nunca se reenvían al cliente.
-- Pendiente: responder preguntas sobre tus datos (Sebastian: primero medir cuánto cuesta el gasto del asistente), entrada por WhatsApp (Sebastian: primero la app).
+- **Preguntas de finanzas (solo lectura):** el contexto lleva `finanzas` (`_finance_context`): ciclo (ingreso, compromisos, gastado, disponible de `projection_service`), `te_deben` por persona y por tarjeta el estado de cuenta (`closing_service.get_closing` por defecto: total, tuyo, de otros, ya pagado, falta por pagar). El modelo responde con texto, sin herramientas, **solo con esas cifras** (no suma ni inventa; movimientos sueltos o detalle por tienda se rechazan a propósito: Sebastian no los quiere). Cada pregunta cuesta ~$0.001 USD (≈6.4k tokens de entrada). Si falla un bloque del contexto se omite y se loguea.
+- Pendiente: fotos (capturas de estado de cuenta; Haiku acepta imágenes, ~$0.001-0.002 extra por mensaje; con un resumen para confirmar antes de guardar), entrada por WhatsApp (Sebastian: primero la app).
 
 ### Recordatorios (`/recordatorios`)
 

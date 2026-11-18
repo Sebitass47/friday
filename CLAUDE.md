@@ -3,7 +3,7 @@
 > **Instrucción para el agente:** Al terminar cualquier tarea:
 > 1. **Actualiza este archivo** — si agregaste módulo, endpoint, modelo, página o componente, añádelo en la sección correspondiente. Si completaste algo de "Lo que viene", muévelo a donde corresponda.
 > 2. **Haz un commit** con un mensaje descriptivo de lo que se hizo (en inglés, estilo convencional: `feat:`, `fix:`, `docs:`, etc.). Siempre incluye `Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>`.
-> 3. **NUNCA hagas cambios directos en producción.** Todo cambio va en local → commit → push → el pipeline de GitHub Actions se encarga del deploy. Jamás corras comandos en el server de EC2 (ni `git pull`, ni `docker compose build`, ni `docker exec`). El único caso válido para conectarse al server es **leer logs** cuando hay un error que no se puede diagnosticar de otra forma, y solo si Sebastian lo autoriza explícitamente.
+> 3. **NUNCA hagas cambios directos en producción.** Todo cambio va en local → commit → push → el pipeline de GitHub Actions se encarga del deploy. Jamás corras comandos en el server de producción (ni `git pull`, ni `docker compose build`, ni `docker exec`). El único caso válido para conectarse al server es **leer logs** cuando hay un error que no se puede diagnosticar de otra forma, y solo si Sebastian lo autoriza explícitamente.
 > 4. **NUNCA toques `docker-compose.yml` ni `docker-compose.prod.yml`** sin autorización explícita de Sebastian. Estos archivos controlan producción y un cambio incorrecto puede romper el acceso al servidor.
 > 5. El pipeline de CI/CD (`.github/workflows/deploy.yml`) se dispara automáticamente con cada push a `main`. Hace `git pull` en el server, reconstruye y reinicia todos los contenedores, y aplica migraciones. Confía en el pipeline.
 
@@ -448,38 +448,28 @@ Todo va en el mismo repo/contenedores. No separar en microservicios.
 
 ---
 
-## Deploy en producción — EC2 (OPERATIVO)
+## Deploy en producción — HostGator VPS (OPERATIVO desde 18/11/2026)
 
-**Estado:** App 100% operativa en producción.
+**Estado:** App 100% operativa en `https://sebitass47.com`. Se migró de AWS EC2 (créditos agotados) a un VPS de HostGator; **AWS fue vaciado y apagado**, ya no se usa.
 
-**URL:** `https://sebitass47.com`
-
-**Repositorio GitHub:** `https://github.com/Sebitass47/friday.git`
+**URL:** `https://sebitass47.com` · **Repositorio:** `https://github.com/Sebitass47/friday.git`
 
 **Servidor:**
-- Proveedor: AWS EC2
-- Tipo: **t3.small** (2 GB RAM)
-- IP fija (Elastic IP): `18.216.94.204`
-- OS: Amazon Linux 2023
-- Key pair: `\\wsl.localhost\Ubuntu\home\sebitass47\.ssh\friday-key.pem`
-- Usuario SSH: `ec2-user`
-- Conexión: `ssh -i ~/.ssh/friday-key.pem ec2-user@18.216.94.204`
+- HostGator VPS OCI NVMe 2 (Monterrey, ~17 ms desde CDMX): 1 vCPU, 2 GB RAM, 50 GB NVMe, **Rocky Linux 9.9**
+- IP: `143.95.176.133` · SSH puerto **22022** · usuario `friday` (sudo sin contraseña). **Solo llave** (`~/.ssh/friday-vps`); root y contraseña deshabilitados (`/etc/ssh/sshd_config.d/01-friday.conf`)
+- Plan **mensual**, contratado el 17/11/2026, vence el **17/12/2026**: antes de esa fecha decidir si se pasa al anual (ojo: renueva más caro) o se cambia de proveedor
+- Conexión: `ssh -p 22022 -i ~/.ssh/friday-vps friday@143.95.176.133`
 
-**Dominio:**
-- `sebitass47.com` en Namecheap
-- DNS apunta a `18.216.94.204` (registros A para `@` y `www`)
-- SSL activo con Let's Encrypt / Certbot
+**Endurecimiento del servidor:** firewalld (solo 22022/80/443), fail2ban en el puerto 22022, `dnf-automatic` (solo parches de seguridad; **los de kernel requieren reiniciar a mano**), swap de 2 GB, sysctl (SYN cookies, rp_filter…), `chrony`, Docker 29 + Compose desde el repo CentOS de Docker con rotación de logs. SELinux viene desactivado de fábrica por HostGator. El DNS del servidor se configuró a mano (1.1.1.1 / 9.9.9.9) porque venía sin nameserver.
 
-**Stack en producción:**
-- Docker Compose con `docker-compose.yml` + `docker-compose.prod.yml`
-- nginx como reverse proxy (80/443 → contenedores)
-- Migraciones aplicadas hasta `0017`
+**Stack:** Docker Compose con `docker-compose.yml` + `docker-compose.prod.yml` en `~/FRIDAY`; nginx como reverse proxy; solo 80/443 publicados (postgres y redis no salen a internet). El `.env` de producción vive en `~/FRIDAY/.env` (no está en git).
 
-**Para deploys futuros:**
-```bash
-ssh -i ~/.ssh/friday-key.pem ec2-user@18.216.94.204
-cd FRIDAY
-git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build <servicio>
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps <servicio>
-```
+**Repo en el servidor:** `origin` es `git@github.com:Sebitass47/friday.git` con una **deploy key de solo lectura** (`~/.ssh/github-deploy`, registrada en Settings → Deploy keys). No hay tokens en el servidor.
+
+**CI/CD:** `.github/workflows/deploy.yml` (push a `main`). Secretos de GitHub Actions (los nombres `EC2_*` son históricos; ahora apuntan al VPS): `EC2_HOST`, `EC2_USER` (`friday`), `EC2_PORT` (`22022`), `EC2_SSH_KEY` (llave `friday-gha`, autorizada en el servidor).
+
+**Dominio y certificado:** Namecheap, registros A `@` y `www` → `143.95.176.133` (TTL 5 min). Let's Encrypt (el certificado se copió de AWS, vence el 30/01/2027); el contenedor `certbot` renueva solo por webroot.
+
+**Respaldos:** no hay respaldo automático todavía. Copias manuales con `pg_dump -Fc` en `~/backups/friday/` (laptop de Sebastian). Pendiente: respaldo automático de la base **fuera del servidor**.
+
+**Migración (histórico):** base restaurada desde `pg_dump` y verificada tabla por tabla; celery-worker/beat se detuvieron en AWS antes de arrancarlos en el VPS para no duplicar notificaciones push.

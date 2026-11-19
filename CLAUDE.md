@@ -470,6 +470,8 @@ Todo va en el mismo repo/contenedores. No separar en microservicios.
 
 **Dominio y certificado:** Namecheap, registros A `@` y `www` → `143.95.176.133` (TTL 5 min). Let's Encrypt (el certificado se copió de AWS, vence el 30/01/2027); el contenedor `certbot` renueva solo por webroot.
 
+**Reinicios del VPS (incidente 19/11/2026):** el servidor se reinició y, como los contenedores no tenían `restart:`, solo nginx volvió (en bucle por `host not found in upstream "backend"`) y el sitio quedó caído (80/443 rechazaban). Ahora **todos los servicios llevan `restart: unless-stopped`** en `docker-compose.prod.yml`, así que sobreviven a un reinicio. Si algún día vuelve a pasar: síntoma = 80/443 "connection refused" con SSH vivo; `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` en `~/FRIDAY` y, si nginx quedó en backoff, `docker restart friday-nginx-1`.
+
 **Respaldos:** no hay respaldo automático todavía. Copias manuales con `pg_dump -Fc` en `~/backups/friday/` (laptop de Sebastian). Pendiente: respaldo automático de la base **fuera del servidor**.
 
 **Migración (histórico):** base restaurada desde `pg_dump` y verificada tabla por tabla; celery-worker/beat se detuvieron en AWS antes de arrancarlos en el VPS para no duplicar notificaciones push.
